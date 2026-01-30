@@ -28,7 +28,17 @@ yarn dev
 yarn build
 ```
 
+## Run server
+
+```bash
+node .output/server/index.mjs
+```
 
 ## Logo
 
 generated with chatgpt
+
+
+## Code
+
+Almost every line was generated with cursor
