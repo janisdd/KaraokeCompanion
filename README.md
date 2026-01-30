@@ -1,6 +1,6 @@
 # Karaoke Search
 
-A little helper for UltraStar Karakoe sessions.
+A little helper for UltraStar karaoke sessions.
 
 
 ## Install
