@@ -535,9 +535,9 @@ const confirmUnmarkAll = () => {
             />
             <div
               v-else
-              class="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase text-slate-400"
+              class="flex h-full w-full items-center justify-center text-slate-400"
             >
-              Cover
+              <font-awesome-icon icon="fa-solid fa-music" />
             </div>
           </div>
           <div class="flex min-w-0 flex-1 flex-col gap-2">

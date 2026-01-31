@@ -35,6 +35,7 @@ export default defineEventHandler(async (event) => {
   try {
     await fs.promises.access(resolvedPath);
   } catch {
+    console.warn(`Cover file not found: ${resolvedPath}`);
     throw createError({ statusCode: 404, message: "Cover file not found" });
   }
 

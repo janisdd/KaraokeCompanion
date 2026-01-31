@@ -198,8 +198,14 @@ export class Indexer {
 					const resolvedCoverPath = path.isAbsolute(rawCoverFile)
 						? rawCoverFile
 						: path.join(songDirectory, rawCoverFile)
-					const relativeCoverPath = path.relative(songsRoot, resolvedCoverPath)
-					songInfo.coverFile = relativeCoverPath.split(path.sep).join("/")
+					try {
+						await fs.promises.access(resolvedCoverPath)
+						const relativeCoverPath = path.relative(songsRoot, resolvedCoverPath)
+						songInfo.coverFile = relativeCoverPath.split(path.sep).join("/")
+					} catch {
+						songInfo.coverFile = null
+						console.warn(`Cover file not found for song: ${songDirectory}`)
+					}
 				}
 			}
 
