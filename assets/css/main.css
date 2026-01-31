@@ -1,4 +1,4 @@
 
 body {
-	background-color: #f0f0f0;
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
 }
