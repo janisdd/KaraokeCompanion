@@ -99,6 +99,9 @@ const sortedSongs = computed(() => {
 const getSongKey = (song: SongInfo) =>
   `${song.title}-${song.artist}-${song.year ?? ""}`;
 
+const getSongRowId = (song: SongInfo) =>
+  `song-row-${encodeURIComponent(getSongKey(song))}`;
+
 const getSongText = (song: SongInfo) =>
   song.songTextAsWords?.join(" ").trim() ||
   "";
@@ -163,6 +166,16 @@ const clearSongText = () => {
   selectedSongKey.value = null;
   selectedSongText.value = null;
   selectedSongName.value = null;
+};
+
+const scrollToActiveSong = () => {
+  if (!process.client || !activeSong.value) {
+    return;
+  }
+  const target = document.getElementById(getSongRowId(activeSong.value));
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 };
 
 const getAudioFile = (song: SongInfo) => {
@@ -393,6 +406,7 @@ const progressPercent = computed(() => {
                 <tr
                   v-for="song in sortedSongs"
                   :key="getSongKey(song)"
+                  :id="getSongRowId(song)"
                   class="odd:bg-white even:bg-slate-50/60 hover:bg-slate-100/60"
                 >
                   <td class="px-4 py-3">
@@ -478,8 +492,16 @@ const progressPercent = computed(() => {
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Now playing
+                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span>Now playing</span>
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    aria-label="Scroll to song in list"
+                    @click="scrollToActiveSong"
+                  >
+                    <font-awesome-icon icon="fa-solid fa-location-arrow" />
+                  </button>
                 </div>
                 <div class="truncate text-sm font-semibold text-slate-900">
                   {{ activeSong.title }} — {{ activeSong.artist }}
