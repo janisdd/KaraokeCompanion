@@ -3,25 +3,41 @@ import type { SongInfo } from "~~/types/song";
 import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback";
 
 defineOptions({
-  name: "SongsPage",
+  name: "MarkedSongsListPage",
 });
 
 const { data: songs, pending, error } = await useFetch<SongInfo[]>("/api/songs");
+const { markedSongKeys, isMarkedSong, toggleMarkedSong, unmarkAllSongs } =
+  useMarkedSongs();
 
 type SortKey = "title" | "artist" | "year" | "genre" | "language";
 type SortDirection = "asc" | "desc";
 
-const sortKey = useState<SortKey>("songs-sort-key", () => "title");
-const sortDirection = useState<SortDirection>("songs-sort-direction", () => "asc");
+const sortKey = useState<SortKey>("marked-songs-sort-key", () => "title");
+const sortDirection = useState<SortDirection>(
+  "marked-songs-sort-direction",
+  () => "asc",
+);
 type SearchMode = "metadata" | "lyrics";
 
-const searchMode = useState<SearchMode>("songs-search-mode", () => "metadata");
-const metadataQuery = useState("songs-metadata-query", () => "");
-const lyricsQuery = useState("songs-lyrics-query", () => "");
-const selectedSongKey = useState<string | null>("songs-selected-key", () => null);
-const selectedSongText = useState<string | null>("songs-selected-text", () => null);
-const selectedSongName = useState<string | null>("songs-selected-name", () => null);
-const { isMarkedSong, toggleMarkedSong } = useMarkedSongs();
+const searchMode = useState<SearchMode>(
+  "marked-songs-search-mode",
+  () => "metadata",
+);
+const metadataQuery = useState("marked-songs-metadata-query", () => "");
+const lyricsQuery = useState("marked-songs-lyrics-query", () => "");
+const selectedSongKey = useState<string | null>(
+  "marked-songs-selected-key",
+  () => null,
+);
+const selectedSongText = useState<string | null>(
+  "marked-songs-selected-text",
+  () => null,
+);
+const selectedSongName = useState<string | null>(
+  "marked-songs-selected-name",
+  () => null,
+);
 
 const toggleSort = (key: SortKey) => {
   if (sortKey.value === key) {
@@ -32,8 +48,21 @@ const toggleSort = (key: SortKey) => {
   sortDirection.value = "asc";
 };
 
+const getSongKey = (song: SongInfo) =>
+  `${song.title}-${song.artist}-${song.year ?? ""}`;
+
+const markedSongs = computed(() => {
+  if (!songs.value || !markedSongKeys.value.length) {
+    return [];
+  }
+
+  const markedKeySet = new Set(markedSongKeys.value);
+  return songs.value.filter((song) => markedKeySet.has(getSongKey(song)));
+});
+
 const filteredSongs = computed(() => {
-  if (!songs.value) {
+  const source = markedSongs.value;
+  if (!source.length) {
     return [];
   }
 
@@ -42,10 +71,10 @@ const filteredSongs = computed(() => {
       ? lyricsQuery.value.trim().toLowerCase()
       : metadataQuery.value.trim().toLowerCase();
   if (!query) {
-    return songs.value;
+    return source;
   }
 
-  return songs.value.filter((song) => {
+  return source.filter((song) => {
     const haystack =
       searchMode.value === "lyrics"
         ? (song.songText ?? song.songTextAsWords.join(" ")).toLowerCase()
@@ -96,12 +125,8 @@ const sortedSongs = computed(() => {
   });
 });
 
-const getSongKey = (song: SongInfo) =>
-  `${song.title}-${song.artist}-${song.year ?? ""}`;
-
 const getSongText = (song: SongInfo) =>
-  song.songTextAsWords?.join(" ").trim() ||
-  "";
+  song.songTextAsWords?.join(" ").trim() || "";
 
 const getLyricsPreview = (song: SongInfo, query: string) => {
   const text = getSongText(song);
@@ -180,22 +205,47 @@ const getAudioFile = (song: SongInfo) => {
 
 const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
   useSongAudioPlayback({
-    storageKey: "songs",
+    storageKey: "marked-songs",
     getSongKey,
     getAudioFile,
   });
+
+const confirmUnmarkAll = () => {
+  if (!process.client) {
+    return;
+  }
+
+  const shouldUnmark = window.confirm(
+    "Unmark all songs from the marked list?",
+  );
+  if (shouldUnmark) {
+    unmarkAllSongs();
+  }
+};
 </script>
 
 <template>
   <main class="min-h-screen bg-slate-50 px-6 py-8">
     <div class="mx-auto max-w-5xl space-y-6">
       <header class="space-y-2">
-        <h1 class="text-3xl font-semibold tracking-tight text-slate-900">
-          UltraStar Songs
-        </h1>
-        <p class="text-sm text-slate-600">
-          Found {{ songs?.length ?? 0 }} song(s).
-        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="space-y-2">
+            <h1 class="text-3xl font-semibold tracking-tight text-slate-900">
+              Marked songs
+            </h1>
+            <p class="text-sm text-slate-600">
+              Found {{ markedSongs.length }} marked song(s).
+            </p>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            :disabled="markedSongs.length === 0"
+            @click="confirmUnmarkAll"
+          >
+            Unmark all
+          </button>
+        </div>
       </header>
 
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -234,14 +284,20 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
           </div>
         </div>
         <p class="text-xs text-slate-500">
-          Showing {{ sortedSongs.length }} of {{ songs?.length ?? 0 }}
+          Showing {{ sortedSongs.length }} of {{ markedSongs.length }}
         </p>
       </div>
 
-      <div v-if="pending" class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm">
+      <div
+        v-if="pending"
+        class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm"
+      >
         Loading songs…
       </div>
-      <div v-else-if="error" class="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-700">
+      <div
+        v-else-if="error"
+        class="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-700"
+      >
         Failed to load songs.
       </div>
       <div v-else>
@@ -269,10 +325,15 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
           </div>
           <p class="whitespace-pre-wrap break-all">{{ selectedSongText }}</p>
         </div>
-        <div v-if="songs && songs.length" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div
+          v-if="markedSongs.length"
+          class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+        >
           <div class="max-h-[70vh] overflow-auto">
             <table class="min-w-full text-left text-sm text-slate-700">
-              <thead class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <thead
+                class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600"
+              >
                 <tr>
                   <th class="px-4 py-3">Mark</th>
                   <th class="px-4 py-3">
@@ -354,7 +415,9 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
                       @change="toggleMarkedSong(getSongKey(song))"
                     />
                   </td>
-                  <td class="px-4 py-3 font-medium text-slate-900">{{ song.title }}</td>
+                  <td class="px-4 py-3 font-medium text-slate-900">
+                    {{ song.title }}
+                  </td>
                   <td class="px-4 py-3">{{ song.artist }}</td>
                   <td class="px-4 py-3">{{ song.year ?? '—' }}</td>
                   <td class="px-4 py-3">{{ song.genre ?? '—' }}</td>
@@ -367,7 +430,12 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
                       :aria-label="activeAudioKey === getSongKey(song) && isActiveAudioPlaying ? 'Pause audio' : 'Play audio'"
                       @click="toggleAudioPlayback(song)"
                     >
-                      {{ activeAudioKey === getSongKey(song) && isActiveAudioPlaying ? '⏸' : '▶' }}
+                      {{
+                        activeAudioKey === getSongKey(song) &&
+                        isActiveAudioPlaying
+                          ? '⏸'
+                          : '▶'
+                      }}
                     </button>
                     <span v-else class="text-slate-400">—</span>
                   </td>
@@ -392,8 +460,11 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
           </div>
         </div>
 
-        <div v-else class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
-          No songs found.
+        <div
+          v-else
+          class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500"
+        >
+          No marked songs yet.
         </div>
       </div>
     </div>

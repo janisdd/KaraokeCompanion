@@ -8,6 +8,13 @@
         </NuxtLink>
         <nav class="flex items-center gap-3 text-sm text-slate-600">
           <NuxtLink
+            to="/markedSongsList"
+            class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900"
+            active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white"
+          >
+            Marked Songs
+          </NuxtLink>
+          <NuxtLink
             to="/songs"
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white"
