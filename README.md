@@ -48,3 +48,11 @@ generated with chatgpt
 ## Code
 
 Almost every line was generated with cursor
+
+
+## Notes
+
+The songtext search does not always work because we only have the syllables...
+We concatenate all syllables to get words again but this also gives some false positives
+
+Also the table views try to display the hit in context in the preview column if possible (a real word in the syllables matched)
