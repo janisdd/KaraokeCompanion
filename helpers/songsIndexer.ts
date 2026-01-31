@@ -86,15 +86,55 @@ export class Indexer {
 		if (txtFiles.length === 0) {
 			return null
 		}
-		const songInfoPath = path.join(songDirectory, txtFiles[0])
-		const songInfoBuffer = await fs.promises.readFile(songInfoPath)
-		let detectedEncoding = chardet.detect(songInfoBuffer)
-		if (detectedEncoding === 'ISO-8859-9') {
-			console.log("Detected encoding is ISO-8859-9, changing to ISO-8859-1")
-			detectedEncoding = 'ISO-8859-1'
+		let selectedPath = path.join(songDirectory, txtFiles[0])
+		let selectedContent: string | null = null
+		let selectedEncoding: string | null = null
+
+		let wasEncodingChanged = false
+
+		if (txtFiles.length > 1) {
+			console.log(`Found ${txtFiles.length} txt files for song: ${songDirectory}`)
+
+			for (const txtFile of txtFiles) {
+				const candidatePath = path.join(songDirectory, txtFile)
+				const candidateBuffer = await fs.promises.readFile(candidatePath)
+				let candidateEncoding = chardet.detect(candidateBuffer)
+				if (candidateEncoding === "ISO-8859-9") {
+					wasEncodingChanged = true
+					candidateEncoding = "ISO-8859-1"
+				}
+				const candidateContent = Indexer.decodeBuffer(candidateBuffer, candidateEncoding)
+				const candidateLineCount = candidateContent.split("\n").length
+				if (candidateLineCount > 100) {
+					selectedPath = candidatePath
+					selectedContent = candidateContent
+					selectedEncoding = candidateEncoding
+					break
+				}
+				if (selectedContent === null) {
+					selectedPath = candidatePath
+					selectedContent = candidateContent
+					selectedEncoding = candidateEncoding
+				}
+			}
 		}
 
-		const songInfoFile = Indexer.decodeBuffer(songInfoBuffer, detectedEncoding)
+		if (selectedContent === null) {
+			const songInfoBuffer = await fs.promises.readFile(selectedPath)
+			let detectedEncoding = chardet.detect(songInfoBuffer)
+			if (detectedEncoding === "ISO-8859-9") {
+				wasEncodingChanged = true
+				detectedEncoding = "ISO-8859-1"
+			}
+			selectedEncoding = detectedEncoding
+			selectedContent = Indexer.decodeBuffer(songInfoBuffer, detectedEncoding)
+		}
+
+		if (wasEncodingChanged) {
+			console.log(`Detected encoding is ISO-8859-9, changing to ISO-8859-1 for song: ${songDirectory}`)
+		}
+
+		const songInfoFile = selectedContent
 		// read all lines
 		const lines = songInfoFile.split("\n")
 
@@ -176,7 +216,7 @@ export class Indexer {
 		}
 
 		if (!songInfo.title || !songInfo.artist) {
-			console.log("Empty song title or artist:", songDirectory)
+			console.log(`Empty song title or artist for song: ${songDirectory}`)
 		}
 
 		return songInfo
