@@ -34,7 +34,7 @@ defineOptions({
           class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md"
         >
           <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950">
-            UltraStar Songs
+            Browse Songs
           </h2>
           <p class="mt-2 text-sm text-slate-600">
             Browse, filter, and read song metadata and lyrics.

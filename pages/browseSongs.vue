@@ -191,7 +191,7 @@ const { activeAudioKey, isActiveAudioPlaying, toggleAudioPlayback } =
     <div class="mx-auto max-w-5xl space-y-6">
       <header class="space-y-2">
         <h1 class="text-3xl font-semibold tracking-tight text-slate-900">
-          UltraStar Songs
+          Browse Songs
         </h1>
         <p class="text-sm text-slate-600">
           Found {{ songs?.length ?? 0 }} song(s).

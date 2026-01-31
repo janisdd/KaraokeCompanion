@@ -231,7 +231,7 @@ const confirmUnmarkAll = () => {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="space-y-2">
             <h1 class="text-3xl font-semibold tracking-tight text-slate-900">
-              Marked songs
+              Marked Songs
             </h1>
             <p class="text-sm text-slate-600">
               Found {{ markedSongs.length }} marked song(s).
