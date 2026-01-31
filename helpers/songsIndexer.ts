@@ -67,7 +67,9 @@ export class Indexer {
 		}
 		
 		const songInfos = await Promise.all(
-			songDirectories.map((songDirectory) => this.indexFile(path.join(directory, songDirectory))),
+			songDirectories.map((songDirectory) =>
+				this.indexFile(path.join(directory, songDirectory), directory),
+			),
 		)
 		const songs = songInfos.filter((songInfo): songInfo is SongInfo => Boolean(songInfo))
 		Indexer.directoryCache.set(directory, { hash: directoryHash, songs })
@@ -80,7 +82,7 @@ export class Indexer {
 	 * @param songDirectory the directory with the song
 	 * @returns the song info or null if the song is not found
 	 */
-	async indexFile(songDirectory: string): Promise<SongInfo | null> {
+	async indexFile(songDirectory: string, songsRoot: string): Promise<SongInfo | null> {
 
 		const txtFiles = (await fs.promises.readdir(songDirectory)).filter((file: string) => file.endsWith(".txt"))
 		if (txtFiles.length === 0) {
@@ -178,7 +180,14 @@ export class Indexer {
 				songInfo.language = line.split(":")[1].trim()
 			}
 			if (lineLower.startsWith("#mp3:")) {
-				songInfo.audioFile = line.split(":")[1].trim()
+				const rawAudioFile = line.split(":")[1].trim()
+				if (rawAudioFile) {
+					const resolvedAudioPath = path.isAbsolute(rawAudioFile)
+						? rawAudioFile
+						: path.join(songDirectory, rawAudioFile)
+					const relativeAudioPath = path.relative(songsRoot, resolvedAudioPath)
+					songInfo.audioFile = relativeAudioPath.split(path.sep).join("/")
+				}
 			}
 			if (lineLower.startsWith("#video:")) {
 				songInfo.videoFile = line.split(":")[1].trim()

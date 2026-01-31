@@ -20,6 +20,10 @@ const lyricsQuery = useState("songs-lyrics-query", () => "");
 const selectedSongKey = useState<string | null>("songs-selected-key", () => null);
 const selectedSongText = useState<string | null>("songs-selected-text", () => null);
 const selectedSongName = useState<string | null>("songs-selected-name", () => null);
+const activeAudioKey = useState<string | null>("songs-active-audio-key", () => null);
+const isActiveAudioPlaying = useState<boolean>("songs-active-audio-playing", () => false);
+
+const activeAudio = ref<HTMLAudioElement | null>(null);
 
 const toggleSort = (key: SortKey) => {
   if (sortKey.value === key) {
@@ -161,6 +165,67 @@ const clearSongText = () => {
   selectedSongKey.value = null;
   selectedSongText.value = null;
   selectedSongName.value = null;
+};
+
+const getAudioFile = (song: SongInfo) => {
+  const audioFile = song.audioFile?.trim();
+  if (!audioFile) {
+    return null;
+  }
+
+  if (!audioFile.toLowerCase().endsWith(".mp3")) {
+    return null;
+  }
+
+  return `/api/song-audio?path=${encodeURIComponent(audioFile)}`;
+};
+
+const stopActiveAudio = () => {
+  if (activeAudio.value) {
+    activeAudio.value.pause();
+    activeAudio.value.currentTime = 0;
+    activeAudio.value = null;
+  }
+  activeAudioKey.value = null;
+  isActiveAudioPlaying.value = false;
+};
+
+const toggleAudioPlayback = (song: SongInfo) => {
+  const audioFile = getAudioFile(song);
+  if (!audioFile) {
+    return;
+  }
+
+  const key = getSongKey(song);
+  if (activeAudioKey.value === key && activeAudio.value) {
+    if (activeAudio.value.paused) {
+      void activeAudio.value.play();
+      isActiveAudioPlaying.value = true;
+    } else {
+      activeAudio.value.pause();
+      isActiveAudioPlaying.value = false;
+    }
+    return;
+  }
+
+  stopActiveAudio();
+
+  const audio = new Audio();
+  audio.preload = "none";
+  audio.src = audioFile;
+  activeAudio.value = audio;
+  activeAudioKey.value = key;
+  isActiveAudioPlaying.value = true;
+
+  audio.addEventListener("ended", () => {
+    if (activeAudioKey.value === key) {
+      isActiveAudioPlaying.value = false;
+      activeAudioKey.value = null;
+      activeAudio.value = null;
+    }
+  });
+
+  void audio.play();
 };
 </script>
 
@@ -312,6 +377,7 @@ const clearSongText = () => {
                       </span>
                     </button>
                   </th>
+                  <th class="px-4 py-3">Audio</th>
                   <th class="px-4 py-3">Song text preview</th>
                 </tr>
               </thead>
@@ -326,6 +392,18 @@ const clearSongText = () => {
                   <td class="px-4 py-3">{{ song.year ?? '—' }}</td>
                   <td class="px-4 py-3">{{ song.genre ?? '—' }}</td>
                   <td class="px-4 py-3">{{ song.language ?? '—' }}</td>
+                  <td class="px-4 py-3">
+                    <button
+                      v-if="getAudioFile(song)"
+                      type="button"
+                      class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      :aria-label="activeAudioKey === getSongKey(song) && isActiveAudioPlaying ? 'Pause audio' : 'Play audio'"
+                      @click="toggleAudioPlayback(song)"
+                    >
+                      {{ activeAudioKey === getSongKey(song) && isActiveAudioPlaying ? '⏸' : '▶' }}
+                    </button>
+                    <span v-else class="text-slate-400">—</span>
+                  </td>
                   <td class="px-4 py-3 text-slate-600">
                     <div class="flex items-center gap-2 whitespace-nowrap">
                       <button
