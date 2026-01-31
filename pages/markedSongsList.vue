@@ -370,7 +370,7 @@ const confirmUnmarkAll = () => {
               aria-label="Close song text"
               @click="clearSongText"
             >
-              ×
+              <font-awesome-icon icon="fa-solid fa-xmark" />
             </button>
           </div>
           <p class="whitespace-pre-wrap break-all">{{ selectedSongText }}</p>
@@ -480,12 +480,13 @@ const confirmUnmarkAll = () => {
                       :aria-label="activeAudioKey === getSongKey(song) && isActiveAudioPlaying ? 'Pause audio' : 'Play audio'"
                       @click="toggleAudioPlayback(song)"
                     >
-                      {{
-                        activeAudioKey === getSongKey(song) &&
-                        isActiveAudioPlaying
-                          ? '⏸'
-                          : '▶'
-                      }}
+                      <font-awesome-icon
+                        :icon="
+                          activeAudioKey === getSongKey(song) && isActiveAudioPlaying
+                            ? 'fa-solid fa-pause'
+                            : 'fa-solid fa-play'
+                        "
+                      />
                     </button>
                     <span v-else class="text-slate-400">—</span>
                   </td>
@@ -560,7 +561,9 @@ const confirmUnmarkAll = () => {
                   :aria-label="isActiveAudioPlaying ? 'Pause audio' : 'Play audio'"
                   @click="toggleAudioPlayback(activeSong)"
                 >
-                  {{ isActiveAudioPlaying ? "⏸" : "▶" }}
+                  <font-awesome-icon
+                    :icon="isActiveAudioPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"
+                  />
                 </button>
                 <button
                   type="button"
@@ -568,7 +571,7 @@ const confirmUnmarkAll = () => {
                   aria-label="Close audio player"
                   @click="stopActiveAudio"
                 >
-                  ×
+                  <font-awesome-icon icon="fa-solid fa-xmark" />
                 </button>
               </div>
             </div>
