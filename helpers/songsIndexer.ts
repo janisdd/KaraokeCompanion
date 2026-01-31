@@ -174,6 +174,10 @@ export class Indexer {
 
 		}
 
+		if (!songInfo.title || !songInfo.artist) {
+			console.log("Skipping song:", songDirectory)
+		}
+
 		return songInfo
 	}
 
