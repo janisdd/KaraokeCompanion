@@ -56,10 +56,10 @@ const {
 
 <template>
   <main
-    class="min-h-screen bg-slate-50 px-6 pt-8 dark:bg-slate-950"
+    class="box-border h-[calc(100vh-3rem)] overflow-hidden bg-slate-50 px-6 pt-8 dark:bg-slate-950"
     :class="activeSong ? 'pb-28' : 'pb-8'"
   >
-    <div class="mx-auto max-w-5xl space-y-6">
+    <div class="mx-auto flex h-full max-w-5xl flex-col gap-6">
       <header class="space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="space-y-2">
@@ -118,49 +118,50 @@ const {
         </p>
       </div>
 
-      <div
-        v-if="isLoading"
-        class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-      >
-        Loading songs…
-      </div>
-      <div
-        v-else-if="hasError"
-        class="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
-      >
-        Failed to load songs.
-      </div>
-      <div v-else>
+      <div class="flex min-h-0 flex-1 flex-col">
         <div
-          v-if="selectedSongText"
-          class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          v-if="isLoading"
+          class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
-          <div class="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Song text
-              </div>
-              <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {{ selectedSongName }}
-              </div>
-            </div>
-            <button
-              type="button"
-              class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-              aria-label="Close song text"
-              @click="clearSongText"
-            >
-              <font-awesome-icon icon="fa-solid fa-xmark" />
-            </button>
-          </div>
-          <p class="whitespace-pre-wrap break-all">{{ selectedSongText }}</p>
+          Loading songs…
         </div>
         <div
-          v-if="songSource.length"
-          class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          v-else-if="hasError"
+          class="rounded-lg border border-rose-200 bg-rose-50 p-6 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
         >
-          <div class="max-h-[70vh] overflow-auto">
-            <table class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
+          Failed to load songs.
+        </div>
+        <div v-else class="flex min-h-0 flex-1 flex-col">
+          <div
+            v-if="selectedSongText"
+            class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Song text
+                </div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {{ selectedSongName }}
+                </div>
+              </div>
+              <button
+                type="button"
+                class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                aria-label="Close song text"
+                @click="clearSongText"
+              >
+                <font-awesome-icon icon="fa-solid fa-xmark" />
+              </button>
+            </div>
+            <p class="whitespace-pre-wrap break-all">{{ selectedSongText }}</p>
+          </div>
+          <div
+            v-if="songSource.length"
+            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          >
+            <div class="min-h-0 flex-1 overflow-auto">
+              <table class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
               <thead
                 class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300"
               >
@@ -288,15 +289,16 @@ const {
                   </td>
                 </tr>
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
-        </div>
 
-        <div
-          v-else
-          class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-        >
-          {{ emptyMessage }}
+          <div
+            v-else
+            class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+          >
+            {{ emptyMessage }}
+          </div>
         </div>
       </div>
     </div>
