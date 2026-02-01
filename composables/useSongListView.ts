@@ -1,5 +1,6 @@
 import type { SongInfo } from "~~/types/song";
 import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback";
+import { useSongs } from "~~/composables/useSongs";
 
 type SortKey = "title" | "artist" | "year" | "genre" | "language";
 type SortDirection = "asc" | "desc";
@@ -13,6 +14,7 @@ type SongListViewOptions = {
 
 export const useSongListView = (options: SongListViewOptions) => {
   const { songs, stateKeyPrefix, audioStorageKey } = options;
+  const { searchIndex } = useSongs();
 
   const sortKey = useState<SortKey>(`${stateKeyPrefix}-sort-key`, () => "title");
   const sortDirection = useState<SortDirection>(
@@ -62,10 +64,13 @@ export const useSongListView = (options: SongListViewOptions) => {
     }
 
     return source.filter((song) => {
+      const cachedEntry = searchIndex.value[song.id];
       const haystack =
         searchMode.value === "lyrics"
-          ? (song.songText ?? song.songTextAsWords.join(" ")).toLowerCase()
-          : [
+          ? cachedEntry?.lyrics ??
+            (song.songText ?? song.songTextAsWords.join(" ")).toLowerCase()
+          : cachedEntry?.metadata ??
+            [
               song.title,
               song.artist,
               song.year == null ? "" : String(song.year),
