@@ -2,6 +2,7 @@ import type { SongInfo } from "~~/types/song"
 import fs from "fs"
 import path from "path"
 import * as chardet from "chardet"
+import { Logger } from "./logger"
 
 export class Indexer {
 	private static _songsMap = new Map<string, SongInfo>()
@@ -54,17 +55,15 @@ export class Indexer {
 		songDirectories.sort()
 		
 		const songEntries = await Promise.all(
-			songDirectories.map(async (songDirectory) => ({
+			songDirectories.map(async (songDirectory, index) => ({
 				songDirectory,
-				songInfo: await Indexer.indexFile(path.join(songsDirectory, songDirectory), songsDirectory),
+				songInfo: await Indexer.indexFile(path.join(songsDirectory, songDirectory), songsDirectory, index, songDirectories.length),
 			})),
 		)
 		for (const entry of songEntries) {
 			if (!entry.songInfo) continue
 			if (Indexer._songsMap.has(entry.songInfo.id)) {
-				console.warn(
-					`Duplicate song id "${entry.songInfo.id}" skipping song directory: ${entry.songDirectory}`,
-				)
+				Logger.warn(`Duplicate song id "${entry.songInfo.id}" skipping song directory: ${entry.songDirectory}`)
 				continue
 			}
 			Indexer._songsMap.set(entry.songInfo.id, entry.songInfo)
@@ -90,7 +89,9 @@ export class Indexer {
 	 * @param songDirectory the directory with the song
 	 * @returns the song info or null if the song is not found
 	 */
-	static async indexFile(songDirectory: string, songsRoot: string): Promise<SongInfo | null> {
+	static async indexFile(songDirectory: string, songsRoot: string, index: number, total: number): Promise<SongInfo | null> {
+
+		Logger.debug(`Indexing song ${index}/${total}: ${songDirectory}`)
 
 		const txtFiles = (await fs.promises.readdir(songDirectory)).filter((file: string) => file.endsWith(".txt"))
 		if (txtFiles.length === 0) {
@@ -103,7 +104,7 @@ export class Indexer {
 		let wasEncodingChanged = false
 
 		if (txtFiles.length > 1) {
-			console.log(`Found ${txtFiles.length} txt files for song: ${songDirectory}`)
+			Logger.debug(`Found ${txtFiles.length} txt files for song: ${songDirectory}`)
 
 			for (const txtFile of txtFiles) {
 				const candidatePath = path.join(songDirectory, txtFile)
@@ -141,7 +142,7 @@ export class Indexer {
 		}
 
 		if (wasEncodingChanged) {
-			console.log(`Detected encoding is ISO-8859-9, changing to ISO-8859-1 for song: ${songDirectory}`)
+			Logger.debug(`Detected encoding is ISO-8859-9, changing to ISO-8859-1 for song: ${songDirectory}`)
 		}
 
 		const songInfoFile = selectedContent
@@ -213,7 +214,7 @@ export class Indexer {
 						songInfo.coverFile = relativeCoverPath.split(path.sep).join("/")
 					} catch {
 						songInfo.coverFile = null
-						console.warn(`Cover file not found for song: ${songDirectory}`)
+						Logger.warn(`Cover file not found for song: ${songDirectory}`)
 					}
 				}
 			}
@@ -247,7 +248,7 @@ export class Indexer {
 		}
 
 		if (!songInfo.title || !songInfo.artist) {
-			console.log(`Empty song title or artist for song: ${songDirectory}`)
+			Logger.warn(`Empty song title or artist for song: ${songDirectory}`)
 		}
 
 		songInfo.id = `${songInfo.title.trim()} - ${songInfo.artist.trim()}`

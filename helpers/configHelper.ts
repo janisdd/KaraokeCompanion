@@ -1,7 +1,8 @@
 import dotenv from 'dotenv'
 import fs from "fs";
+import { Logger, LogLevelEnum } from './logger';
 
-//NOTE: log-start-env must be run before this, else the process.env variables are not set
+//NOTE: startup-env must be run before this, else the process.env variables are not set
 
 dotenv.config({ path: "./secrets/.env" });
 if (!fs.existsSync("./secrets/.env")) {
@@ -18,7 +19,7 @@ if (!PlaylistCacheDirPath) {
 }
 
 if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
-  console.warn("Spotify Client ID or Client Secret not set -> spotify api will not work");
+  Logger.warn("Spotify Client ID or Client Secret not set -> spotify api will not work");
 }
 
 export class ConfigHelper {
@@ -27,7 +28,7 @@ export class ConfigHelper {
     // check if the path exists
     if (!fs.existsSync(PlaylistCacheDirPath)) {
       fs.mkdirSync(PlaylistCacheDirPath, { recursive: true });
-      console.log("Playlist cache directory created", PlaylistCacheDirPath);
+      Logger.log(`Playlist cache directory created: ${PlaylistCacheDirPath}`);
     }
 
     return PlaylistCacheDirPath;

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Logger } from "~/helpers/logger";
 import { Indexer } from "~/helpers/songsIndexer";
 
 const allowedExtensions = new Map<string, string>([
@@ -49,7 +50,7 @@ export default defineEventHandler(async (event) => {
   try {
     await fs.promises.access(resolvedPath);
   } catch {
-    console.warn(`Cover file not found: ${resolvedPath}`);
+    Logger.warn(`Cover file not found: ${resolvedPath}`);
     throw createError({ statusCode: 404, message: "Cover file not found" });
   }
 

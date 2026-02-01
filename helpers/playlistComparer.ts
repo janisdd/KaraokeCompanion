@@ -1,4 +1,5 @@
 import { type PlaylistedTrack, SpotifyApi, type Track } from '@spotify/web-api-ts-sdk'
+import { Logger } from './logger'
 export type StrippedTrack = {
 	name: string
 	artist: string
@@ -65,7 +66,7 @@ export async function getAllPages(sdk: SpotifyApi, playlistId: string) {
 	allPages.push(...page.items)
 	let currCount = page.items.length
 	while (currCount < page.total) {
-		console.log(`Progress: ${currCount} / ${page.total} (${Math.round(currCount / page.total * 100)}%)`)
+		Logger.log(`Progress: ${currCount} / ${page.total} (${Math.round(currCount / page.total * 100)}%)`)
 		const nextPage = await sdk.playlists.getPlaylistItems(
 			playlistId, 
 			undefined, 
@@ -86,7 +87,7 @@ export async function getSpotifyPlaylistFull(playListUrl: string, sdk: SpotifyAp
     throw new Error('Invalid playlist URL')
   }
 
-	console.log(`Getting playlist ${playlistId}`)
+	Logger.debug(`Getting playlist ${playlistId}`)
 
 	// const playlist = await sdk.playlists.getPlaylistItems(
 	// 	playlistId, 

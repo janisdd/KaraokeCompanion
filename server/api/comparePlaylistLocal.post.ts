@@ -9,6 +9,7 @@ import fs from "fs";
 import { Indexer } from "~/helpers/songsIndexer";
 import type { SongInfo } from "~~/types/song";
 import { ConfigHelper } from "~/helpers/configHelper";
+import { Logger } from "~/helpers/logger";
 
 
 const CLIENT_ID = ConfigHelper.getClientId();
@@ -130,12 +131,15 @@ const loadPlaylist = async (
   const cacheFile = `${id}.json`;
   const cached = readJsonIfExists(cacheFile) as StrippedTrack[] | undefined;
   if (!forceRefresh && cached && Array.isArray(cached)) {
-    console.log(`Loaded cached playlist from ${cacheFile}`);
+    Logger.log(`Loaded cached playlist from ${cacheFile}`);
     return cached;
+  }
+  if (!sdk) {
+    throw createError({ statusCode: 500, message: "Spotify API not initialized" });
   }
   const fresh = await getSpotifyPlaylistFull(url, sdk);
   writeJson(cacheFile, fresh);
-  console.log(`Wrote fresh playlist to ${cacheFile}`);
+  Logger.log(`Wrote fresh playlist to ${cacheFile}`);
   return fresh;
 };
 

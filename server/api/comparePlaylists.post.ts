@@ -3,6 +3,7 @@ import path from "path";
 import { getSpotifyIdFromUrl, getSpotifyPlaylistFull, type StrippedTrack } from "~/helpers/playlistComparer";
 import fs from "fs";
 import { ConfigHelper } from "~/helpers/configHelper";
+import { Logger } from "~/helpers/logger";
 
 const CLIENT_ID = ConfigHelper.getClientId();
 const CLIENT_SECRET = ConfigHelper.getClientSecret();
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
 		throw createError({ statusCode: 500, message: "Spotify API not initialized" });
 	}
 
-  console.log("comparePlaylists", { playListUrl1, playListUrl2 });
+  Logger.debug(`comparePlaylists: playListUrl1: ${playListUrl1}, playListUrl2: ${playListUrl2}`);
 
   if (!playListUrl1 || !playListUrl2) {
     throw createError({ statusCode: 400, message: "Missing playListUrlA or playListUrlB" });
@@ -76,12 +77,15 @@ const loadPlaylist = async (id: string, url: string): Promise<StrippedTrack[]> =
 	const cacheFile = `${id}.json`
 	const cached = readJsonIfExists(cacheFile) as StrippedTrack[] | undefined
 	if (cached && Array.isArray(cached)) {
-		console.log(`Loaded cached playlist from ${cacheFile}`)
+		Logger.log(`Loaded cached playlist from ${cacheFile}`)
 		return cached
+	}
+	if (!sdk) {
+		throw createError({ statusCode: 500, message: "Spotify API not initialized" });
 	}
 	const fresh = await getSpotifyPlaylistFull(url, sdk)
 	writeJson(cacheFile, fresh)
-	console.log(`Wrote fresh playlist to ${cacheFile}`)
+	Logger.log(`Wrote fresh playlist to ${cacheFile}`)
 	return fresh
 }
 
