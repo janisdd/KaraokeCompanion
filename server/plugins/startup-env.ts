@@ -59,6 +59,7 @@ export default defineNitroPlugin(async () => {
       Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
     }
     Logger.log(`[nuxt start] --- All Songs indexed successfully for ${songsDirPaths.length} dirs --- `);
+    Logger.log(`[nuxt start] --- Total songs indexed: ${Indexer.getSongsMap().size} --- `);
   } catch (error) {
     Logger.error(`[nuxt start] Error indexing songs: ${error instanceof Error ? error.message : String(error)}`);
   }
