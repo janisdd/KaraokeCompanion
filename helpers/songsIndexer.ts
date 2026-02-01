@@ -4,15 +4,7 @@ import path from "path"
 import * as chardet from "chardet"
 
 export class Indexer {
-	private static directoryCache = new Map<string, { hash: string; songs: SongInfo[] }>()
-
-	private static computeHash(value: string): string {
-		let hash = 0
-		for (let i = 0; i < value.length; i++) {
-			hash = (hash * 31 + value.charCodeAt(i)) | 0
-		}
-		return hash.toString(16)
-	}
+	private static _songsMap = new Map<string, SongInfo>()
 
 	private static normalizeEncoding(encoding: string | null): BufferEncoding {
 		if (!encoding) return "utf8"
@@ -53,28 +45,34 @@ export class Indexer {
 	 * @param directory the directory with all songs
 	 * @returns a list of song infos
 	 */
-	async indexFilesInDirectory(directory: string): Promise<SongInfo[]> {
+	static async indexFilesInDirectory(directory: string): Promise<void> {
 		console.time("indexFilesInDirectory")
+
 		const entries = await fs.promises.readdir(directory, { withFileTypes: true })
 		const songDirectories = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
 		songDirectories.sort()
-		const directoryHash = Indexer.computeHash(songDirectories.join("|"))
-		const cached = Indexer.directoryCache.get(directory)
-		if (cached && cached.hash === directoryHash) {
-			console.log("Using cached songs");
-			console.timeEnd("indexFilesInDirectory")
-			return cached.songs
-		}
 		
-		const songInfos = await Promise.all(
-			songDirectories.map((songDirectory) =>
-				this.indexFile(path.join(directory, songDirectory), directory),
-			),
+		const songEntries = await Promise.all(
+			songDirectories.map(async (songDirectory) => ({
+				songDirectory,
+				songInfo: await Indexer.indexFile(path.join(directory, songDirectory), directory),
+			})),
 		)
-		const songs = songInfos.filter((songInfo): songInfo is SongInfo => Boolean(songInfo))
-		Indexer.directoryCache.set(directory, { hash: directoryHash, songs })
+		for (const entry of songEntries) {
+			if (!entry.songInfo) continue
+			if (Indexer._songsMap.has(entry.songInfo.id)) {
+				console.warn(
+					`Duplicate song id "${entry.songInfo.id}" skipping song directory: ${entry.songDirectory}`,
+				)
+				continue
+			}
+			Indexer._songsMap.set(entry.songInfo.id, entry.songInfo)
+		}
 		console.timeEnd("indexFilesInDirectory")
-		return songs
+	}
+
+	static getSongsMap(): Map<string, SongInfo> {
+		return Indexer._songsMap
 	}
 
 	/**
@@ -82,7 +80,7 @@ export class Indexer {
 	 * @param songDirectory the directory with the song
 	 * @returns the song info or null if the song is not found
 	 */
-	async indexFile(songDirectory: string, songsRoot: string): Promise<SongInfo | null> {
+	static async indexFile(songDirectory: string, songsRoot: string): Promise<SongInfo | null> {
 
 		const txtFiles = (await fs.promises.readdir(songDirectory)).filter((file: string) => file.endsWith(".txt"))
 		if (txtFiles.length === 0) {
@@ -141,6 +139,7 @@ export class Indexer {
 		const lines = songInfoFile.split("\n")
 
 		const songInfo: SongInfo = {
+			id: "",
 			title: "",
 			artist: "",
 			year: null,
@@ -240,6 +239,8 @@ export class Indexer {
 		if (!songInfo.title || !songInfo.artist) {
 			console.log(`Empty song title or artist for song: ${songDirectory}`)
 		}
+
+		songInfo.id = `${songInfo.title.trim()} - ${songInfo.artist.trim()}`
 
 		return songInfo
 	}

@@ -114,8 +114,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     });
   });
 
-  const getSongKey = (song: SongInfo) =>
-    `${song.title}-${song.artist}-${song.year ?? ""}`;
+  const getSongKey = (song: SongInfo) => song.id;
 
   const getSongRowId = (song: SongInfo) =>
     `song-row-${encodeURIComponent(getSongKey(song))}`;
@@ -186,25 +185,19 @@ export const useSongListView = (options: SongListViewOptions) => {
   };
 
   const getAudioFile = (song: SongInfo) => {
-    const audioFile = song.audioFile?.trim();
-    if (!audioFile) {
+    const songId = song.id?.trim();
+    if (!songId) {
       return null;
     }
-
-    if (!audioFile.toLowerCase().endsWith(".mp3")) {
-      return null;
-    }
-
-    return `/api/song-audio?path=${encodeURIComponent(audioFile)}`;
+    return `/api/song-audio?id=${encodeURIComponent(songId)}`;
   };
 
   const getCoverFile = (song: SongInfo) => {
-    const coverFile = song.coverFile?.trim();
-    if (!coverFile) {
+    const songId = song.id?.trim();
+    if (!songId) {
       return null;
     }
-
-    return `/api/song-cover?path=${encodeURIComponent(coverFile)}`;
+    return `/api/song-cover?id=${encodeURIComponent(songId)}`;
   };
 
   const {

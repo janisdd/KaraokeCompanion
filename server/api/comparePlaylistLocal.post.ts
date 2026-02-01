@@ -61,8 +61,7 @@ const loadLocalSongs = async (): Promise<SongInfo[]> => {
   }
 
   try {
-    const indexer = new Indexer();
-    return await indexer.indexFilesInDirectory(UltraStartSongsDirPath);
+    return Array.from(Indexer.getSongsMap().values());
   } catch {
     return [];
   }

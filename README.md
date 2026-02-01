@@ -42,6 +42,10 @@ yarn build
 node .output/server/index.mjs
 ```
 
+## Indexing
+
+Indexing is only done on startup
+
 ## Logo
 
 generated with chatgpt

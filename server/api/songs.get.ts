@@ -14,8 +14,7 @@ export default defineEventHandler(async () => {
       return [];
     }
     console.log("Getting songs", UltraStartSongsDirPath)
-    const indexer = new Indexer();
-    const songs = await indexer.indexFilesInDirectory(UltraStartSongsDirPath);
+    const songs = Array.from(Indexer.getSongsMap().values());
     return songs;
   } catch {
     // On any error, be resilient and return empty

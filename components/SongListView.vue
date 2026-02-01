@@ -333,6 +333,7 @@ const {
                     type="button"
                     class="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                     aria-label="Scroll to song in list"
+                    title="Scroll to song in list"
                     @click="scrollToActiveSong"
                   >
                     <font-awesome-icon icon="fa-solid fa-location-arrow" />

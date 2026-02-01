@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { ConfigHelper } from "~/helpers/configHelper";
+import { Indexer } from "~/helpers/songsIndexer";
 
 const allowedExtensions = new Map<string, string>([
   [".jpg", "image/jpeg"],
@@ -12,10 +13,20 @@ const allowedExtensions = new Map<string, string>([
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const coverPath = typeof query.path === "string" ? query.path.trim() : "";
+  const songId = typeof query.id === "string" ? query.id.trim() : "";
 
+  if (!songId) {
+    throw createError({ statusCode: 400, message: "Missing song id" });
+  }
+
+  const song = Indexer.getSongsMap().get(songId);
+  if (!song) {
+    throw createError({ statusCode: 404, message: "Song not found" });
+  }
+
+  const coverPath = song.coverFile?.trim() ?? "";
   if (!coverPath) {
-    throw createError({ statusCode: 400, message: "Missing cover path" });
+    throw createError({ statusCode: 404, message: "Cover file not available" });
   }
 
   const extension = path.extname(coverPath).toLowerCase();
