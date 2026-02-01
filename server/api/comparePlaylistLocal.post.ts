@@ -14,7 +14,6 @@ import { ConfigHelper } from "~/helpers/configHelper";
 const CLIENT_ID = ConfigHelper.getClientId();
 const CLIENT_SECRET = ConfigHelper.getClientSecret();
 const PlaylistCacheDirPath = ConfigHelper.getPlaylistCacheDirPath();
-const UltraStartSongsDirPath = ConfigHelper.getUltraStartSongsDirPath();
 
 const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT_ID, CLIENT_SECRET) : null;
 
@@ -54,12 +53,6 @@ export default defineEventHandler(async (event) => {
 });
 
 const loadLocalSongs = async (): Promise<SongInfo[]> => {
-  try {
-    await fs.promises.access(UltraStartSongsDirPath);
-  } catch {
-    return [];
-  }
-
   try {
     return Array.from(Indexer.getSongsMap().values());
   } catch {

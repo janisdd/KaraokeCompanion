@@ -1,6 +1,8 @@
 import dotenv from 'dotenv'
 import fs from "fs";
 
+//NOTE: log-start-env must be run before this, else the process.env variables are not set
+
 dotenv.config({ path: "./secrets/.env" });
 if (!fs.existsSync("./secrets/.env")) {
   throw createError({ statusCode: 500, message: "Secrets file not found" });
@@ -10,10 +12,9 @@ const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 
 const PlaylistCacheDirPath = process.env.PLAYLIST_CACHE_DIR_PATH || "";
-const UltraStartSongsDirPath = process.env.ULTRA_START_SONGS_DIR_PATH || "";
 
-if (!PlaylistCacheDirPath || !UltraStartSongsDirPath) {
-  throw createError({ statusCode: 500, message: "Playlist cache directory or UltraStar songs directory not set" });
+if (!PlaylistCacheDirPath) {
+  throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
 }
 
 if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
@@ -30,10 +31,6 @@ export class ConfigHelper {
     }
 
     return PlaylistCacheDirPath;
-  }
-
-  static getUltraStartSongsDirPath() {
-    return UltraStartSongsDirPath;
   }
 
   static getClientId() {

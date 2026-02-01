@@ -5,6 +5,7 @@ import * as chardet from "chardet"
 
 export class Indexer {
 	private static _songsMap = new Map<string, SongInfo>()
+	private static _songRootMap = new Map<string, string>()
 
 	private static normalizeEncoding(encoding: string | null): BufferEncoding {
 		if (!encoding) return "utf8"
@@ -42,20 +43,20 @@ export class Indexer {
 	/**
 	 * Index all files in the given directory and return a list of song infos
 	 * a song itself is a directory with the following files with at least one .txt file
-	 * @param directory the directory with all songs
+	 * @param songsDirectory the directory with all songs
 	 * @returns a list of song infos
 	 */
-	static async indexFilesInDirectory(directory: string): Promise<void> {
+	static async indexFilesInDirectory(songsDirectory: string): Promise<void> {
 		console.time("indexFilesInDirectory")
 
-		const entries = await fs.promises.readdir(directory, { withFileTypes: true })
+		const entries = await fs.promises.readdir(songsDirectory, { withFileTypes: true })
 		const songDirectories = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
 		songDirectories.sort()
 		
 		const songEntries = await Promise.all(
 			songDirectories.map(async (songDirectory) => ({
 				songDirectory,
-				songInfo: await Indexer.indexFile(path.join(directory, songDirectory), directory),
+				songInfo: await Indexer.indexFile(path.join(songsDirectory, songDirectory), songsDirectory),
 			})),
 		)
 		for (const entry of songEntries) {
@@ -67,12 +68,21 @@ export class Indexer {
 				continue
 			}
 			Indexer._songsMap.set(entry.songInfo.id, entry.songInfo)
+			Indexer._songRootMap.set(entry.songInfo.id, songsDirectory)
 		}
 		console.timeEnd("indexFilesInDirectory")
 	}
 
 	static getSongsMap(): Map<string, SongInfo> {
 		return Indexer._songsMap
+	}
+
+	static getSongRootMap(): Map<string, string> {
+		return Indexer._songRootMap
+	}
+
+	static getSongRoot(songId: string): string | undefined {
+		return Indexer._songRootMap.get(songId)
 	}
 
 	/**

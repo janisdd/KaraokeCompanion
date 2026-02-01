@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { ConfigHelper } from "~/helpers/configHelper";
 import { Indexer } from "~/helpers/songsIndexer";
 
 const allowedExtensions = new Map<string, string>([
@@ -35,7 +34,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Invalid cover file" });
   }
 
-  const rootPath = path.resolve(ConfigHelper.getUltraStartSongsDirPath());
+  const songRoot = Indexer.getSongRootMap().get(songId);
+  if (!songRoot) {
+    throw createError({ statusCode: 404, message: "Song root not found" });
+  }
+  const rootPath = path.resolve(songRoot);
   const normalizedPath = coverPath.replace(/\\/g, "/");
   const resolvedPath = path.resolve(rootPath, normalizedPath);
 
