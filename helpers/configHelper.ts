@@ -6,7 +6,7 @@ import { Logger, LogLevelEnum } from './logger';
 
 dotenv.config({ path: "./secrets/.env" });
 if (!fs.existsSync("./secrets/.env")) {
-  throw createError({ statusCode: 500, message: "Secrets file not found" });
+  Logger.warn("Secrets file not found");
 }
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";

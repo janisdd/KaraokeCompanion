@@ -8,8 +8,7 @@ defineOptions({
 const { data: songs, pending, error } = await useFetch<SongInfo[]>("/api/songs");
 const { markedSongKeys, unmarkAllSongs } = useMarkedSongs();
 
-const getSongKey = (song: SongInfo) =>
-  `${song.title}-${song.artist}-${song.year ?? ""}`;
+const getSongKey = (song: SongInfo) => song.id;
 
 const markedSongs = computed(() => {
   if (!songs.value || !markedSongKeys.value.length) {
