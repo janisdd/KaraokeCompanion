@@ -260,19 +260,19 @@ const defaultColDef: ColDef<MatchResult> = {
 const rowHeight = 48;
 
 const scrollToActiveSongInList = () => {
-  if (!process.client || !activeSong.value || !gridApi.value) {
+  if (!process.client || !activeSong.value) {
     return;
   }
 
   const targetKey = getLocalSongKey(activeSong.value);
-  const index = filteredMatches.value.findIndex(
-    (match) => match.local.id === targetKey,
+  const targetRow = document.querySelector(
+    `.ag-row[row-id="${CSS.escape(targetKey)}"]`,
   );
-  if (index === -1) {
+  if (!targetRow) {
     return;
   }
 
-  gridApi.value.ensureIndexVisible(index, "middle");
+  targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
 };
 
 const markAllMatches = () => {
@@ -394,6 +394,7 @@ const markAllMatches = () => {
                 :defaultColDef="defaultColDef"
                 :rowData="filteredMatches"
                 :rowHeight="rowHeight"
+                :getRowId="(params) => params.data.local.id"
                 domLayout="autoHeight"
                 @grid-ready="onGridReady"
               />
