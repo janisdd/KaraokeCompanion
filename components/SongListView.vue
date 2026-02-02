@@ -162,7 +162,6 @@ watch(
               {{ title }}
             </h1>
           </div>
-          <slot name="header-actions" />
         </div>
       </header>
 
@@ -205,9 +204,12 @@ watch(
             </label>
           </div>
         </div>
-        <p class="text-xs text-slate-500 dark:text-slate-400">
-          Showing {{ sortedSongs.length }} of {{ totalCount }}
-        </p>
+        <div class="flex flex-col items-end gap-1">
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Showing {{ sortedSongs.length }} of {{ totalCount }}
+          </p>
+          <slot name="header-actions" />
+        </div>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col">
