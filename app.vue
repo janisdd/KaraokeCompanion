@@ -269,7 +269,7 @@ const qrCodeErrorCorrectionOptions = [
   { label: 'Quartile', value: 'Q' },
   // { label: 'High (H)', value: 'H' },
  ] as const
-const qrCodeSize = ref(qrCodeSizeOptions[2].value)
+const qrCodeSize = ref(qrCodeSizeOptions[1].value)
 const qrCodeErrorCorrectionLevel = ref<QRCodeErrorCorrectionLevel>(
   qrCodeErrorCorrectionOptions[1].value
 )
