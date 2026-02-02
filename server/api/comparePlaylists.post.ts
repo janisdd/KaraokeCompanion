@@ -1,15 +1,14 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import path from "path";
 import { getSpotifyIdFromUrl, getSpotifyPlaylistFull, type StrippedTrack } from "~/helpers/playlistComparer";
-import fs from "fs";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
+import { loadJsonWithCache, type CacheResult } from "~/helpers/playlistCache";
 
 const CLIENT_ID = ConfigHelper.getClientId();
 const CLIENT_SECRET = ConfigHelper.getClientSecret();
-const PlaylistCacheDirPath = ConfigHelper.getPlaylistCacheDirPath();
-
 const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT_ID, CLIENT_SECRET) : null;
+
+type CachedPlaylist = CacheResult<StrippedTrack[]>;
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ playListUrl1?: string; playListUrl2?: string }>(event);
@@ -38,9 +37,9 @@ export default defineEventHandler(async (event) => {
   ])
 
 	  // Build unique track maps keyed by normalized "name|artist"
-		const playlist1Tracks = (playlist1 || [])
+		const playlist1Tracks = (playlist1.data || [])
     .filter((t): t is StrippedTrack => !!t && !!t.name && !!t.artist && t.artist.length > 0)
-  const playlist2Tracks = (playlist2 || [])
+  const playlist2Tracks = (playlist2.data || [])
     .filter((t): t is StrippedTrack => !!t && !!t.name && !!t.artist && t.artist.length > 0)
 
   const makeKey = (t: StrippedTrack) => `${t.name.toLowerCase().trim()}|${t.artist.toLowerCase().trim()}`
@@ -69,39 +68,34 @@ export default defineEventHandler(async (event) => {
 	// console.log("unique2", unique2)
 	// console.log("intersectionTracks", intersectionTracks)
 	return {
-		intersectionTracks: intersectionTracks || []
+		intersectionTracks: intersectionTracks || [],
+    playlistCache: {
+      playlistA: {
+        updatedAt: playlist1.updatedAt,
+        source: playlist1.source
+      },
+      playlistB: {
+        updatedAt: playlist2.updatedAt,
+        source: playlist2.source
+      }
+    }
 	}
 })
 
-const loadPlaylist = async (id: string, url: string): Promise<StrippedTrack[]> => {
+const loadPlaylist = async (id: string, url: string): Promise<CachedPlaylist> => {
 	const cacheFile = `${id}.json`
-	const cached = readJsonIfExists(cacheFile) as StrippedTrack[] | undefined
-	if (cached && Array.isArray(cached)) {
-		Logger.log(`Loaded cached playlist from ${cacheFile}`)
-		return cached
-	}
-	if (!sdk) {
-		throw createError({ statusCode: 500, message: "Spotify API not initialized" });
-	}
-	const fresh = await getSpotifyPlaylistFull(url, sdk)
-	writeJson(cacheFile, fresh)
-	Logger.log(`Wrote fresh playlist to ${cacheFile}`)
-	return fresh
-}
+	const result = await loadJsonWithCache(cacheFile, async () => {
+    if (!sdk) {
+      throw createError({ statusCode: 500, message: "Spotify API not initialized" });
+    }
+    return getSpotifyPlaylistFull(url, sdk);
+  });
 
-const readJsonIfExists = (file: string): StrippedTrack[] | undefined => {
-	const fullPath = path.join(PlaylistCacheDirPath, file)	
-	if (fs.existsSync(fullPath)) {
-		const raw = fs.readFileSync(fullPath, 'utf-8')
-		try {
-			return JSON.parse(raw)
-		} catch {
-			return undefined
-		}
-	}
-	return undefined
-}
+  Logger.log(
+    result.source === "cache"
+      ? `Loaded cached playlist from ${cacheFile}`
+      : `Wrote fresh playlist to ${cacheFile}`
+  );
 
-const writeJson = (file: string, data: StrippedTrack[]) => {
-	fs.writeFileSync(path.join(PlaylistCacheDirPath, file), JSON.stringify(data, null, 2), 'utf-8')
+  return result;
 }

@@ -14,6 +14,7 @@ type MatchResult = {
 
 type CompareResponse = {
   matches?: MatchResult[];
+  playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
 type SortKey =
@@ -58,6 +59,12 @@ const comparePlaylist = async () => {
   } finally {
     isSubmitting.value = false;
   }
+};
+
+const formatCacheTime = (iso: string | undefined) => {
+  if (!iso) return "Unknown";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
 };
 
 const isFormValid = computed(() => playListUrl.value.trim().length > 0);
@@ -174,6 +181,13 @@ const sortedMatches = computed(() => {
             <span v-else-if="compareResult" class="text-sm text-emerald-600 dark:text-emerald-300">
               Found {{ matches.length }} matching track(s).
             </span>
+          </div>
+          <div
+            v-if="compareResult?.playlistCache"
+            class="mt-3 text-xs text-slate-500 dark:text-slate-400"
+          >
+            Playlist {{ compareResult.playlistCache.source === "cache" ? "cache used" : "downloaded" }} at
+            {{ formatCacheTime(compareResult.playlistCache.updatedAt) }}.
           </div>
         </form>
 

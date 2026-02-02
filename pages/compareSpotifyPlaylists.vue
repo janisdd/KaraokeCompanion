@@ -9,6 +9,10 @@ definePageMeta({
 
 type CompareResponse = {
   intersectionTracks?: Array<{ name: string; artist: string } | null>;
+  playlistCache?: {
+    playlistA: { updatedAt: string; source: "cache" | "fresh" };
+    playlistB: { updatedAt: string; source: "cache" | "fresh" };
+  };
 };
 
 type CompareTrack = { name: string; artist: string };
@@ -42,6 +46,12 @@ const comparePlaylists = async () => {
   } finally {
     isSubmitting.value = false;
   }
+};
+
+const formatCacheTime = (iso: string | undefined) => {
+  if (!iso) return "Unknown";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
 };
 
 const isFormValid = computed(() => {
@@ -110,6 +120,19 @@ const sharedTracks = computed<CompareTrack[]>(() => {
             >
               Found {{ compareResult.intersectionTracks?.length ?? 0 }} shared tracks.
             </span>
+          </div>
+          <div
+            v-if="compareResult?.playlistCache"
+            class="mt-3 text-xs text-slate-500 dark:text-slate-400"
+          >
+            <p>
+              Playlist A {{ compareResult.playlistCache.playlistA.source === "cache" ? "cache used" : "downloaded" }} at
+              {{ formatCacheTime(compareResult.playlistCache.playlistA.updatedAt) }}.
+            </p>
+            <p>
+              Playlist B {{ compareResult.playlistCache.playlistB.source === "cache" ? "cache used" : "downloaded" }} at
+              {{ formatCacheTime(compareResult.playlistCache.playlistB.updatedAt) }}.
+            </p>
           </div>
         </form>
 

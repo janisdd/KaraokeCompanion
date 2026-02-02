@@ -1,27 +1,26 @@
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import path from "path";
 import {
   getSpotifyIdFromUrl,
   getSpotifyPlaylistFull,
   type StrippedTrack,
 } from "~/helpers/playlistComparer";
-import fs from "fs";
 import { Indexer } from "~/helpers/songsIndexer";
 import type { SongInfo } from "~~/types/song";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
+import { loadJsonWithCache, type CacheResult } from "~/helpers/playlistCache";
 
 
 const CLIENT_ID = ConfigHelper.getClientId();
 const CLIENT_SECRET = ConfigHelper.getClientSecret();
-const PlaylistCacheDirPath = ConfigHelper.getPlaylistCacheDirPath();
-
 const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT_ID, CLIENT_SECRET) : null;
 
 type MatchResult = {
   spotify: StrippedTrack;
   local: Pick<SongInfo, "title" | "artist">;
 };
+
+type CachedPlaylist = CacheResult<StrippedTrack[]>;
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ playListUrl?: string; forceRefresh?: boolean }>(event);
@@ -41,15 +40,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Invalid playListUrl" });
   }
 
-  const [playlistTracks, localSongs] = await Promise.all([
+  const [playlistResult, localSongs] = await Promise.all([
     loadPlaylist(id, playListUrl, Boolean(forceRefresh)),
     loadLocalSongs(),
   ]);
 
-  const matches = matchPlaylistToLocal(playlistTracks, localSongs);
+  const matches = matchPlaylistToLocal(playlistResult.data, localSongs);
 
   return {
     matches,
+    playlistCache: {
+      updatedAt: playlistResult.updatedAt,
+      source: playlistResult.source,
+    },
   };
 });
 
@@ -127,39 +130,24 @@ const loadPlaylist = async (
   id: string,
   url: string,
   forceRefresh: boolean,
-): Promise<StrippedTrack[]> => {
+): Promise<CachedPlaylist> => {
   const cacheFile = `${id}.json`;
-  const cached = readJsonIfExists(cacheFile) as StrippedTrack[] | undefined;
-  if (!forceRefresh && cached && Array.isArray(cached)) {
-    Logger.log(`Loaded cached playlist from ${cacheFile}`);
-    return cached;
-  }
-  if (!sdk) {
-    throw createError({ statusCode: 500, message: "Spotify API not initialized" });
-  }
-  const fresh = await getSpotifyPlaylistFull(url, sdk);
-  writeJson(cacheFile, fresh);
-  Logger.log(`Wrote fresh playlist to ${cacheFile}`);
-  return fresh;
-};
-
-const readJsonIfExists = (file: string): StrippedTrack[] | undefined => {
-  const fullPath = path.join(PlaylistCacheDirPath, file);
-  if (fs.existsSync(fullPath)) {
-    const raw = fs.readFileSync(fullPath, "utf-8");
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-};
-
-const writeJson = (file: string, data: StrippedTrack[]) => {
-  fs.writeFileSync(
-    path.join(PlaylistCacheDirPath, file),
-    JSON.stringify(data, null, 2),
-    "utf-8",
+  const result = await loadJsonWithCache(
+    cacheFile,
+    async () => {
+      if (!sdk) {
+        throw createError({ statusCode: 500, message: "Spotify API not initialized" });
+      }
+      return getSpotifyPlaylistFull(url, sdk);
+    },
+    forceRefresh,
   );
+
+  Logger.log(
+    result.source === "cache"
+      ? `Loaded cached playlist from ${cacheFile}`
+      : `Wrote fresh playlist to ${cacheFile}`
+  );
+
+  return result;
 };
