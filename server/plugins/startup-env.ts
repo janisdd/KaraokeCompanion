@@ -62,6 +62,7 @@ export default defineNitroPlugin(async () => {
 
   try {
     for (const dirPath of songsDirPaths) {
+      Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
       await Indexer.indexFilesInDirectory(dirPath);
       Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
     }
