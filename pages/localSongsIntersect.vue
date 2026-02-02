@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useMarkedSongs } from "~~/composables/useMarkedSongs";
+import { useSongs } from "~~/composables/useSongs";
 defineOptions({
   name: "ComparePlaylistLocalPage",
 });
@@ -9,7 +11,7 @@ definePageMeta({
 
 type MatchResult = {
   spotify: { name: string; artist: string };
-  local: { title: string; artist: string };
+  local: { id: string; title: string; artist: string };
 };
 
 type CompareResponse = {
@@ -24,6 +26,8 @@ type SortKey =
   | "localArtist";
 type SortDirection = "asc" | "desc";
 
+const { isMarkedSong, toggleMarkedSong, markedSongKeys, setMarkedSongKeys } =
+  useMarkedSongs();
 const playListUrl = useState("compare-local-playlist-url", () => "");
 const compareResult = useState<CompareResponse | null>(
   "compare-local-playlist-result",
@@ -133,6 +137,14 @@ const sortedMatches = computed(() => {
     );
   });
 });
+
+const markAllMatches = () => {
+  const matchIds = filteredMatches.value.map((match) => match.local.id);
+  if (!matchIds.length) {
+    return;
+  }
+  setMarkedSongKeys([...markedSongKeys.value, ...matchIds]);
+};
 </script>
 
 <template>
@@ -191,6 +203,19 @@ const sortedMatches = computed(() => {
           </div>
         </form>
 
+        <div
+          v-if="isSubmitting"
+          class="mt-6 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+            aria-hidden="true"
+          ></span>
+          <span>Loading results...</span>
+        </div>
+
         <div v-if="compareResult" class="mt-6 border-t border-slate-200 pt-6 dark:border-slate-700">
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Matches</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -208,6 +233,14 @@ const sortedMatches = computed(() => {
                   class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </label>
+              <button
+                type="button"
+                class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="!filteredMatches.length"
+                @click="markAllMatches"
+              >
+                Mark all songs
+              </button>
               <p class="text-xs text-slate-500 dark:text-slate-400">
                 Showing {{ sortedMatches.length }} of {{ matches.length }}
               </p>
@@ -216,6 +249,7 @@ const sortedMatches = computed(() => {
               <table class="w-full border-collapse text-left text-sm text-slate-700 dark:text-slate-200">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                   <tr>
+                    <th class="px-4 py-3 font-semibold">Mark</th>
                     <th class="px-4 py-3 font-semibold">
                       <button
                         type="button"
@@ -272,6 +306,15 @@ const sortedMatches = computed(() => {
                     :key="`${match.spotify.artist}-${match.spotify.name}-${match.local.title}`"
                     class="border-t border-slate-200 dark:border-slate-700"
                   >
+                    <td class="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        class="h-4 w-4 accent-slate-700 dark:accent-slate-300"
+                        :checked="isMarkedSong(match.local.id)"
+                        :aria-label="`Mark ${match.local.artist} - ${match.local.title}`"
+                        @change="() => toggleMarkedSong(match.local.id)"
+                      />
+                    </td>
                     <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                       {{ match.spotify.name }}
                     </td>

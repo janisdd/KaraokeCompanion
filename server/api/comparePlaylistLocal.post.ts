@@ -17,7 +17,7 @@ const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT
 
 type MatchResult = {
   spotify: StrippedTrack;
-  local: Pick<SongInfo, "title" | "artist">;
+  local: Pick<SongInfo, "id" | "title" | "artist">;
 };
 
 type CachedPlaylist = CacheResult<StrippedTrack[]>;
@@ -102,6 +102,7 @@ const matchPlaylistToLocal = (
       results.push({
         spotify: track,
         local: {
+          id: match.song.id,
           title: match.song.title,
           artist: match.song.artist,
         },

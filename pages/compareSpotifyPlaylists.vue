@@ -136,6 +136,19 @@ const sharedTracks = computed<CompareTrack[]>(() => {
           </div>
         </form>
 
+        <div
+          v-if="isSubmitting"
+          class="mt-6 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+            aria-hidden="true"
+          ></span>
+          <span>Loading results...</span>
+        </div>
+
         <div v-if="compareResult" class="mt-6 border-t border-slate-200 pt-6 dark:border-slate-700">
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">
             Shared Tracks
