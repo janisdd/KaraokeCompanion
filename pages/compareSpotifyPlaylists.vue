@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AgGridVue } from "ag-grid-vue3";
+import { themeQuartz, type ColDef } from "ag-grid-community";
 defineOptions({
   name: "ComparePlaylistsPage",
 });
@@ -25,6 +27,8 @@ const compareResult = useState<CompareResponse | null>(
 );
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
+const isDark = useState<boolean>("isDarkMode", () => false);
+const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
 const comparePlaylists = async () => {
   submitError.value = null;
@@ -64,6 +68,31 @@ const sharedTracks = computed<CompareTrack[]>(() => {
     return !!track?.name && !!track?.artist;
   });
 });
+
+const columnDefs: ColDef<CompareTrack>[] = [
+  {
+    headerName: "Track",
+    field: "name",
+    minWidth: 220,
+    sort: "asc",
+  },
+  {
+    headerName: "Artist",
+    field: "artist",
+    minWidth: 200,
+  },
+];
+
+const defaultColDef: ColDef<CompareTrack> = {
+  sortable: true,
+  resizable: true,
+  comparator: (valueA, valueB) => {
+    return String(valueA ?? "").localeCompare(String(valueB ?? ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  },
+};
 </script>
 
 <template>
@@ -80,7 +109,7 @@ const sharedTracks = computed<CompareTrack[]>(() => {
         </p>
       </header>
 
-      <section class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+      <section class="text-sm text-slate-600 dark:text-slate-300">
         <form class="space-y-4" @submit.prevent="comparePlaylists">
           <div class="grid gap-4 md:grid-cols-2">
             <label class="space-y-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -157,29 +186,19 @@ const sharedTracks = computed<CompareTrack[]>(() => {
             {{ sharedTracks.length }} track(s) found.
           </p>
 
-          <div v-if="sharedTracks.length" class="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-            <table class="w-full border-collapse text-left text-sm text-slate-700 dark:text-slate-200">
-              <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                <tr>
-                  <th class="px-4 py-3 font-semibold">Track</th>
-                  <th class="px-4 py-3 font-semibold">Artist</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="track in sharedTracks"
-                  :key="`${track.artist}-${track.name}`"
-                  class="border-t border-slate-200 dark:border-slate-700"
-                >
-                  <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                    {{ track.name }}
-                  </td>
-                  <td class="px-4 py-3">
-                    {{ track.artist }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div
+            v-if="sharedTracks.length"
+            class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+          >
+            <AgGridVue
+              class="ag-theme-quartz w-full text-sm text-slate-700 dark:text-slate-200"
+              :theme="themeQuartz"
+              :data-ag-theme-mode="agThemeMode"
+              :columnDefs="columnDefs"
+              :defaultColDef="defaultColDef"
+              :rowData="sharedTracks"
+              domLayout="autoHeight"
+            />
           </div>
           <p v-else class="mt-4 text-sm text-slate-500 dark:text-slate-400">
             No shared tracks found for these playlists.

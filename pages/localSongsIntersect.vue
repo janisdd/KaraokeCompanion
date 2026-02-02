@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AgGridVue } from "ag-grid-vue3";
+import { themeQuartz, type ColDef, type ICellRendererParams } from "ag-grid-community";
+import { defineComponent, h, type PropType } from "vue";
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 import { useSongs } from "~~/composables/useSongs";
 defineOptions({
@@ -19,13 +22,6 @@ type CompareResponse = {
   playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
-type SortKey =
-  | "spotifyName"
-  | "spotifyArtist"
-  | "localTitle"
-  | "localArtist";
-type SortDirection = "asc" | "desc";
-
 const { isMarkedSong, toggleMarkedSong, markedSongKeys, setMarkedSongKeys } =
   useMarkedSongs();
 const playListUrl = useState("compare-local-playlist-url", () => "");
@@ -36,12 +32,9 @@ const compareResult = useState<CompareResponse | null>(
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
 const forceRefresh = useState("compare-local-force-refresh", () => false);
-const sortKey = useState<SortKey>("compare-local-sort-key", () => "spotifyName");
-const sortDirection = useState<SortDirection>(
-  "compare-local-sort-direction",
-  () => "asc",
-);
 const searchQuery = useState("compare-local-search-query", () => "");
+const isDark = useState<boolean>("isDarkMode", () => false);
+const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
 const comparePlaylist = async () => {
   submitError.value = null;
@@ -77,15 +70,6 @@ const matches = computed<MatchResult[]>(() => {
   return compareResult.value?.matches ?? [];
 });
 
-const toggleSort = (key: SortKey) => {
-  if (sortKey.value === key) {
-    sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
-    return;
-  }
-  sortKey.value = key;
-  sortDirection.value = "asc";
-};
-
 const filteredMatches = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (!query) {
@@ -105,38 +89,73 @@ const filteredMatches = computed(() => {
   });
 });
 
-const sortedMatches = computed(() => {
-  const source = filteredMatches.value;
-  if (!source.length) {
-    return [];
-  }
-
-  const direction = sortDirection.value === "asc" ? 1 : -1;
-
-  return [...source].sort((left, right) => {
-    const getValue = (match: MatchResult) => {
-      switch (sortKey.value) {
-        case "spotifyName":
-          return match.spotify.name;
-        case "spotifyArtist":
-          return match.spotify.artist;
-        case "localTitle":
-          return match.local.title;
-        case "localArtist":
-          return match.local.artist;
-        default:
-          return "";
+const MarkCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<MatchResult>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const match = props.params.data;
+      if (!match) {
+        return null;
       }
+      return h("input", {
+        type: "checkbox",
+        class: "h-4 w-4 accent-slate-700 dark:accent-slate-300",
+        checked: isMarkedSong(match.local.id),
+        "aria-label": `Mark ${match.local.artist} - ${match.local.title}`,
+        onChange: () => toggleMarkedSong(match.local.id),
+      });
     };
-
-    return (
-      String(getValue(left)).localeCompare(String(getValue(right)), undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }) * direction
-    );
-  });
+  },
 });
+
+const columnDefs: ColDef<MatchResult>[] = [
+  {
+    headerName: "Mark",
+    cellRenderer: MarkCell,
+    width: 70,
+    sortable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Local title",
+    valueGetter: (params) => params.data?.local.title ?? "",
+    width: 160,
+    sort: "asc",
+  },
+  {
+    headerName: "Local artist",
+    valueGetter: (params) => params.data?.local.artist ?? "",
+    width: 140,
+  },
+  {
+    headerName: "Spotify track",
+    valueGetter: (params) => params.data?.spotify.name ?? "",
+    width: 160,
+  },
+  {
+    headerName: "Spotify artist",
+    valueGetter: (params) => params.data?.spotify.artist ?? "",
+    width: 140,
+  },
+];
+
+const defaultColDef: ColDef<MatchResult> = {
+  sortable: true,
+  resizable: true,
+  comparator: (valueA, valueB) => {
+    return String(valueA ?? "").localeCompare(String(valueB ?? ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  },
+};
+
+const rowHeight = 48;
 
 const markAllMatches = () => {
   const matchIds = filteredMatches.value.map((match) => match.local.id);
@@ -161,9 +180,7 @@ const markAllMatches = () => {
         </p>
       </header>
 
-      <section
-        class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-      >
+      <section class="text-sm text-slate-600 dark:text-slate-300">
         <form class="space-y-4" @submit.prevent="comparePlaylist">
           <label class="space-y-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Playlist URL
@@ -242,90 +259,22 @@ const markAllMatches = () => {
                 Mark all songs
               </button>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                Showing {{ sortedMatches.length }} of {{ matches.length }}
+                Showing {{ filteredMatches.length }} of {{ matches.length }}
               </p>
             </div>
-            <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-              <table class="w-full border-collapse text-left text-sm text-slate-700 dark:text-slate-200">
-                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-300">
-                  <tr>
-                    <th class="px-4 py-3 font-semibold">Mark</th>
-                    <th class="px-4 py-3 font-semibold">
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1 text-left"
-                        @click="toggleSort('spotifyName')"
-                      >
-                        Spotify track
-                        <span v-if="sortKey === 'spotifyName'">
-                          {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                      </button>
-                    </th>
-                    <th class="px-4 py-3 font-semibold">
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1 text-left"
-                        @click="toggleSort('spotifyArtist')"
-                      >
-                        Spotify artist
-                        <span v-if="sortKey === 'spotifyArtist'">
-                          {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                      </button>
-                    </th>
-                    <th class="px-4 py-3 font-semibold">
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1 text-left"
-                        @click="toggleSort('localTitle')"
-                      >
-                        Local title
-                        <span v-if="sortKey === 'localTitle'">
-                          {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                      </button>
-                    </th>
-                    <th class="px-4 py-3 font-semibold">
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1 text-left"
-                        @click="toggleSort('localArtist')"
-                      >
-                        Local artist
-                        <span v-if="sortKey === 'localArtist'">
-                          {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                        </span>
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="match in sortedMatches"
-                    :key="`${match.spotify.artist}-${match.spotify.name}-${match.local.title}`"
-                    class="border-t border-slate-200 dark:border-slate-700"
-                  >
-                    <td class="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        class="h-4 w-4 accent-slate-700 dark:accent-slate-300"
-                        :checked="isMarkedSong(match.local.id)"
-                        :aria-label="`Mark ${match.local.artist} - ${match.local.title}`"
-                        @change="() => toggleMarkedSong(match.local.id)"
-                      />
-                    </td>
-                    <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {{ match.spotify.name }}
-                    </td>
-                    <td class="px-4 py-3">{{ match.spotify.artist }}</td>
-                    <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {{ match.local.title }}
-                    </td>
-                    <td class="px-4 py-3">{{ match.local.artist }}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div
+              class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+            >
+              <AgGridVue
+                class="ag-theme-quartz w-full text-sm text-slate-700 dark:text-slate-200"
+                :theme="themeQuartz"
+                :data-ag-theme-mode="agThemeMode"
+                :columnDefs="columnDefs"
+                :defaultColDef="defaultColDef"
+                :rowData="filteredMatches"
+                :rowHeight="rowHeight"
+                domLayout="autoHeight"
+              />
             </div>
           </div>
           <p v-else class="mt-4 text-sm text-slate-500 dark:text-slate-400">
