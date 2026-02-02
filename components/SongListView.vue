@@ -51,102 +51,19 @@ const {
   audioStorageKey: props.audioStorageKey,
 });
 
-const rowHeight = 52;
-const overscan = 6;
-const scrollContainer = ref<HTMLElement | null>(null);
-const scrollTop = ref(0);
-const containerHeight = ref(0);
-
-const updateContainerHeight = () => {
-  if (scrollContainer.value) {
-    containerHeight.value = scrollContainer.value.clientHeight;
-  }
-};
-
-let scrollRafId: number | null = null;
-
-const syncScrollTop = () => {
-  if (scrollContainer.value) {
-    scrollTop.value = scrollContainer.value.scrollTop;
-  }
-};
-
-const handleScroll = () => {
-  if (!scrollContainer.value || scrollRafId !== null) {
-    return;
-  }
-
-  scrollRafId = requestAnimationFrame(() => {
-    scrollRafId = null;
-    syncScrollTop();
-  });
-};
-
-const totalRows = computed(() => sortedSongs.value.length);
-const startIndex = computed(() =>
-  Math.max(0, Math.floor(scrollTop.value / rowHeight) - overscan),
-);
-const endIndex = computed(() =>
-  Math.min(
-    totalRows.value,
-    Math.ceil((scrollTop.value + containerHeight.value) / rowHeight) + overscan,
-  ),
-);
-const visibleSongs = computed(() =>
-  sortedSongs.value.slice(startIndex.value, endIndex.value),
-);
-const topSpacerHeight = computed(() => startIndex.value * rowHeight);
-const bottomSpacerHeight = computed(
-  () => (totalRows.value - endIndex.value) * rowHeight,
-);
-
 const scrollToActiveSongInList = () => {
-  if (!process.client || !activeSong.value || !scrollContainer.value) {
+  if (!process.client || !activeSong.value) {
     return;
   }
 
-  const targetKey = getSongKey(activeSong.value);
-  const index = sortedSongs.value.findIndex(
-    (song) => getSongKey(song) === targetKey,
-  );
-  if (index === -1) {
+  const targetId = getSongRowId(activeSong.value);
+  const target = document.getElementById(targetId);
+  if (!target) {
     return;
   }
 
-  const targetTop = index * rowHeight - containerHeight.value / 2 + rowHeight / 2;
-  scrollContainer.value.scrollTo({
-    top: Math.max(0, targetTop),
-    behavior: "smooth",
-  });
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
 };
-
-onMounted(() => {
-  updateContainerHeight();
-  syncScrollTop();
-  if (process.client) {
-    window.addEventListener("resize", updateContainerHeight);
-  }
-});
-
-onBeforeUnmount(() => {
-  if (process.client) {
-    window.removeEventListener("resize", updateContainerHeight);
-  }
-  if (scrollRafId !== null) {
-    cancelAnimationFrame(scrollRafId);
-    scrollRafId = null;
-  }
-});
-
-watch(
-  () => sortedSongs.value.length,
-  () => {
-    nextTick(() => {
-      updateContainerHeight();
-      syncScrollTop();
-    });
-  },
-);
 </script>
 
 <template>
@@ -254,11 +171,7 @@ watch(
             v-if="songSource.length"
             class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
           >
-            <div
-              ref="scrollContainer"
-              class="min-h-0 flex-1 overflow-auto"
-              @scroll.passive="handleScroll"
-            >
+            <div class="min-h-0 flex-1 overflow-auto">
               <table class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
               <thead
                 class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300"
@@ -332,9 +245,7 @@ watch(
               <tbody
                 class="divide-y divide-slate-100 dark:divide-slate-800"
                 v-memo="[
-                  visibleSongs,
-                  topSpacerHeight,
-                  bottomSpacerHeight,
+                  sortedSongs,
                   selectedSongKey,
                   activeAudioKey,
                   isActiveAudioPlaying,
@@ -343,11 +254,8 @@ watch(
                   lyricsQuery,
                 ]"
               >
-                <tr aria-hidden="true">
-                  <td :colspan="8" class="p-0" :style="{ height: `${topSpacerHeight}px` }" />
-                </tr>
                 <tr
-                  v-for="song in visibleSongs"
+                  v-for="song in sortedSongs"
                   :key="getSongKey(song)"
                   :id="getSongRowId(song)"
                   class="odd:bg-white even:bg-slate-50/60 hover:bg-slate-100/60 dark:odd:bg-slate-900 dark:even:bg-slate-900/70 dark:hover:bg-slate-800/70"
@@ -401,13 +309,6 @@ watch(
                       </span>
                     </div>
                   </td>
-                </tr>
-                <tr aria-hidden="true">
-                  <td
-                    :colspan="8"
-                    class="p-0"
-                    :style="{ height: `${bottomSpacerHeight}px` }"
-                  />
                 </tr>
               </tbody>
               </table>
