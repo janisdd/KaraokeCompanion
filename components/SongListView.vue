@@ -85,6 +85,7 @@ const MarkCell = defineComponent({
     },
   },
   setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
     return () => {
       const song = props.params.data;
       if (!song) {
@@ -167,13 +168,14 @@ const PreviewCell = defineComponent({
     },
   },
   setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
     return () => {
       const song = props.params.data;
       if (!song) {
         return null;
       }
       const key = getSongKey(song);
-      return h("div", { class: "flex items-start gap-2" }, [
+      return h("div", { class: "flex items-center gap-2" }, [
         h(
           "button",
           {
@@ -184,7 +186,11 @@ const PreviewCell = defineComponent({
               selectedSongKey.value === key ? "Hide song text" : "Show song text",
             onClick: () => toggleSongText(song),
           },
-          selectedSongKey.value === key ? "▾" : "▸",
+          [
+            h(FontAwesomeIcon as any, {
+              icon: "fa-solid fa-book",
+            }),
+          ],
         ),
         h(
           "span",
