@@ -204,7 +204,7 @@ watch(
             </label>
           </div>
         </div>
-        <div class="flex flex-col items-end gap-1">
+        <div class="flex items-center gap-2 md:flex-col md:items-end md:gap-1">
           <p class="text-xs text-slate-500 dark:text-slate-400">
             Showing {{ sortedSongs.length }} of {{ totalCount }}
           </p>
