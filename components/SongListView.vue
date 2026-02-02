@@ -265,7 +265,7 @@ watch(
               >
                 <tr>
                   <th class="px-4 py-3">Mark</th>
-                  <th class="px-4 py-3">
+                  <th class="px-4 py-3 min-w-[16rem]">
                     <button
                       type="button"
                       class="flex w-full items-center gap-1 text-left"
@@ -277,7 +277,7 @@ watch(
                       </span>
                     </button>
                   </th>
-                  <th class="px-4 py-3">
+                  <th class="px-4 py-3 min-w-[12rem]">
                     <button
                       type="button"
                       class="flex w-full items-center gap-1 text-left"
@@ -290,7 +290,7 @@ watch(
                     </button>
                   </th>
                   <th class="px-4 py-3">Audio</th>
-                  <th class="px-4 py-3">
+                  <th class="px-4 py-3 min-w-[8rem]">
                     <button
                       type="button"
                       class="flex w-full items-center gap-1 text-left"
@@ -302,7 +302,7 @@ watch(
                       </span>
                     </button>
                   </th>
-                  <th class="px-4 py-3">
+                  <th class="px-4 py-3 min-w-[12rem]">
                     <button
                       type="button"
                       class="flex w-full items-center gap-1 text-left"
@@ -326,7 +326,7 @@ watch(
                       </span>
                     </button>
                   </th>
-                  <th class="px-4 py-3">Song text preview</th>
+                  <th class="px-4 py-3 min-w-[18rem]">Song text preview</th>
                 </tr>
               </thead>
               <tbody
@@ -362,10 +362,10 @@ watch(
                     />
                   </td>
                   <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                    <span class="song-cell-2lines">{{ song.title }}</span>
+                    <span class="song-cell-2lines song-cell-title">{{ song.title }}</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class="song-cell-2lines">{{ song.artist }}</span>
+                    <span class="song-cell-2lines song-cell-artist">{{ song.artist }}</span>
                   </td>
                   <td class="px-4 py-3">
                     <button
@@ -386,11 +386,11 @@ watch(
                     <span v-else class="text-slate-400 dark:text-slate-500">—</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class="song-cell-2lines">{{ song.language ?? '—' }}</span>
+                    <span class="song-cell-2lines song-cell-language">{{ song.language ?? '—' }}</span>
                   </td>
                   <td class="px-4 py-3">{{ song.year ?? '—' }}</td>
                   <td class="px-4 py-3">
-                    <span class="song-cell-2lines">{{ song.genre ?? '—' }}</span>
+                    <span class="song-cell-2lines song-cell-genre">{{ song.genre ?? '—' }}</span>
                   </td>
                   <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                     <div class="flex items-start gap-2">
@@ -402,7 +402,7 @@ watch(
                       >
                         {{ selectedSongKey === getSongKey(song) ? '▾' : '▸' }}
                       </button>
-                      <span class="song-cell-2lines">
+                      <span class="song-cell-2lines song-cell-preview">
                         {{ getSongTextPreview(song) }}
                       </span>
                     </div>
@@ -521,11 +521,33 @@ watch(
   display: -webkit-box;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   line-height: 1.25rem;
   max-height: 2.5rem;
   line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.song-cell-title {
+  max-width: 28rem;
+}
+
+.song-cell-artist {
+  max-width: 20rem;
+}
+
+.song-cell-language {
+  max-width: 12rem;
+}
+
+.song-cell-genre {
+  max-width: 16rem;
+}
+
+.song-cell-preview {
+  max-width: 28rem;
 }
 
 .player-range {
