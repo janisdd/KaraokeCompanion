@@ -441,85 +441,20 @@ watch(
       </div>
     </div>
 
-    <div
+    <SongPlayerBar
       v-if="activeSong"
-      class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95"
-    >
-      <div class="mx-auto flex max-w-5xl flex-col gap-3 px-3 py-2 sm:px-6 sm:py-3">
-        <div class="flex items-start gap-3">
-          <div class="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
-            <img
-              v-if="activeCoverUrl"
-              :src="activeCoverUrl"
-              :alt="`${activeSong.title} cover`"
-              class="h-full w-full object-cover"
-              loading="lazy"
-            />
-            <div
-              v-else
-              class="flex h-full w-full items-center justify-center text-slate-400 dark:text-slate-500"
-            >
-              <font-awesome-icon icon="fa-solid fa-music" />
-            </div>
-          </div>
-          <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  <span>Now playing</span>
-                  <button
-                    type="button"
-                    class="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                    aria-label="Scroll to song in list"
-                    title="Scroll to song in list"
-                    @click="scrollToActiveSongInList"
-                  >
-                    <font-awesome-icon icon="fa-solid fa-location-arrow" />
-                  </button>
-                </div>
-                <div class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {{ activeSong.title }} — {{ activeSong.artist }}
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                  {{ currentTimeLabel }} / {{ durationLabel }}
-                </div>
-                <button
-                  type="button"
-                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                  :aria-label="isActiveAudioPlaying ? 'Pause audio' : 'Play audio'"
-                  @click="toggleAudioPlayback(activeSong)"
-                >
-                  <font-awesome-icon
-                    :icon="isActiveAudioPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"
-                  />
-                </button>
-                <button
-                  type="button"
-                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label="Close audio player"
-                  @click="stopActiveAudio"
-                >
-                  <font-awesome-icon icon="fa-solid fa-xmark" />
-                </button>
-              </div>
-            </div>
-            <input
-              v-model.number="playerTime"
-              type="range"
-              min="0"
-              :max="duration || 0"
-              step="0.1"
-              class="player-range w-full"
-              :disabled="!duration"
-              :style="{ '--progress': `${progressPercent}%` }"
-              aria-label="Audio progress"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+      :activeSong="activeSong"
+      :activeCoverUrl="activeCoverUrl"
+      :currentTimeLabel="currentTimeLabel"
+      :durationLabel="durationLabel"
+      :isActiveAudioPlaying="isActiveAudioPlaying"
+      :duration="duration"
+      :progressPercent="progressPercent"
+      v-model:playerTime="playerTime"
+      :onScrollToSong="scrollToActiveSongInList"
+      :onTogglePlayback="toggleAudioPlayback"
+      :onStopPlayback="stopActiveAudio"
+    />
   </main>
 </template>
 

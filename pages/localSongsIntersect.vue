@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { AgGridVue } from "ag-grid-vue3";
-import { themeQuartz, type ColDef, type ICellRendererParams } from "ag-grid-community";
-import { defineComponent, h, type PropType } from "vue";
+import {
+  themeQuartz,
+  type ColDef,
+  type GridApi,
+  type GridReadyEvent,
+  type ICellRendererParams,
+} from "ag-grid-community";
+import { defineComponent, h, resolveComponent, shallowRef, type PropType } from "vue";
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
-import { useSongs } from "~~/composables/useSongs";
+import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
+import type { SongInfo } from "~~/types/song";
 defineOptions({
   name: "ComparePlaylistLocalPage",
 });
@@ -35,6 +42,48 @@ const forceRefresh = useState("compare-local-force-refresh", () => false);
 const searchQuery = useState("compare-local-search-query", () => "");
 const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
+
+const localSongFromMatch = (match: MatchResult): SongInfo => ({
+  id: match.local.id,
+  title: match.local.title,
+  artist: match.local.artist,
+  year: null,
+  creator: null,
+  genre: null,
+  language: null,
+  audioFile: null,
+  videoFile: null,
+  coverFile: null,
+  songTextAsWords: [],
+  songText: "",
+});
+
+const getLocalSongKey = (song: SongInfo) => song.id;
+
+const {
+  activeAudioKey,
+  activeCoverUrl,
+  activeSong,
+  currentTimeLabel,
+  duration,
+  durationLabel,
+  getAudioFile,
+  isActiveAudioPlaying,
+  playerTime,
+  progressPercent,
+  stopActiveAudio,
+  toggleAudioPlayback,
+} = useSongListAudioPlayback({
+  audioStorageKey: "compare-local-audio",
+  getSongKey: getLocalSongKey,
+  getSongRowId: (song) => `local-song-row-${encodeURIComponent(song.id)}`,
+});
+
+const gridApi = shallowRef<GridApi | null>(null);
+
+const onGridReady = (event: GridReadyEvent) => {
+  gridApi.value = event.api;
+};
 
 const comparePlaylist = async () => {
   submitError.value = null;
@@ -113,6 +162,46 @@ const MarkCell = defineComponent({
   },
 });
 
+const AudioCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<MatchResult>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
+    return () => {
+      const match = props.params.data;
+      if (!match) {
+        return null;
+      }
+      const song = localSongFromMatch(match);
+      const audioFile = getAudioFile(song);
+      if (!audioFile) {
+        return h("span", { class: "text-slate-400 dark:text-slate-500" }, "—");
+      }
+      const isActive =
+        activeAudioKey.value === getLocalSongKey(song) && isActiveAudioPlaying.value;
+      return h(
+        "button",
+        {
+          type: "button",
+          class:
+            "inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          "aria-label": isActive ? "Pause audio" : "Play audio",
+          onClick: () => toggleAudioPlayback(song),
+        },
+        [
+          h(FontAwesomeIcon as any, {
+            icon: isActive ? "fa-solid fa-pause" : "fa-solid fa-play",
+          }),
+        ],
+      );
+    };
+  },
+});
+
 const columnDefs: ColDef<MatchResult>[] = [
   {
     headerName: "Mark",
@@ -131,6 +220,19 @@ const columnDefs: ColDef<MatchResult>[] = [
     headerName: "Local artist",
     valueGetter: (params) => params.data?.local.artist ?? "",
     width: 140,
+  },
+  {
+    headerName: "Local audio",
+    colId: "local-audio",
+    width: 90,
+    sortable: false,
+    valueGetter: (params) => {
+      if (!params.data) {
+        return 0;
+      }
+      return getAudioFile(localSongFromMatch(params.data)) ? 1 : 0;
+    },
+    cellRenderer: AudioCell,
   },
   {
     headerName: "Spotify track",
@@ -157,6 +259,22 @@ const defaultColDef: ColDef<MatchResult> = {
 
 const rowHeight = 48;
 
+const scrollToActiveSongInList = () => {
+  if (!process.client || !activeSong.value || !gridApi.value) {
+    return;
+  }
+
+  const targetKey = getLocalSongKey(activeSong.value);
+  const index = filteredMatches.value.findIndex(
+    (match) => match.local.id === targetKey,
+  );
+  if (index === -1) {
+    return;
+  }
+
+  gridApi.value.ensureIndexVisible(index, "middle");
+};
+
 const markAllMatches = () => {
   const matchIds = filteredMatches.value.map((match) => match.local.id);
   if (!matchIds.length) {
@@ -167,7 +285,10 @@ const markAllMatches = () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-slate-50 px-6 py-10 dark:bg-slate-950">
+  <main
+    class="min-h-screen bg-slate-50 px-6 pt-10 dark:bg-slate-950"
+    :class="activeSong ? 'pb-28' : 'pb-10'"
+  >
     <div class="mx-auto max-w-4xl space-y-6">
       <header class="space-y-2">
         <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
@@ -274,6 +395,7 @@ const markAllMatches = () => {
                 :rowData="filteredMatches"
                 :rowHeight="rowHeight"
                 domLayout="autoHeight"
+                @grid-ready="onGridReady"
               />
             </div>
           </div>
@@ -283,5 +405,20 @@ const markAllMatches = () => {
         </div>
       </section>
     </div>
+
+    <SongPlayerBar
+      v-if="activeSong"
+      :activeSong="activeSong"
+      :activeCoverUrl="activeCoverUrl"
+      :currentTimeLabel="currentTimeLabel"
+      :durationLabel="durationLabel"
+      :isActiveAudioPlaying="isActiveAudioPlaying"
+      :duration="duration"
+      :progressPercent="progressPercent"
+      v-model:playerTime="playerTime"
+      :onScrollToSong="scrollToActiveSongInList"
+      :onTogglePlayback="toggleAudioPlayback"
+      :onStopPlayback="stopActiveAudio"
+    />
   </main>
 </template>
