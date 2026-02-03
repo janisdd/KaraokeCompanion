@@ -1,4 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import pkg from './package.json'
 export default defineNuxtConfig({
   ssr: false,
   compatibilityDate: '2025-07-15',
@@ -28,6 +29,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       defaultThemeDark: process.env.IS_DEFAULT_PAGE_THEME_MODE_DARK === 'true',
+      appVersion: pkg.version,
     },
   },
 })

@@ -4,6 +4,12 @@
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
         <NuxtLink to="/" class="flex items-center gap-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
           <img src="/logo.png" alt="Karaoke Search logo" class="h-8 w-8 md:h-9 md:w-9" />
+          <span
+            v-if="appVersion"
+            class="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-300"
+          >
+            v{{ appVersion }}
+          </span>
           <span class="max-w-[60vw] truncate text-sm font-semibold text-slate-900 dark:text-slate-100 md:hidden">
             {{ pageTitle }}
           </span>
@@ -36,7 +42,7 @@
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
-          Spotify Playlist Compare
+          Spotify Compare
           </NuxtLink>
           <button
             type="button"
@@ -242,6 +248,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 const runtimeConfig = useRuntimeConfig()
 const defaultThemeDark = runtimeConfig.public.defaultThemeDark === true
+const appVersion = runtimeConfig.public.appVersion
 const themeCookie = useCookie<string | null>('theme')
 const route = useRoute()
 const pageTitle = computed(() => {
