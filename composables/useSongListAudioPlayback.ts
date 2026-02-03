@@ -42,7 +42,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   });
 
   const activeCoverUrl = computed(() =>
-    activeSong.value ? getCoverFile(activeSong.value) : null,
+    activeSong.value && activeSong.value.coverFile ? getCoverFile(activeSong.value) : null,
   );
 
   const playerTime = computed({
