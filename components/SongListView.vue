@@ -280,7 +280,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
     headerName: "Audio",
     colId: "audio",
-    width: 90,
+    width: 70,
     sortable: false,
     cellStyle: centerCellStyle,
     valueGetter: (params) => (params.data && getAudioFile(params.data) ? 1 : 0),
@@ -289,10 +289,10 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
     headerName: "Send",
     colId: "send",
-    width: 80,
+    width: 70,
     sortable: false,
     cellStyle: centerCellStyle,
-    headerTooltip: "Send song to Ultra Star", // this onl works if the song is in the current list of songs
+    headerTooltip: "Select song in Ultra Star", // this onl works if the song is in the current list of songs
     valueGetter: (params) => (params.data ? 1 : 0),
     cellRenderer: SendCell,
   },
