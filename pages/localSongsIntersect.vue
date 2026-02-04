@@ -107,6 +107,17 @@ const comparePlaylist = async () => {
   }
 };
 
+const sendSongToBackend = async (song: SongInfo) => {
+  try {
+    await $fetch("/api/sendSong", {
+      method: "POST",
+      body: { songId: song.id },
+    });
+  } catch (error) {
+    console.error("Failed to send song", error);
+  }
+};
+
 const formatCacheTime = (iso: string | undefined) => {
   if (!iso) return "Unknown";
   const date = new Date(iso);
@@ -202,6 +213,45 @@ const AudioCell = defineComponent({
   },
 });
 
+const SendCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<MatchResult>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
+    return () => {
+      const match = props.params.data;
+      if (!match) {
+        return null;
+      }
+      return h(
+        "button",
+        {
+          type: "button",
+          class:
+            "inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          "aria-label": "Send song",
+          onClick: () => sendSongToBackend(localSongFromMatch(match)),
+        },
+        [
+          h(FontAwesomeIcon as any, {
+            icon: "fa-solid fa-paper-plane",
+          }),
+        ],
+      );
+    };
+  },
+});
+
+const centerCellStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 const columnDefs: ColDef<MatchResult>[] = [
   {
     headerName: "Mark",
@@ -222,10 +272,11 @@ const columnDefs: ColDef<MatchResult>[] = [
     width: 140,
   },
   {
-    headerName: "Local audio",
+    headerName: "Audio",
     colId: "local-audio",
     width: 90,
     sortable: false,
+    cellStyle: centerCellStyle,
     valueGetter: (params) => {
       if (!params.data) {
         return 0;
@@ -233,6 +284,16 @@ const columnDefs: ColDef<MatchResult>[] = [
       return getAudioFile(localSongFromMatch(params.data)) ? 1 : 0;
     },
     cellRenderer: AudioCell,
+  },
+  {
+    headerName: "Send",
+    colId: "send",
+    width: 80,
+    sortable: false,
+    cellStyle: centerCellStyle,
+    headerTooltip: "Send song to Ultra Star",
+    valueGetter: (params) => (params.data ? 1 : 0),
+    cellRenderer: SendCell,
   },
   {
     headerName: "Spotify track",

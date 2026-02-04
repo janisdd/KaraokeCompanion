@@ -246,6 +246,12 @@ const PreviewCell = defineComponent({
   },
 });
 
+const centerCellStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
     headerName: "Mark",
@@ -276,6 +282,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     colId: "audio",
     width: 90,
     sortable: false,
+    cellStyle: centerCellStyle,
     valueGetter: (params) => (params.data && getAudioFile(params.data) ? 1 : 0),
     cellRenderer: AudioCell,
   },
@@ -284,6 +291,8 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     colId: "send",
     width: 80,
     sortable: false,
+    cellStyle: centerCellStyle,
+    headerTooltip: "Send song to Ultra Star",
     valueGetter: (params) => (params.data ? 1 : 0),
     cellRenderer: SendCell,
   },
