@@ -3,7 +3,7 @@
     <header class="fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
         <NuxtLink to="/" class="flex items-center gap-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-          <img src="/logo.png" alt="Karaoke Search logo" class="h-8 w-8 md:h-9 md:w-9" />
+          <img src="/logo.png" alt="Karaoke Companion logo" class="h-8 w-8 md:h-9 md:w-9" />
           <span
             v-if="appVersion"
             class="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-300"
@@ -13,7 +13,7 @@
           <span class="max-w-[60vw] truncate text-sm font-semibold text-slate-900 dark:text-slate-100 md:hidden">
             {{ pageTitle }}
           </span>
-          <span class="hidden md:inline">Karaoke Search</span>
+          <span class="hidden md:inline">Karaoke Companion</span>
         </NuxtLink>
         <nav class="hidden items-center gap-3 text-sm text-slate-600 dark:text-slate-300 md:flex">
           <NuxtLink
@@ -256,7 +256,7 @@ const pageTitle = computed(() => {
   if (typeof title === 'string' && title.trim()) {
     return title
   }
-  return 'Karaoke Search'
+  return 'Karaoke Companion'
 })
 const isDark = useState(
   'isDarkMode',

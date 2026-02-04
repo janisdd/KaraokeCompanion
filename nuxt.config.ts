@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css', '@fortawesome/fontawesome-svg-core/styles.css'],
   app: {
     head: {
-      title: 'Karaoke Search',
+      title: 'Karaoke Companion',
       htmlAttrs: {
         lang: 'en',
       },

@@ -73,7 +73,8 @@ const sendCompanionPlaylist = async () => {
         :disabled="markedSongs.length === 0"
         @click="sendCompanionPlaylist"
       >
-        Set as companion playlist
+        <font-awesome-icon icon="fa-solid fa-paper-plane" class="mr-2" />
+        <span>Set as companion playlist</span>
       </button>
     </template>
     <template #header-actions>

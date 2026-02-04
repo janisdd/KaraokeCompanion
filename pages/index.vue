@@ -4,7 +4,7 @@ defineOptions({
 });
 
 definePageMeta({
-  title: "Karaoke Search",
+  title: "Karaoke Companion",
 });
 </script>
 

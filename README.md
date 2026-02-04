@@ -1,4 +1,4 @@
-# Karaoke Search
+# Karaoke Companion
 
 ![logo](public/logo.png)
 
