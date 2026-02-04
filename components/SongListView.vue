@@ -77,6 +77,18 @@ const refreshGrid = (refreshSort = false) => {
   }
 };
 
+const getSendSongErrorMessage = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+  const fetchError = error as {
+    data?: { message?: string };
+    statusMessage?: string;
+    message?: string;
+  };
+  return fetchError.data?.message || fetchError.statusMessage || fetchError.message;
+};
+
 const sendSongToBackend = async (song: SongInfo) => {
   try {
     await $fetch("/api/sendSong", {
@@ -84,6 +96,11 @@ const sendSongToBackend = async (song: SongInfo) => {
       body: { songId: song.id },
     });
   } catch (error) {
+    const message = getSendSongErrorMessage(error);
+    if (message) {
+      console.error(`Failed to send song: ${message}`, error);
+      return;
+    }
     console.error("Failed to send song", error);
   }
 };
