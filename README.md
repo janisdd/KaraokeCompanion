@@ -108,6 +108,8 @@ Also the table views try to display the hit in context in the preview column if 
 
 ## TODOs
 
+- muatex for download songs
+  - also check if song exists by name?
 - download if no mp4  are available?
 - add instructions for ffmpeg and yt-dlp for windows
 - somehow make the songs searchable

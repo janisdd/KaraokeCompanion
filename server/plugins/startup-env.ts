@@ -3,6 +3,7 @@ import { Logger, LogLevelEnum } from '~/helpers/logger'
 import { Indexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
+import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
 
 
 export default defineNitroPlugin(async () => {
@@ -76,6 +77,8 @@ export default defineNitroPlugin(async () => {
   // log DOWNLOAD_SONGS_DIR
   Logger.log(`[nuxt start] DOWNLOAD_SONGS_DIR: ${ConfigHelper.getDownloadSongsDir()}`);
 
+
+  AllOnlineSongsIndexer.indexAllOnlineSongs();
 
   try {
     Logger.log(`[nuxt start] Now indexing songs in ${songsDirPaths.length} dirs`);

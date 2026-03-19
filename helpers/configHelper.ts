@@ -20,6 +20,7 @@ let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SO
 let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
 let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMAT || "mp4";
 let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT || "mp3";
+let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || "https://usdb.animux.de/index.php?link=byartist";
 
 if (!PlaylistCacheDirPath) {
   throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
@@ -99,5 +100,9 @@ export class ConfigHelper {
 
   static getDownloadConvertAudioFormat() {
     return DOWNLOAD_CONVERT_AUDIO_FORMAT;
+  }
+
+  static getAllSongsByArtistPage() {
+    return ALL_SONGS_BY_ARTIST_PAGE;
   }
 }
