@@ -2,6 +2,7 @@ import { config as loadEnv } from 'dotenv'
 import { Logger, LogLevelEnum } from '~/helpers/logger'
 import { Indexer } from '~/helpers/songsIndexer'
 import fs from "fs";
+import { ConfigHelper } from '~/helpers/configHelper';
 
 
 export default defineNitroPlugin(async () => {
@@ -61,13 +62,18 @@ export default defineNitroPlugin(async () => {
     return;
   }
 
+  if (!fs.existsSync(ConfigHelper.getDownloadSongsDir())) {
+    fs.mkdirSync(ConfigHelper.getDownloadSongsDir(), { recursive: true });
+    Logger.log(`[nuxt start] Download songs directory created: ${ConfigHelper.getDownloadSongsDir()}`);
+  }
+
   try {
     Logger.log(`[nuxt start] Now indexing songs in ${songsDirPaths.length} dirs`);
-    for (const dirPath of songsDirPaths) {
-      Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
-      await Indexer.indexFilesInDirectory(dirPath);
-      Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
-    }
+    // for (const dirPath of songsDirPaths) {
+    //   Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
+    //   await Indexer.indexFilesInDirectory(dirPath);
+    //   Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
+    // }
     Logger.log(`[nuxt start] All Songs indexed successfully for ${songsDirPaths.length} dirs`);
     Logger.log(`[nuxt start] Total songs indexed: ${Indexer.getSongsMap().size}`);
   } catch (error) {

@@ -10,6 +10,8 @@ playlistCaches/
 # Node dependencies
 node_modules
 
+download_work
+
 # Logs
 logs
 *.log

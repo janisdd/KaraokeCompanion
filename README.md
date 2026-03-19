@@ -36,6 +36,13 @@ for the spotify stuff you need a account and a spotify app, see https://develope
 yarn dev
 ```
 
+when you want the download features
+
+```bash
+yarn playwright install chromium
+```
+
+
 ## Build
 
 ```bash
@@ -72,3 +79,9 @@ Also the table views try to display the hit in context in the preview column if 
 ## Ag grid
 
 - we use ag grid for virtualized scrolling without it the search is really slow...
+
+
+## Sources for songs
+
+- https://usdb.animux.de
+
