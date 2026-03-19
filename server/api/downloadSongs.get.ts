@@ -3,10 +3,11 @@ import fs from "fs";
 import { chromium, type Browser, type Page } from "playwright";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
+import { ChildProcess, exec } from "child_process";
 
-type AudioVideoFilePathsTuple = {
-  audioPath: string;
-  videoPath: string;
+type AudioVideoFileNamesTuple = {
+  audioName: string;
+  videoName: string;
 };
 
 // TODO make config to not use headless mode (env)
@@ -33,21 +34,22 @@ export default defineEventHandler(async () => {
   const testUrl = "https://usdb.animux.de/index.php?link=detail&id=4978";
   await downloadSong(browser, page, testUrl);
 
-  // wait for 10 seconds
-  await new Promise((resolve) => setTimeout(resolve, 1000000));
+  // wait for 11 seconds
+  await new Promise((resolve) => setTimeout(resolve, 1_000));
 
   await browser.close();
 
   return { success: true };
 });
 
-async function downloadSong(browser: Browser, page: Page, url: string) {
+// if forceDownload is true, then the song will be downloaded even if it already exists
+//we place a empty txt file in the songs dir with the song id as name to indicate that the song was downloaded
+// because only with the url there is no way to check if the song was already downloaded (we don't have the name yet)
+async function downloadSong(browser: Browser, page: Page, url: string, forceDownload: boolean = false) {
   const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
   if (!downloadSongsDir) {
     throw new Error("Download songs directory not set");
   }
-
-  Logger.log(`Downloading song from URL: ${url}`);
 
   // e.g. url is https://usdb.animux.de/index.php?link=detail&id=4978
   // we need to get the id from the url
@@ -57,7 +59,20 @@ async function downloadSong(browser: Browser, page: Page, url: string) {
     throw new Error("ID not found in URL");
   }
   const songId = `${id}`;
+
+
+  const songIdFile = `${songId}.txt`;
+  const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
+
+  if (fs.existsSync(songIdFilePath) && !forceDownload) {
+    Logger.log(`Song already downloaded: ${songIdFilePath}`);
+    return;
+  }
+  
+  Logger.log(`Downloading song from URL: ${url}`);
   Logger.log(`Song ID found: ${songId}`);
+
+  
 
   // go to the page and wait for the page to load
   await page.goto(url);
@@ -78,18 +93,22 @@ async function downloadSong(browser: Browser, page: Page, url: string) {
     throw new Error("Song title not found");
   }
 
-  const songTitleSanitized = songTitle.replace(/[^a-zA-Z0-9]/g, "_");
-  const downloadSongsDirPath = path.resolve(
+  const preferredVideoHeight = ConfigHelper.getDownloadPreferredVideoHeight();
+  const preferredVideoFormat = ConfigHelper.getDownloadPreferredVideoFormat();
+  const convertAudioFormat = ConfigHelper.getDownloadConvertAudioFormat();
+
+  const songTitleSanitized = songTitle.replace(/[^a-zA-Z0-9- ]/g, "_");
+  const downloadSingleSongDirPath = path.resolve(
     downloadSongsDir,
     songTitleSanitized,
   );
-  if (!fs.existsSync(downloadSongsDirPath)) {
-    await fs.promises.mkdir(downloadSongsDirPath);
+  if (!fs.existsSync(downloadSingleSongDirPath)) {
+    await fs.promises.mkdir(downloadSingleSongDirPath);
   } else {
     // song dir already exists --> remove old files
-    await fs.promises.rmdir(downloadSongsDirPath);
+    await fs.promises.rmdir(downloadSingleSongDirPath);
     Logger.warn(
-      `Download songs directory already exists: ${downloadSongsDirPath} --> removed old files`,
+      `Download songs directory already exists: ${downloadSingleSongDirPath} --> removed old files`,
     );
   }
 
@@ -107,9 +126,10 @@ async function downloadSong(browser: Browser, page: Page, url: string) {
     throw new Error("Cover image extension not found");
   }
 
+  const coverImageName = `${songTitleSanitized} [CO]${coverImageExtension}`;
   const coverImagePath = path.resolve(
-    downloadSongsDirPath,
-    `${songTitleSanitized}${coverImageExtension}`,
+    downloadSingleSongDirPath,
+    coverImageName,
   );
   if (!fs.existsSync(coverImagePath)) {
     const response = await fetch(coverImageUrl);
@@ -136,8 +156,14 @@ async function downloadSong(browser: Browser, page: Page, url: string) {
   }
   Logger.log(`Youtube video ID found: ${youtubeVideoId}`);
 
-  const { audioPath, videoPath } =
-    await downloadYoutubeVideoAndSplit(youtubeVideoId);
+  const { audioName, videoName } = await downloadYoutubeVideoAndSplit(
+    youtubeVideoId,
+    downloadSingleSongDirPath,
+    songTitleSanitized,
+    preferredVideoHeight,
+    preferredVideoFormat,
+    convertAudioFormat,
+  );
 
   // the last step is to get the actual txt file with the notes
   // the correct url is https://usdb.animux.de/index.php?link=gettxt&id=<songId>
@@ -171,36 +197,114 @@ async function downloadSong(browser: Browser, page: Page, url: string) {
   if (!txtAreaText) {
     throw new Error("Txt area text not found");
   }
-  Logger.log(`Txt area text found: ${txtAreaText}`);
+  Logger.debug(`Txt area text found: ${txtAreaText}`);
 
   const songNotes = txtAreaText.split("\n").map((line) => line.trim());
   const songNoteLines = ensureSongNoteMetaEntries(
     songNotes,
-    coverImagePath,
-    audioPath,
-    videoPath,
+    coverImageName,
+    audioName,
+    videoName,
   );
 
   // write to file
   const txtFilePath = path.resolve(
-    downloadSongsDirPath,
+    downloadSingleSongDirPath,
     `${songTitleSanitized}.txt`,
   );
   await fs.promises.writeFile(txtFilePath, songNoteLines.join("\n"));
   Logger.log(`Txt file written to: ${txtFilePath}`);
 
-  await page.goto(url);
-  await page.waitForLoadState("domcontentloaded");
-  Logger.log("page loaded");
+  Logger.log(`Song downloaded successfully`);
+
+  // everything was ok -> create a file to indicate that the song was downloaded
+  if (!fs.existsSync(songIdFilePath)) {
+    await fs.promises.writeFile(songIdFilePath, songId);
+    Logger.log(`Song ID file created: ${songIdFilePath}`);
+  } else {
+    Logger.log(`Song ID file already exists: ${songIdFilePath}`);
+  }
+}
+
+
+async function waitForProcessToFinish(process: ChildProcess, downloadUrl: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+
+    process.stdout?.on('data', (data) => {
+      Logger.debug(`Video download stdout for ${downloadUrl}: ${data}`);
+    });
+    process.stderr?.on('data', (data) => {
+      Logger.debug(`Video download stderr for ${downloadUrl}: ${data}`);
+    });
+
+    process.on('close', (code) => {
+      if (code === null) {
+        reject(new Error("Process closed with null code"));
+        return
+      }
+      Logger.debug(`Process closed with code: ${code} for ${downloadUrl}`);
+      resolve(code);
+    });
+    process.on('error', (error) => {
+      reject(error);
+    });
+  });
 }
 
 async function downloadYoutubeVideoAndSplit(
   youtubeVideoId: string,
-): Promise<AudioVideoFilePathsTuple> {
-  //TODO call yt-dlp (for later)
-  // END call yt-dlp
+  downloadSingleSongDirPath: string,
+  songTitleSanitized: string,
+  preferredVideoHeight: number,
+  preferredVideoFormat: string,
+  targetAudioFormat: string,
+): Promise<AudioVideoFileNamesTuple> {
+  // see https://github.com/ytdl-org/youtube-dl
+  // yt-dlp -o vid.mp4 -f "(mp4)best[height<=720]" "https://youtu.be/ETxmCCsMoD0"
+  // yt-dlp -o vid.mp4 -f "best[ext=mp4][height<=720]" -o '%(title)s.f%(format_id)s.%(ext)s' "https://youtu.be/ETxmCCsMoD0"
+
+  const videoOutputFileName = `${songTitleSanitized}_working.${preferredVideoFormat}`;
+
+  const videoFormatOption = `best[ext=${preferredVideoFormat}][height<=${preferredVideoHeight}]`;
+  const videoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+
+  const videoDownloadCommand = `yt-dlp -f "${videoFormatOption}" -o "${videoOutputFileName}"  "${videoUrl}"`;
+  Logger.log(`Downloading video with command: ${videoDownloadCommand}`);
+  const videoDownloadProcess = exec(videoDownloadCommand, { cwd: downloadSingleSongDirPath });
+  const videoDownloadResult = await waitForProcessToFinish(videoDownloadProcess, videoUrl);
+  Logger.log(`Video downloaded with result: ${videoDownloadResult}`);
+
+  const inputVideoFilePath = path.resolve(downloadSingleSongDirPath, videoOutputFileName);
+  if (!fs.existsSync(inputVideoFilePath)) {
+    throw new Error(`Video file not found: ${inputVideoFilePath}`);
+  }
+
+  // then split autio from video
+  // e.g. ffmpeg -i infile.mp4 -an -c:v copy videoout.mp4 -vn -map 0:a audioout.mp3
+  const audioOnlyOutputFileName = `${songTitleSanitized}.${targetAudioFormat}`;
+  const videoOnlyOutputFileName = `${songTitleSanitized}.${preferredVideoFormat}`;
+  const audioDownloadCommand = `ffmpeg -i "${videoOutputFileName}" -an -c:v copy "${videoOnlyOutputFileName}" -vn -map 0:a "${audioOnlyOutputFileName}"`;
+  Logger.log(`Downloading audio with command: ${audioDownloadCommand}`);
+  const audioDownloadResultPromise = exec(audioDownloadCommand, { cwd: downloadSingleSongDirPath });
+  const audioDownloadResult = await waitForProcessToFinish(audioDownloadResultPromise, videoUrl);
+  Logger.log(`Audio downloaded with result: ${audioDownloadResult}`);
+
+  // check if the audio and video files exist
+  const audioOnlyOutputFilePath = path.resolve(downloadSingleSongDirPath, audioOnlyOutputFileName);
+  if (!fs.existsSync(audioOnlyOutputFilePath)) {
+    throw new Error(`Audio file not found after splitting: ${audioOnlyOutputFilePath}`);
+  }
+  const videoOnlyOutputFilePath = path.resolve(downloadSingleSongDirPath, videoOnlyOutputFileName);
+  if (!fs.existsSync(videoOnlyOutputFilePath)) {
+    throw new Error(`Video file not found after splitting: ${videoOnlyOutputFilePath}`);
+  }
+
+  // remove the working video file
+  await fs.promises.rm(path.resolve(downloadSingleSongDirPath, videoOutputFileName));
+  Logger.log(`Working video file removed: ${videoOutputFileName}`);
+
   // this should also split the video into video and audio files
-  return { audioPath: "", videoPath: "" };
+  return { audioName: audioOnlyOutputFileName, videoName: videoOnlyOutputFileName };
 }
 
 // from somewhere on the internet
@@ -213,9 +317,9 @@ function getYoutubeVideoId(url: string): string | null {
 
 function ensureSongNoteMetaEntries(
   songNotes: string[],
-  songCoverImagePath: string,
-  songAudioPath: string,
-  songVideoPath: string,
+  songCoverImageName: string,
+  songAudioName: string,
+  songVideoName: string,
 ): string[] {
   // do not validate the entries
   // we want to ensure we have entries for:
@@ -225,10 +329,10 @@ function ensureSongNoteMetaEntries(
   // - #COMMENT
 
   const metaEntries = [
-    `#COVER: ${songCoverImagePath}.jpg`,
-    `#MP3: ${songAudioPath}.mp3`,
-    `#AUDIO: ${songAudioPath}.mp3`,
-    `#VIDEO: ${songVideoPath}.mp4`,
+    `#COVER: ${songCoverImageName}`,
+    `#MP3: ${songAudioName}`,
+    `#AUDIO: ${songAudioName}`,
+    `#VIDEO: ${songVideoName}`,
     `#COMMENT: Automatically downloaded by UltraStar Karaoke Companion`,
   ];
 

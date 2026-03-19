@@ -7,6 +7,7 @@ import { Logger, LogLevelEnum } from './logger';
 dotenv.config({ path: "./secrets/.env" });
 
 const defaultRequiredWaitTimeForSongDownload = 30;
+const defaultDownloadPreferredVideoHeight = 720;
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
@@ -16,6 +17,9 @@ const USDB_ANIMUX_ID = process.env.USDB_ANIMUX_ID || "";
 const USDB_ANIMUX_PW = process.env.USDB_ANIMUX_PW || "";
 const DOWNLOAD_SONGS_DIR = process.env.DOWNLOAD_SONGS_DIR || "";
 let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD || defaultRequiredWaitTimeForSongDownload;
+let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
+let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMAT || "mp4";
+let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT || "mp3";
 
 if (!PlaylistCacheDirPath) {
   throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
@@ -45,6 +49,10 @@ export class ConfigHelper {
     return SPOTIFY_CLIENT_SECRET;
   }
 
+  static getDownloadPreferredVideoFormat() {
+    return DOWNLOAD_PREFERRED_VIDEO_FORMAT;
+  }
+
   static getUltraStarCompanionPort() {
     return ULTRA_STAR_COMPANION_PORT;
   }
@@ -61,6 +69,19 @@ export class ConfigHelper {
     return DOWNLOAD_SONGS_DIR;
   }
 
+  static getDownloadPreferredVideoHeight() {
+    if (typeof DOWNLOAD_PREFERRED_VIDEO_HEIGHT !== 'number') {
+      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
+    }
+    if (DOWNLOAD_PREFERRED_VIDEO_HEIGHT < 0) {
+      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
+    }
+    if (isNaN(DOWNLOAD_PREFERRED_VIDEO_HEIGHT)) {
+      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
+    }
+    return DOWNLOAD_PREFERRED_VIDEO_HEIGHT;
+  }
+
   static getRequiredWaitTimeForSongDownload() {
     if (typeof REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD !== 'number') {
       REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
@@ -74,5 +95,9 @@ export class ConfigHelper {
     }
     
     return REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD;
+  }
+
+  static getDownloadConvertAudioFormat() {
+    return DOWNLOAD_CONVERT_AUDIO_FORMAT;
   }
 }

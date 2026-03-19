@@ -30,16 +30,36 @@ you have to copy the `secrets/.env_example` to `secrets/.env` and set all values
 for the spotify stuff you need a account and a spotify app, see https://developer.spotify.com/documentation/web-api/tutorials/getting-started
 
 
-## Dev
-
-```bash
-yarn dev
-```
-
 when you want the download features
 
 ```bash
 yarn playwright install chromium
+```
+
+you also need to install `yt-dlp` (https://github.com/ytdl-org/youtube-dl) (for downloading videos)
+
+see https://formulae.brew.sh/formula/yt-dlp (for macos)
+
+```bash
+brew install yt-dlp
+```
+
+make sure it is in your path (if you type `yt-dlp` in the terminal and it works, it is in your path)
+
+you also need to install `ffmpeg` (https://ffmpeg.org/) (for splitting videos)
+
+see https://formulae.brew.sh/formula/ffmpeg (for macos)
+
+```bash
+brew install ffmpeg
+```
+
+make sure it is in your path (if you type `ffmpeg` in the terminal and it works, it is in your path)
+
+## Dev
+
+```bash
+yarn dev
 ```
 
 

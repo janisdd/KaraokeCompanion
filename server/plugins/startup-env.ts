@@ -67,6 +67,16 @@ export default defineNitroPlugin(async () => {
     Logger.log(`[nuxt start] Download songs directory created: ${ConfigHelper.getDownloadSongsDir()}`);
   }
 
+  // log REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD
+  Logger.log(`[nuxt start] REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD: ${ConfigHelper.getRequiredWaitTimeForSongDownload()}`);
+  Logger.log(`[nuxt start] DOWNLOAD_PREFERRED_VIDEO_HEIGHT: ${ConfigHelper.getDownloadPreferredVideoHeight()}`);
+  Logger.log(`[nuxt start] DOWNLOAD_PREFERRED_VIDEO_FORMAT: ${ConfigHelper.getDownloadPreferredVideoFormat()}`);
+  Logger.log(`[nuxt start] DOWNLOAD_CONVERT_AUDIO_FORMAT: ${ConfigHelper.getDownloadConvertAudioFormat()}`);
+
+  // log DOWNLOAD_SONGS_DIR
+  Logger.log(`[nuxt start] DOWNLOAD_SONGS_DIR: ${ConfigHelper.getDownloadSongsDir()}`);
+
+
   try {
     Logger.log(`[nuxt start] Now indexing songs in ${songsDirPaths.length} dirs`);
     // for (const dirPath of songsDirPaths) {
