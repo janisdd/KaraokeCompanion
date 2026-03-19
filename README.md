@@ -86,7 +86,7 @@ generated with chatgpt
 
 ## Code
 
-Almost every line was generated with cursor (and GPT-5.2 Codex)
+Almost every line was generated with cursor (and GPT-5.2 Codex, GPT-5.4)
 
 
 ## Notes
@@ -105,3 +105,10 @@ Also the table views try to display the hit in context in the preview column if 
 
 - https://usdb.animux.de
 
+
+## TODOs
+
+- download if no mp4  are available?
+- add instructions for ffmpeg and yt-dlp for windows
+- somehow make the songs searchable
+- add re-indexing to UltraStar (hot reload)
