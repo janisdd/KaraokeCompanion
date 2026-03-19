@@ -11,6 +11,7 @@ playlistCaches/
 node_modules
 
 download_work
+all_online_songs_index.json
 
 # Logs
 logs

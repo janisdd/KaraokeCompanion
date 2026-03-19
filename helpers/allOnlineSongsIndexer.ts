@@ -6,10 +6,10 @@ import fs from "fs";
 
 type OnlineSongInfo = {
   key: string;
-  songId: string;
+  // we can create the href from the id: ?link=detail&id=<songId>
+  songId: string; 
   songName: string;
   artist: string;
-  href: string;
 };
 
 type ArtistLetterToIndexPage = {
@@ -26,9 +26,12 @@ export class AllOnlineSongsIndexer {
     OnlineSongInfo
   > = new Map();
 
-
   public static saveIndexToFile() {
-    const indexJson = JSON.stringify(Array.from(this._allOnlineSongInfos.values()), null, 2);
+    const indexJson = JSON.stringify(
+      Array.from(this._allOnlineSongInfos.values()),
+      null,
+      2,
+    );
     fs.writeFileSync(allSongsIndexJsonFileName, indexJson);
   }
 
@@ -50,9 +53,10 @@ export class AllOnlineSongsIndexer {
   }
 
   public static async indexAllOnlineSongs() {
-
     if (this.checkIfIndexExists()) {
-      Logger.log(`[AllOnlineSongsIndexer] Index already exists, loading from file`);
+      Logger.log(
+        `[AllOnlineSongsIndexer] Index already exists, loading from file`,
+      );
       this.loadIndexFromFile();
       return;
     }
@@ -108,10 +112,11 @@ export class AllOnlineSongsIndexer {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    Logger.log(`[AllOnlineSongsIndexer] Indexing complete, saving index to file`);
+    Logger.log(
+      `[AllOnlineSongsIndexer] Indexing complete, saving index to file`,
+    );
     this.saveIndexToFile();
   }
-
 
   private static async indexArtistLetter(
     artistLetterPageTuple: ArtistLetterToIndexPage,
@@ -119,11 +124,15 @@ export class AllOnlineSongsIndexer {
     const onlineSongInfos: OnlineSongInfo[] = [];
     // this returns a html page
 
-    Logger.debug(`[AllOnlineSongsIndexer] Indexing artist letter: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`);
+    Logger.debug(
+      `[AllOnlineSongsIndexer] Indexing artist letter: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`,
+    );
     const artistByLetterPageResponse = await fetch(
       `${usdbUrlPrefixForHref}${artistLetterPageTuple.href}`,
     );
-    Logger.debug(`[AllOnlineSongsIndexer] Artist by letter page response: ${artistByLetterPageResponse.status} - ${artistByLetterPageResponse.statusText}`);
+    Logger.debug(
+      `[AllOnlineSongsIndexer] Artist by letter page response: ${artistByLetterPageResponse.status} - ${artistByLetterPageResponse.statusText}`,
+    );
 
     const artistByLetterPageHtml = await artistByLetterPageResponse.text();
     Logger.debug(`[AllOnlineSongsIndexer] Artist by letter page html loaded`);
@@ -134,9 +143,15 @@ export class AllOnlineSongsIndexer {
     const divTagsWithArtistSongs = artistByLetterPageRoot.querySelectorAll(
       `#tablebg .row1 .details`,
     );
+
+    const artistTmpIdToArtistName: Map<string, string> = new Map();
+    // get all artist tmp ids
     for (const divTagWithArtistSong of divTagsWithArtistSongs) {
       // e.g. <div id="artist1" class="details" style="display: block;">...</div>
       const artistTmpId = divTagWithArtistSong.getAttribute("id");
+      if (!artistTmpId) {
+        continue;
+      }
 
       // document.querySelectorAll(`#tablebg .row1 a[href='javascript:show("artist1")']`)
       const artistAnchor = artistByLetterPageRoot.querySelector(
@@ -149,80 +164,93 @@ export class AllOnlineSongsIndexer {
         );
         continue;
       }
+      artistTmpIdToArtistName.set(artistTmpId, artistName);
+    }
 
-      // document.querySelectorAll(`#tablebg .row1 #artist1 a[href]`)
-      // const artistSongAnchors = artistByLetterPageRoot.querySelectorAll(
-      //   `#tablebg .row1 #${artistTmpId} a[href]`,
-      // );
+    // document.querySelectorAll(`#tablebg .row1 #artist1 a[href]`)
+    // const artistSongAnchors = artistByLetterPageRoot.querySelectorAll(
+    //   `#tablebg .row1 #${artistTmpId} a[href]`,
+    // );
 
-      // for whatever reason they choose to add the anchor tags with javascript...
-      /*
+    // for whatever reason they choose to add the anchor tags with javascript...
+    /*
       <script type="text/javascript">
       $("artist1").innerHTML += "<a target='_blank' href='?link=detail&id=9323'>Which Backstreet Boy Is Gay?</a> <br>";
       $("artist2").innerHTML += "<a target='_blank' href='?link=detail&id=26323'>Someone I Used To Know</a> <br>";
       ...
       </script>
       */
-      const artistSongAnchorsScriptText =
-        artistByLetterPageRoot
-          .querySelectorAll(`script[type="text/javascript"]`)
-          .at(3)?.textContent ?? "";
+    const artistSongAnchorsScriptText =
+      artistByLetterPageRoot
+        .querySelectorAll(`script[type="text/javascript"]`)
+        .at(3)?.textContent ?? "";
 
-      if (!artistSongAnchorsScriptText) {
+    if (!artistSongAnchorsScriptText) {
+      throw new Error(
+        `No artist song anchors script text found in artist letter page: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`,
+      );
+    }
+
+    // go line by line
+    const artistSongAnchorsScriptTextLines =
+      artistSongAnchorsScriptText.split("\n");
+
+    for (const artistSongAnchorScriptTextLine of artistSongAnchorsScriptTextLines) {
+      // extract the artist id from the line
+      const artistIdMatch =
+        artistSongAnchorScriptTextLine.match(/\"artist(\d+)\"/);
+      if (!artistIdMatch) {
+        continue;
+      }
+      let artistId = artistIdMatch[1];
+      if (artistId.trim() === "") {
+        continue;
+      }
+      artistId = `artist${artistId}`;
+
+      const artistName = artistTmpIdToArtistName.get(artistId);
+      if (!artistName) {
         throw new Error(
-          `No artist song anchors script text found for artist tmp id: ${artistTmpId} in artist letter page: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`,
+          `Artist name not found for artist tmp id: ${artistId} in artist letter page: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`,
         );
       }
-
-      // go line by line
-      const artistSongAnchorsScriptTextLines =
-        artistSongAnchorsScriptText.split("\n");
-      for (const artistSongAnchorScriptTextLine of artistSongAnchorsScriptTextLines) {
-        // extract the artist id from the line
-        const artistIdMatch =
-          artistSongAnchorScriptTextLine.match(/\"artist(\d+)\"/);
-        if (!artistIdMatch) {
-          continue;
-        }
-        const artistId = artistIdMatch[1];
-        if (artistId.trim() === "") {
-          continue;
-        }
-
-        // then get the song id from the line
-        const songIdMatch = artistSongAnchorScriptTextLine.match(/id=(\d+)/);
-        if (!songIdMatch) {
-          continue;
-        }
-        const songId = songIdMatch[1];
-        if (songId.trim() === "") {
-          continue;
-        }
-
-        // then get the song name from the line
-        const songNameMatch =
-          artistSongAnchorScriptTextLine.match(/>(.*?)<\/a>/);
-        if (!songNameMatch) {
-          continue;
-        }
-        const songName = songNameMatch[1];
-        if (songName.trim() === "") {
-          continue;
-        }
-
-        const songInfo: OnlineSongInfo = {
-          key: this.getKey(artistName, songName),
-          songId: songId,
-          songName: songName,
-          artist: artistName,
-          href: `?link=detail&id=${songId}`,
-        };
-        onlineSongInfos.push(songInfo);
-
-        Logger.debug(`[AllOnlineSongsIndexer] Song ${artistName} - ${songName} - ${songId}`);
+      if (artistName.trim() === "") {
+        continue;
       }
 
+      // then get the song id from the line
+      const songIdMatch = artistSongAnchorScriptTextLine.match(/id=(\d+)/);
+      if (!songIdMatch) {
+        continue;
+      }
+      const songId = songIdMatch[1];
+      if (songId.trim() === "") {
+        continue;
+      }
+
+      // then get the song name from the line
+      const songNameMatch = artistSongAnchorScriptTextLine.match(/>(.*?)<\/a>/);
+      if (!songNameMatch) {
+        continue;
+      }
+      const songName = songNameMatch[1];
+      if (songName.trim() === "") {
+        continue;
+      }
+
+      const songInfo: OnlineSongInfo = {
+        key: this.getKey(artistName, songName),
+        songId: songId,
+        songName: songName,
+        artist: artistName
+      };
+      onlineSongInfos.push(songInfo);
+
+      Logger.debug(
+        `[AllOnlineSongsIndexer] Song ${artistName} - ${songName} - ${songId}`,
+      );
     }
+
     return onlineSongInfos;
   }
 }
