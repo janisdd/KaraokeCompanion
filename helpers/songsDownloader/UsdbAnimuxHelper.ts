@@ -145,6 +145,13 @@ export class UsdbAnimuxHelper {
 
       // when all is done, we can index the new directory
       await SongsIndexer.indexSingleSongDir(downloadSingleSongDirPath, downloadSongsDir, 0, 1);
+      // Recompute the online song flags now that the local song index contains the download.
+      AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
+        key: song.key,
+        songId,
+        songName: song.songName,
+        artist: song.artist,
+      } satisfies OnlineSongInfoPlain);
 
     } catch (error) {
       Logger.error(

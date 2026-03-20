@@ -62,12 +62,14 @@ const {
   data: response,
   pending,
   error,
+  refresh: refreshOnlineSongsIndex,
 } = await useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex");
 
 const {
   songs: existingSongs,
   pending: existingSongsPending,
   error: existingSongsError,
+  refresh: refreshExistingSongs,
 } = useSongs();
 
 const {
@@ -101,9 +103,12 @@ const existingSongsByKey = computed(() => {
 const onlineSongs = computed<OnlineSongRow[]>(() => {
   return (response.value?.data ?? []).map((song) => {
     const existingSong = existingSongsByKey.value.get(song.key) ?? null;
+    const isLocallyDownloading = downloadQueue.value.some(
+      (item) => item.song.songId === song.songId && item.status === "downloading",
+    );
     const existingStatus: ExistingStatus = song.indexed
       ? "indexed"
-      : song.downloading
+      : song.downloading || isLocallyDownloading
         ? "downloading"
         : "no";
 
@@ -228,6 +233,10 @@ const processDownloadQueue = async () => {
     isProcessingQueue.value = false;
     if (downloadQueue.value.length) {
       void processDownloadQueue();
+
+      // we check if there were any successful downloads with > 0
+    } else if (completedDownloadCount.value > 0) {
+      await Promise.all([refreshOnlineSongsIndex(), refreshExistingSongs()]);
     }
   }
 };
