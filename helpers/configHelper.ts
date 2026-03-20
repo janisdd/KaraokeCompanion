@@ -21,6 +21,7 @@ let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGH
 let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMAT || "mp4";
 let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT || "mp3";
 let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || "https://usdb.animux.de/index.php?link=byartist";
+let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false;
 
 if (!PlaylistCacheDirPath) {
   throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
@@ -84,14 +85,21 @@ export class ConfigHelper {
   }
 
   static getRequiredWaitTimeForSongDownload() {
-    if (typeof REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD !== 'number') {
-      REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
-      Logger.warn(`REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD is not a number, using ${defaultRequiredWaitTimeForSongDownload} as default`);
-    }
-    if (REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD < 0) {
-      REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
+    
+    if (typeof REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD === 'string') {
+      // check with regex if number
+      const regex = /^\d+$/;
+      if (!regex.test(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD)) {
+        REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
+        Logger.warn(`REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD is not a number, using ${defaultRequiredWaitTimeForSongDownload} as default`);
+      } else {
+        REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = parseInt(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD);
+      }
     }
     if (isNaN(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD)) {
+      REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
+    }
+    if (REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD < 0) {
       REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
     }
     
@@ -104,5 +112,16 @@ export class ConfigHelper {
 
   static getAllSongsByArtistPage() {
     return ALL_SONGS_BY_ARTIST_PAGE;
+  }
+
+  static getDownloadUseHeadlessMode() {
+    if (typeof DOWNLOAD_USE_HEADLESS_MODE === 'string') {
+      if (DOWNLOAD_USE_HEADLESS_MODE === 'true') {
+        DOWNLOAD_USE_HEADLESS_MODE = true;
+      } else {
+        DOWNLOAD_USE_HEADLESS_MODE = false;
+      }
+    }
+    return DOWNLOAD_USE_HEADLESS_MODE;
   }
 }

@@ -13,7 +13,11 @@ type AudioVideoFileNamesTuple = {
 // TODO make config to not use headless mode (env)
 
 export default defineEventHandler(async () => {
-  const browser = await chromium.launch({ headless: false, slowMo: 50 });
+
+  const downloadUseHeadlessMode = ConfigHelper.getDownloadUseHeadlessMode();
+  Logger.debug(`Download use headless mode: ${downloadUseHeadlessMode}`);
+
+  const browser = await chromium.launch({ headless: downloadUseHeadlessMode, slowMo: 100 });
   const page = await browser.newPage();
   await page.goto("https://usdb.animux.de/");
   // await page.screenshot({ path: `example.png` });

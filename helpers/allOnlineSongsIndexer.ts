@@ -1,10 +1,10 @@
-import type { SongInfo } from "~/types/song";
 import { ConfigHelper } from "./configHelper";
 import * as htmlParser from "node-html-parser";
 import { Logger } from "./logger";
 import fs from "fs";
 
 type OnlineSongInfo = {
+  //this is just artist-songname (to make it unique and never change)
   key: string;
   // we can create the href from the id: ?link=detail&id=<songId>
   songId: string; 
@@ -26,9 +26,13 @@ export class AllOnlineSongsIndexer {
     OnlineSongInfo
   > = new Map();
 
+  public static getAllOnlineSongInfos(): OnlineSongInfo[] {
+    return Array.from(this._allOnlineSongInfos.values());
+  }
+
   public static saveIndexToFile() {
     const indexJson = JSON.stringify(
-      Array.from(this._allOnlineSongInfos.values()),
+      this.getAllOnlineSongInfos(),
       null,
       2,
     );
@@ -55,7 +59,7 @@ export class AllOnlineSongsIndexer {
   public static async indexAllOnlineSongs() {
     if (this.checkIfIndexExists()) {
       Logger.log(
-        `[AllOnlineSongsIndexer] Index already exists, loading from file`,
+        `[AllOnlineSongsIndexer] Index already exists, loading from file ${allSongsIndexJsonFileName}`,
       );
       this.loadIndexFromFile();
       return;
