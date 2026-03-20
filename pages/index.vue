@@ -34,6 +34,18 @@ definePageMeta({
         </NuxtLink>
 
         <NuxtLink
+          to="/browseOnlineSongsIndex"
+          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+        >
+          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
+            Browse Online Songs
+          </h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Explore the indexed online songs with quick search and sorting.
+          </p>
+        </NuxtLink>
+
+        <NuxtLink
           to="/markedSongsList"
           class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
         >

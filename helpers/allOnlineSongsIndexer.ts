@@ -3,7 +3,10 @@ import * as htmlParser from "node-html-parser";
 import { Logger } from "./logger";
 import fs from "fs";
 
-type OnlineSongInfo = {
+
+const ONLINE_SONGS_INDEX_JSON_FILE_NAME = "online_songs_index.json";
+
+export type OnlineSongInfo = {
   //this is just artist-songname (to make it unique and never change)
   key: string;
   // we can create the href from the id: ?link=detail&id=<songId>
@@ -17,7 +20,12 @@ type ArtistLetterToIndexPage = {
   href: string;
 };
 
-const allSongsIndexJsonFileName = "all_online_songs_index.json";
+// we need the version in case we need to change the structure of the index object
+type OnlineSongInfoIndexObj = {
+  version: string;
+  index: OnlineSongInfo[];
+}
+
 
 export class AllOnlineSongsIndexer {
   private static _allOnlineSongInfos: Map<
@@ -30,24 +38,32 @@ export class AllOnlineSongsIndexer {
   }
 
   public static saveIndexToFile() {
+    const indexObj: OnlineSongInfoIndexObj = {
+      version: "1.0.0",
+      index: this.getAllOnlineSongInfos(),
+    };
     const indexJson = JSON.stringify(
-      this.getAllOnlineSongInfos(),
+      indexObj,
       null,
       2,
     );
-    fs.writeFileSync(allSongsIndexJsonFileName, indexJson);
+    fs.writeFileSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME, indexJson);
   }
 
   public static loadIndexFromFile() {
-    const indexJson = fs.readFileSync(allSongsIndexJsonFileName, "utf8");
-    const index = JSON.parse(indexJson);
+    const indexJson = fs.readFileSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME, "utf8");
+    const indexObj = JSON.parse(indexJson) as OnlineSongInfoIndexObj;
+    if (indexObj.version !== "1.0.0") {
+      throw new Error(`Invalid index version: ${indexObj.version}`);
+    }
+    const index = indexObj.index;
     for (const songInfo of index) {
       this._allOnlineSongInfos.set(songInfo.key, songInfo);
     }
   }
 
   public static checkIfIndexExists() {
-    return fs.existsSync(allSongsIndexJsonFileName);
+    return fs.existsSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME);
   }
 
   // key is "artist - songid" because this is what should be unique and never change
@@ -58,7 +74,7 @@ export class AllOnlineSongsIndexer {
   public static async indexAllOnlineSongs() {
     if (this.checkIfIndexExists()) {
       Logger.log(
-        `[AllOnlineSongsIndexer] Index already exists, loading from file ${allSongsIndexJsonFileName}`,
+        `[AllOnlineSongsIndexer] Index already exists, loading from file ${ONLINE_SONGS_INDEX_JSON_FILE_NAME}`,
       );
       this.loadIndexFromFile();
       return;
@@ -257,3 +273,7 @@ export class AllOnlineSongsIndexer {
     return onlineSongInfos;
   }
 }
+
+function isOnlineSongInfo(value: unknown): value is OnlineSongInfo {
+  return typeof value === "object" && value !== null && "key" in value && "songId" in value && "songName" in value && "artist" in value;
+};
