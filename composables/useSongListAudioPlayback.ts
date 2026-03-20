@@ -1,3 +1,4 @@
+import type { GridApi } from "ag-grid-community";
 import type { SongInfo } from "~~/types/song";
 import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback";
 
@@ -5,6 +6,35 @@ type SongListAudioOptions = {
   audioStorageKey: string;
   getSongKey: (song: SongInfo) => string;
   getSongRowId: (song: SongInfo) => string;
+};
+
+type ScrollToGridSongOptions<TRow> = {
+  gridApi: GridApi<TRow> | null | undefined;
+  songKey: string | null | undefined;
+  getRowSongKey: (row: TRow) => string | null | undefined;
+};
+
+export const scrollToGridSong = <TRow>(options: ScrollToGridSongOptions<TRow>) => {
+  const { gridApi, songKey, getRowSongKey } = options;
+  if (!process.client || !gridApi || !songKey) {
+    return;
+  }
+
+  let targetRowIndex: number | null = null;
+
+  gridApi.forEachNodeAfterFilterAndSort((node) => {
+    if (targetRowIndex !== null || !node.data || node.rowIndex == null) {
+      return;
+    }
+
+    if (getRowSongKey(node.data) === songKey) {
+      targetRowIndex = node.rowIndex;
+    }
+  });
+
+  if (targetRowIndex !== null) {
+    gridApi.ensureIndexVisible(targetRowIndex, "middle");
+  }
 };
 
 export const useSongListAudioPlayback = (options: SongListAudioOptions) => {

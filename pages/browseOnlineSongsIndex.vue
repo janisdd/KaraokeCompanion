@@ -12,7 +12,10 @@ import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import type { SongInfo } from "~/types/song";
 import { useSongs } from "~~/composables/useSongs";
-import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
+import {
+  scrollToGridSong,
+  useSongListAudioPlayback,
+} from "~~/composables/useSongListAudioPlayback";
 
 defineOptions({
   name: "BrowseOnlineSongsIndexPage",
@@ -77,7 +80,6 @@ const {
   isActiveAudioPlaying,
   playerTime,
   progressPercent,
-  scrollToActiveSong,
   stopActiveAudio,
   toggleAudioPlayback,
 } = useSongListAudioPlayback({
@@ -118,18 +120,11 @@ const onlineSongs = computed<OnlineSongRow[]>(() => {
 });
 
 const scrollToActiveSongInList = () => {
-  if (!process.client || !activeSong.value || !gridApi.value) {
-    return;
-  }
-
-  const index = filteredSongs.value.findIndex(
-    (song) => song.existingSong?.key === activeSong.value?.key,
-  );
-  if (index === -1) {
-    return;
-  }
-
-  gridApi.value.ensureIndexVisible(index, "middle");
+  scrollToGridSong({
+    gridApi: gridApi.value,
+    songKey: activeSong.value?.key,
+    getRowSongKey: (row) => row.existingSong?.key,
+  });
 };
 
 const filteredSongs = computed(() => {

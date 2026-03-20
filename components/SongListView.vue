@@ -9,6 +9,7 @@ import {
 } from "ag-grid-community";
 import type { PropType } from "vue";
 import { defineComponent, h, resolveComponent, shallowRef } from "vue";
+import { scrollToGridSong } from "~~/composables/useSongListAudioPlayback";
 import type { SongInfo } from "~~/types/song";
 import { useSongListView } from "~~/composables/useSongListView";
 
@@ -354,19 +355,11 @@ const defaultColDef: ColDef = {
 };
 
 const scrollToActiveSongInList = () => {
-  if (!process.client || !activeSong.value || !gridApi.value) {
-    return;
-  }
-
-  const targetKey = getSongKey(activeSong.value);
-  const index = sortedSongs.value.findIndex(
-    (song) => getSongKey(song) === targetKey,
-  );
-  if (index === -1) {
-    return;
-  }
-
-  gridApi.value.ensureIndexVisible(index, "middle");
+  scrollToGridSong({
+    gridApi: gridApi.value,
+    songKey: activeSong.value ? getSongKey(activeSong.value) : null,
+    getRowSongKey: getSongKey,
+  });
 };
 
 watch([activeAudioKey, isActiveAudioPlaying, selectedSongKey], () => {
