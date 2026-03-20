@@ -9,6 +9,8 @@ dotenv.config({ path: "./secrets/.env" });
 const defaultRequiredWaitTimeForSongDownload = 30;
 const defaultDownloadPreferredVideoHeight = 720;
 
+const USDB_ANIMUX_URL = "https://usdb.animux.de";
+
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const ULTRA_STAR_COMPANION_PORT = process.env.ULTRA_STAR_COMPANION_PORT || "";
@@ -20,7 +22,7 @@ let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SO
 let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
 let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMAT || "mp4";
 let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT || "mp3";
-let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || "https://usdb.animux.de/index.php?link=byartist";
+let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || `${USDB_ANIMUX_URL}/index.php?link=byartist`;
 let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false;
 
 if (!PlaylistCacheDirPath) {
@@ -32,6 +34,10 @@ if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
 }
 
 export class ConfigHelper {
+  static getUsdbAnimuxUrl() {
+    return USDB_ANIMUX_URL;
+  }
+
   static getPlaylistCacheDirPath() {
 
     // check if the path exists

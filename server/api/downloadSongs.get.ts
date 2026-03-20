@@ -19,7 +19,7 @@ export default defineEventHandler(async () => {
 
   const browser = await chromium.launch({ headless: downloadUseHeadlessMode, slowMo: 100 });
   const page = await browser.newPage();
-  await page.goto("https://usdb.animux.de/");
+  await page.goto(ConfigHelper.getUsdbAnimuxUrl());
   // await page.screenshot({ path: `example.png` });
 
   const usdbAnimuxId = ConfigHelper.getUsdbAnimuxId();
@@ -35,7 +35,7 @@ export default defineEventHandler(async () => {
   await page.waitForLoadState("domcontentloaded");
   Logger.log("page loaded");
 
-  const testUrl = "https://usdb.animux.de/index.php?link=detail&id=4978";
+  const testUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=4978`;
   await downloadSong(browser, page, testUrl);
 
   // wait for 11 seconds
@@ -124,7 +124,7 @@ async function downloadSong(browser: Browser, page: Page, url: string, forceDown
     throw new Error("Cover image URL not found");
   }
   // e.g. https://usdb.animux.de/data/cover/4978.jpg
-  const coverImageUrl = `https://usdb.animux.de/${coverImageUrlPart}`;
+  const coverImageUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/${coverImageUrlPart}`;
   const coverImageExtension = path.extname(coverImageUrlPart).toLowerCase();
   if (!coverImageExtension) {
     throw new Error("Cover image extension not found");
@@ -172,7 +172,7 @@ async function downloadSong(browser: Browser, page: Page, url: string, forceDown
   // the last step is to get the actual txt file with the notes
   // the correct url is https://usdb.animux.de/index.php?link=gettxt&id=<songId>
 
-  const txtUrl = `https://usdb.animux.de/index.php?link=gettxt&id=${songId}`;
+  const txtUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=gettxt&id=${songId}`;
   Logger.log(`Getting txt file from URL: ${txtUrl}`);
   await page.goto(txtUrl);
   await page.waitForLoadState("domcontentloaded");

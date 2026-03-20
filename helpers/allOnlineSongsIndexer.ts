@@ -18,7 +18,6 @@ type ArtistLetterToIndexPage = {
 };
 
 const allSongsIndexJsonFileName = "all_online_songs_index.json";
-const usdbUrlPrefixForHref = "https://usdb.animux.de/";
 
 export class AllOnlineSongsIndexer {
   private static _allOnlineSongInfos: Map<
@@ -132,7 +131,7 @@ export class AllOnlineSongsIndexer {
       `[AllOnlineSongsIndexer] Indexing artist letter: ${artistLetterPageTuple.text} - ${artistLetterPageTuple.href}`,
     );
     const artistByLetterPageResponse = await fetch(
-      `${usdbUrlPrefixForHref}${artistLetterPageTuple.href}`,
+      `${ConfigHelper.getUsdbAnimuxUrl()}/${artistLetterPageTuple.href}`,
     );
     Logger.debug(
       `[AllOnlineSongsIndexer] Artist by letter page response: ${artistByLetterPageResponse.status} - ${artistByLetterPageResponse.statusText}`,
