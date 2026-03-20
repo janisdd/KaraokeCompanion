@@ -64,7 +64,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     }
 
     return source.filter((song) => {
-      const cachedEntry = searchIndex.value[song.id];
+      const cachedEntry = searchIndex.value[song.key];
       const haystack =
         searchMode.value === "lyrics"
           ? cachedEntry?.lyrics ??
@@ -119,7 +119,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     });
   });
 
-  const getSongKey = (song: SongInfo) => song.id;
+  const getSongKey = (song: SongInfo) => song.key;
 
   const getSongRowId = (song: SongInfo) =>
     `song-row-${encodeURIComponent(getSongKey(song))}`;

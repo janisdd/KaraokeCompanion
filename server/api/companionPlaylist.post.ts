@@ -1,6 +1,6 @@
 import type { SongInfo } from "~/types/song";
 import { ConfigHelper } from "~/helpers/configHelper";
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 
 type UltraStarCompanionPlaylistPayload = {
   songs: Array<{
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const songs = songIds
-    .map((songId) => Indexer.getSongsMap().get(songId))
+    .map((songId) => SongsIndexer.getSongsMap().get(songId))
     .filter((song): song is SongInfo => Boolean(song));
 
   const port = ConfigHelper.getUltraStarCompanionPort();

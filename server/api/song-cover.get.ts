@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Logger } from "~/helpers/logger";
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 
 const allowedExtensions = new Map<string, string>([
   [".jpg", "image/jpeg"],
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Missing song id" });
   }
 
-  const song = Indexer.getSongsMap().get(songId);
+  const song = SongsIndexer.getSongsMap().get(songId);
   if (!song) {
     throw createError({ statusCode: 404, message: "Song not found" });
   }
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Invalid cover file" });
   }
 
-  const songRoot = Indexer.getSongRootMap().get(songId);
+  const songRoot = SongsIndexer.getSongRootMap().get(songId);
   if (!songRoot) {
     throw createError({ statusCode: 404, message: "Song root not found" });
   }

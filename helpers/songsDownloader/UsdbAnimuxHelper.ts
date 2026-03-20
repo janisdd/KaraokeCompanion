@@ -12,8 +12,47 @@ type AudioVideoFileNamesTuple = {
 };
 
 const SLOW_MO = 100;
+//in the file we store the artist and song name (just for debug)
+const INDEX_FILE_EXTENSION = ".cache";
 
 export class UsdbAnimuxHelper {
+
+
+  // key is songId
+  private static _alreadyDownloadedSongIds: Set<string> = new Set();
+
+  private static _indexingFinished = false;
+
+	public static isIndexingFinished(): boolean {
+		return this._indexingFinished;
+	}
+
+  public static async checkAlreadyDownloadedSongs() {
+    this._alreadyDownloadedSongIds.clear();
+    const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
+    if (!downloadSongsDir) {
+      throw new Error("Download songs directory not set");
+    }
+
+    //check all files in the download songs dir
+    const files = fs.readdirSync(downloadSongsDir);
+    for (const file of files) {
+      if (!file.endsWith(INDEX_FILE_EXTENSION)) {
+        continue;
+      }
+      // we don't need the file content here, just the id (file anme)
+      const songId = path.parse(file).name;
+      const songIdFilePath = path.resolve(downloadSongsDir, file);
+      this._alreadyDownloadedSongIds.add(songId);
+    }
+    this._indexingFinished = true;
+  }
+
+  public static isSongAlreadyDownloaded(songId: string): boolean {
+    return this._alreadyDownloadedSongIds.has(songId);
+  }
+
+
   public static async downloadSong(song: OnlineSongInfo): Promise<void> {
     const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
 
@@ -85,7 +124,7 @@ export class UsdbAnimuxHelper {
     }
     const songId = `${id}`;
 
-    const songIdFile = `${songId}.txt`;
+    const songIdFile = `${songId}${INDEX_FILE_EXTENSION}`;
     const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
 
     // TODO this is a race condition...
@@ -99,7 +138,7 @@ export class UsdbAnimuxHelper {
     } else {
       // create file to indicate we are downloading the song
       if (!songIdFileExists) {
-        await fs.promises.writeFile(songIdFilePath, songId);
+        await fs.promises.writeFile(songIdFilePath, "");
         Logger.log(`Song ID file created: ${songIdFilePath}`);
       }
     }

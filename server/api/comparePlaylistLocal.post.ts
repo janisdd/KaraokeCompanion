@@ -4,7 +4,7 @@ import {
   getSpotifyPlaylistFull,
   type StrippedTrack,
 } from "~/helpers/playlistComparer";
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 import type { SongInfo } from "~~/types/song";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
 const loadLocalSongs = async (): Promise<SongInfo[]> => {
   try {
-    return Array.from(Indexer.getSongsMap().values());
+    return Array.from(SongsIndexer.getSongsMap().values());
   } catch {
     return [];
   }
@@ -102,7 +102,7 @@ const matchPlaylistToLocal = (
       results.push({
         spotify: track,
         local: {
-          id: match.song.id,
+          key: match.song.key,
           title: match.song.title,
           artist: match.song.artist,
         },

@@ -61,6 +61,12 @@ const queuedDownloadCount = computed(() => downloadQueue.value.length);
 const totalTrackedDownloads = computed(
   () => queuedDownloadCount.value + completedDownloadCount.value,
 );
+const isQueueFinished = computed(
+  () =>
+    completedDownloadCount.value > 0 &&
+    queuedDownloadCount.value === 0 &&
+    !isProcessingQueue.value,
+);
 const queueProgressPercent = computed(() => {
   if (!totalTrackedDownloads.value) {
     return 0;
@@ -160,6 +166,15 @@ const cancelDownload = (song: OnlineSongInfo) => {
   resetQueueProgressIfIdle();
 };
 
+const closeQueuePanel = () => {
+  if (!isQueueFinished.value) {
+    return;
+  }
+
+  completedDownloadCount.value = 0;
+  downloadError.value = null;
+};
+
 const DownloadCell = defineComponent({
   props: {
     params: {
@@ -212,6 +227,34 @@ const centerCellStyle = {
   justifyContent: "center",
 };
 
+const ExistingStatusCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<OnlineSongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const song = props.params.data;
+      if (!song) {
+        return null;
+      }
+
+      const exists = song.existingOrAlreadyDownloaded;
+      return h(
+        "span",
+        {
+          class: exists
+            ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+            : "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+        },
+        exists ? "Yes" : "No",
+      );
+    };
+  },
+});
+
 const columnDefs: ColDef<OnlineSongInfo>[] = [
   {
     headerName: "Download",
@@ -236,6 +279,16 @@ const columnDefs: ColDef<OnlineSongInfo>[] = [
     headerName: "Song",
     field: "songName",
     minWidth: 220,
+    suppressMovable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Existing",
+    field: "existingOrAlreadyDownloaded",
+    width: 90,
+    cellStyle: centerCellStyle,
+    valueFormatter: (params) => (params.value ? "Yes" : "No"),
+    cellRenderer: ExistingStatusCell,
     suppressMovable: true,
     resizable: true,
   },
@@ -303,7 +356,19 @@ const defaultColDef: ColDef<OnlineSongInfo> = {
         >
           <div class="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
             <span>Download queue</span>
-            <span>{{ queueProgressPercent }}%</span>
+            <div class="flex items-center gap-3">
+              <span>{{ queueProgressPercent }}%</span>
+              <button
+                v-if="isQueueFinished"
+                type="button"
+                class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                aria-label="Close download queue"
+                title="Close download queue"
+                @click="closeQueuePanel"
+              >
+                <font-awesome-icon icon="fa-solid fa-xmark" />
+              </button>
+            </div>
           </div>
           <div class="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div

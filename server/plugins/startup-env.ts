@@ -1,9 +1,10 @@
 import { config as loadEnv } from 'dotenv'
 import { Logger, LogLevelEnum } from '~/helpers/logger'
-import { Indexer } from '~/helpers/songsIndexer'
+import { SongsIndexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
+import { UsdbAnimuxHelper } from '~/helpers/songsDownloader/UsdbAnimuxHelper';
 
 
 export default defineNitroPlugin(async () => {
@@ -78,20 +79,24 @@ export default defineNitroPlugin(async () => {
   Logger.log(`[nuxt start] DOWNLOAD_SONGS_DIR: ${ConfigHelper.getDownloadSongsDir()}`);
 
 
-  AllOnlineSongsIndexer.indexAllOnlineSongs();
+  await UsdbAnimuxHelper.checkAlreadyDownloadedSongs();
+  await AllOnlineSongsIndexer.indexAllOnlineSongs();
 
   try {
     Logger.log(`[nuxt start] Now indexing songs in ${songsDirPaths.length} dirs`);
-    // for (const dirPath of songsDirPaths) {
-    //   Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
-    //   await Indexer.indexFilesInDirectory(dirPath);
-    //   Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
-    // }
+    for (const dirPath of songsDirPaths) {
+      Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
+      await SongsIndexer.indexFilesInDirectory(dirPath);
+      Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
+    }
     Logger.log(`[nuxt start] All Songs indexed successfully for ${songsDirPaths.length} dirs`);
-    Logger.log(`[nuxt start] Total songs indexed: ${Indexer.getSongsMap().size}`);
+    Logger.log(`[nuxt start] Total songs indexed: ${SongsIndexer.getSongsMap().size}`);
   } catch (error) {
     Logger.error(`[nuxt start] Error indexing songs: ${error instanceof Error ? error.message : String(error)}`);
   }
+
+  // after we have info about existing and downloaded songs
+  AllOnlineSongsIndexer.setSongsExistsOrWereAlreadyDownloaded();
 
   // do not use logger here, we always want to show this message (regardless of log level)
   console.log(`[nuxt start] --- Startup completed --- `);

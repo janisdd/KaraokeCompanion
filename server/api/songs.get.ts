@@ -1,9 +1,9 @@
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 
 export default defineEventHandler(async () => {
  
   try {
-    const songs = Array.from(Indexer.getSongsMap().values());
+    const songs = Array.from(SongsIndexer.getSongsMap().values());
     return songs;
   } catch {
     // On any error, be resilient and return empty

@@ -13,7 +13,7 @@ definePageMeta({
 const { songs, pending, error } = useSongs();
 const { markedSongKeys, unmarkAllSongs } = useMarkedSongs();
 
-const getSongKey = (song: SongInfo) => song.id;
+const getSongKey = (song: SongInfo) => song.key;
 
 const markedSongs = computed(() => {
   if (!songs.value || !markedSongKeys.value.length) {
@@ -47,7 +47,7 @@ const sendCompanionPlaylist = async () => {
   try {
     await $fetch("/api/companionPlaylist", {
       method: "POST",
-      body: { songIds: markedSongs.value.map((song) => song.id) },
+      body: { songIds: markedSongs.value.map((song) => song.key) },
     });
   } catch (error) {
     console.error("Failed to send companion playlist", error);

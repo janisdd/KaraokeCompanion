@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Missing song id" });
   }
 
-  const song = Indexer.getSongsMap().get(songId);
+  const song = SongsIndexer.getSongsMap().get(songId);
   if (!song) {
     throw createError({ statusCode: 404, message: "Song not found" });
   }
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Invalid audio file" });
   }
 
-  const songRoot = Indexer.getSongRootMap().get(songId);
+  const songRoot = SongsIndexer.getSongRootMap().get(songId);
   if (!songRoot) {
     throw createError({ statusCode: 404, message: "Song root not found" });
   }

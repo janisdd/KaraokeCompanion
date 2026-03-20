@@ -24,7 +24,7 @@ const buildSearchIndex = (songs: SongInfo[]) => {
     const lyricsSource =
       song.songText ?? song.songTextAsWords?.join(" ") ?? "";
 
-    index[song.id] = {
+    index[song.key] = {
       metadata,
       lyrics: normalizeSearchText(lyricsSource),
     };

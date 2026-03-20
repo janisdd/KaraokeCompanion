@@ -2,17 +2,23 @@ import { ConfigHelper } from "./configHelper";
 import * as htmlParser from "node-html-parser";
 import { Logger } from "./logger";
 import fs from "fs";
-
+import { UsdbAnimuxHelper } from "./songsDownloader/UsdbAnimuxHelper";
+import { SongKeyHelper } from "./songKeyHelper";
+import { SongsIndexer } from "./songsIndexer";
 
 const ONLINE_SONGS_INDEX_JSON_FILE_NAME = "online_songs_index.json";
 
-export type OnlineSongInfo = {
+export type OnlineSongInfoPlain = {
   //this is just artist-songname (to make it unique and never change)
   key: string;
   // we can create the href from the id: ?link=detail&id=<songId>
-  songId: string; 
+  songId: string;
   songName: string;
   artist: string;
+};
+
+export type OnlineSongInfo = OnlineSongInfoPlain & {
+  existingOrAlreadyDownloaded: boolean;
 };
 
 type ArtistLetterToIndexPage = {
@@ -23,42 +29,93 @@ type ArtistLetterToIndexPage = {
 // we need the version in case we need to change the structure of the index object
 type OnlineSongInfoIndexObj = {
   version: string;
-  index: OnlineSongInfo[];
-}
-
+  index: OnlineSongInfoPlain[];
+};
 
 export class AllOnlineSongsIndexer {
+  private static _allOnlineSongInfosPlain: Map<
+    OnlineSongInfoPlain["key"],
+    OnlineSongInfoPlain
+  > = new Map();
+
   private static _allOnlineSongInfos: Map<
     OnlineSongInfo["key"],
     OnlineSongInfo
-  > = new Map();
+  > | null = null;
 
-  public static getAllOnlineSongInfos(): OnlineSongInfo[] {
+  public static getAllOnlineSongInfos(): OnlineSongInfo[] | null {
+    if (!this._allOnlineSongInfos) {
+      Logger.warn(`[AllOnlineSongsIndexer] All online song infos not set (call setSongsExistsOrWereAlreadyDownloaded first), returning null`);
+      return null;
+    }
     return Array.from(this._allOnlineSongInfos.values());
   }
 
+    //song can be already downloaded or inside the ultrastar song dir...
+  public static setSongsExistsOrWereAlreadyDownloaded() {
+    const hasDownloadedSongIndex = UsdbAnimuxHelper.isIndexingFinished();
+    const hasExistingSongIdex = SongsIndexer.isIndexingFinished();
+
+    let existingOrAlreadyDownloaded: boolean = false;
+    
+    if (!hasDownloadedSongIndex) {
+      Logger.warn(`[AllOnlineSongsIndexer] UsdbAnimuxHelper is not indexed, skipping setting songs were already downloaded`);
+    }
+    if (!hasExistingSongIdex) {
+      Logger.warn(`[AllOnlineSongsIndexer] SongsIndexer is not indexed, skipping setting songs exists`);
+    }
+
+    if (!hasDownloadedSongIndex && !hasExistingSongIdex) {
+      this._allOnlineSongInfos = null;
+      return;
+    }
+
+    this._allOnlineSongInfos = new Map();
+
+    // iterate over all online song infos plain
+    for (const songInfo of this._allOnlineSongInfosPlain.values()) {
+      const songId = songInfo.songId;
+      const songAlreadyDownloaded = UsdbAnimuxHelper.isSongAlreadyDownloaded(songId);
+
+      // existing songs is harder because they have no songId...
+      //check for same artist and song name
+      const songKey = SongKeyHelper.getKey(songInfo.artist, songInfo.songName);
+      
+      const songExists = SongsIndexer.hasSong(songKey);
+      existingOrAlreadyDownloaded = songExists || songAlreadyDownloaded;
+
+      this._allOnlineSongInfos.set(songKey, {
+        ...songInfo,
+        existingOrAlreadyDownloaded,
+      });
+    }
+  }
+
   public static saveIndexToFile() {
+    // the real index should not contain the alreadyDownloaded (tmp) property
+    // the tmp properties are already re-calculated on startup
+    const plainIndex = Array.from(this._allOnlineSongInfosPlain.values());
+
     const indexObj: OnlineSongInfoIndexObj = {
       version: "1.0.0",
-      index: this.getAllOnlineSongInfos(),
+      index: plainIndex,
     };
-    const indexJson = JSON.stringify(
-      indexObj,
-      null,
-      2,
-    );
+    const indexJson = JSON.stringify(indexObj, null, 2);
     fs.writeFileSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME, indexJson);
   }
 
   public static loadIndexFromFile() {
-    const indexJson = fs.readFileSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME, "utf8");
+    const indexJson = fs.readFileSync(
+      ONLINE_SONGS_INDEX_JSON_FILE_NAME,
+      "utf8",
+    );
     const indexObj = JSON.parse(indexJson) as OnlineSongInfoIndexObj;
     if (indexObj.version !== "1.0.0") {
       throw new Error(`Invalid index version: ${indexObj.version}`);
     }
     const index = indexObj.index;
     for (const songInfo of index) {
-      this._allOnlineSongInfos.set(songInfo.key, songInfo);
+      this._allOnlineSongInfosPlain.set(songInfo.key, songInfo);
     }
   }
 
@@ -66,15 +123,10 @@ export class AllOnlineSongsIndexer {
     return fs.existsSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME);
   }
 
-  // key is "artist - songid" because this is what should be unique and never change
-  private static getKey(artist: string, songName: string): string {
-    return `${artist}-${songName}`;
-  }
-
   public static async indexAllOnlineSongs() {
     if (this.checkIfIndexExists()) {
       Logger.log(
-        `[AllOnlineSongsIndexer] Index already exists, loading from file ${ONLINE_SONGS_INDEX_JSON_FILE_NAME}`,
+        `[AllOnlineSongsIndexer] Online Songs Index already exists, loading from file ${ONLINE_SONGS_INDEX_JSON_FILE_NAME}`,
       );
       this.loadIndexFromFile();
       return;
@@ -124,7 +176,7 @@ export class AllOnlineSongsIndexer {
       );
 
       for (const onlineSongInfo of onlineSongInfos) {
-        this._allOnlineSongInfos.set(onlineSongInfo.key, onlineSongInfo);
+        this._allOnlineSongInfosPlain.set(onlineSongInfo.key, onlineSongInfo);
       }
 
       //wait for 500ms
@@ -140,7 +192,7 @@ export class AllOnlineSongsIndexer {
   private static async indexArtistLetter(
     artistLetterPageTuple: ArtistLetterToIndexPage,
   ) {
-    const onlineSongInfos: OnlineSongInfo[] = [];
+    const onlineSongInfos: OnlineSongInfoPlain[] = [];
     // this returns a html page
 
     Logger.debug(
@@ -258,10 +310,12 @@ export class AllOnlineSongsIndexer {
       }
 
       const songInfo: OnlineSongInfo = {
-        key: this.getKey(artistName, songName),
+        key: SongKeyHelper.getKey(artistName, songName),
         songId: songId,
         songName: songName,
-        artist: artistName
+        artist: artistName,
+        existingOrAlreadyDownloaded:
+          UsdbAnimuxHelper.isSongAlreadyDownloaded(songId),
       };
       onlineSongInfos.push(songInfo);
 
@@ -275,5 +329,12 @@ export class AllOnlineSongsIndexer {
 }
 
 function isOnlineSongInfo(value: unknown): value is OnlineSongInfo {
-  return typeof value === "object" && value !== null && "key" in value && "songId" in value && "songName" in value && "artist" in value;
-};
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "key" in value &&
+    "songId" in value &&
+    "songName" in value &&
+    "artist" in value
+  );
+}

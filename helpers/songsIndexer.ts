@@ -3,10 +3,17 @@ import fs from "fs"
 import path from "path"
 import * as chardet from "chardet"
 import { Logger } from "./logger"
+import { SongKeyHelper } from "./songKeyHelper"
 
-export class Indexer {
+export class SongsIndexer {
 	private static _songsMap = new Map<string, SongInfo>()
 	private static _songRootMap = new Map<string, string>()
+
+	private static _indexingFinished = false;
+
+	public static isIndexingFinished(): boolean {
+		return this._indexingFinished;
+	}
 
 	private static normalizeEncoding(encoding: string | null): BufferEncoding {
 		if (!encoding) return "utf8"
@@ -38,7 +45,7 @@ export class Indexer {
 			}
 			return swapped.toString("utf16le")
 		}
-		return buffer.toString(Indexer.normalizeEncoding(encodingLabel))
+		return buffer.toString(SongsIndexer.normalizeEncoding(encodingLabel))
 	}
 
 	/**
@@ -58,31 +65,32 @@ export class Indexer {
 		const songEntries = await Promise.all(
 			songDirectories.map(async (songDirectory, index) => ({
 				songDirectory,
-				songInfo: await Indexer.indexFile(path.join(songsDirectory, songDirectory), songsDirectory, index, songDirectories.length),
+				songInfo: await SongsIndexer.indexFile(path.join(songsDirectory, songDirectory), songsDirectory, index, songDirectories.length),
 			})),
 		)
 		for (const entry of songEntries) {
 			if (!entry.songInfo) continue
-			if (Indexer._songsMap.has(entry.songInfo.id)) {
-				Logger.warn(`Duplicate song id "${entry.songInfo.id}" skipping song directory: ${entry.songDirectory}`)
+			if (SongsIndexer._songsMap.has(entry.songInfo.key)) {
+				Logger.warn(`Duplicate song id "${entry.songInfo.key}" skipping song directory: ${entry.songDirectory}`)
 				continue
 			}
-			Indexer._songsMap.set(entry.songInfo.id, entry.songInfo)
-			Indexer._songRootMap.set(entry.songInfo.id, songsDirectory)
+			SongsIndexer._songsMap.set(entry.songInfo.key, entry.songInfo)
+			SongsIndexer._songRootMap.set(entry.songInfo.key, songsDirectory)
 		}
 		console.timeEnd(timerName)
+		this._indexingFinished = true;
 	}
 
 	static getSongsMap(): Map<string, SongInfo> {
-		return Indexer._songsMap
+		return SongsIndexer._songsMap
 	}
 
 	static getSongRootMap(): Map<string, string> {
-		return Indexer._songRootMap
+		return SongsIndexer._songRootMap
 	}
 
-	static getSongRoot(songId: string): string | undefined {
-		return Indexer._songRootMap.get(songId)
+	static hasSong(songKey: string): boolean {
+		return SongsIndexer._songRootMap.has(songKey)
 	}
 
 	/**
@@ -115,7 +123,7 @@ export class Indexer {
 					wasEncodingChanged = true
 					candidateEncoding = "ISO-8859-1"
 				}
-				const candidateContent = Indexer.decodeBuffer(candidateBuffer, candidateEncoding)
+				const candidateContent = SongsIndexer.decodeBuffer(candidateBuffer, candidateEncoding)
 				const candidateLineCount = candidateContent.split("\n").length
 				if (candidateLineCount > 100) {
 					selectedPath = candidatePath
@@ -139,7 +147,7 @@ export class Indexer {
 				detectedEncoding = "ISO-8859-1"
 			}
 			selectedEncoding = detectedEncoding
-			selectedContent = Indexer.decodeBuffer(songInfoBuffer, detectedEncoding)
+			selectedContent = SongsIndexer.decodeBuffer(songInfoBuffer, detectedEncoding)
 		}
 
 		if (wasEncodingChanged) {
@@ -151,7 +159,7 @@ export class Indexer {
 		const lines = songInfoFile.split("\n")
 
 		const songInfo: SongInfo = {
-			id: "",
+			key: "",
 			title: "",
 			artist: "",
 			year: null,
@@ -252,7 +260,7 @@ export class Indexer {
 			Logger.warn(`Empty song title or artist for song: ${songDirectory}`)
 		}
 
-		songInfo.id = `${songInfo.title.trim()} - ${songInfo.artist.trim()}`
+		songInfo.key = SongKeyHelper.getKey(songInfo.artist, songInfo.title)
 
 		return songInfo
 	}

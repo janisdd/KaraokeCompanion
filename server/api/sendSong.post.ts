@@ -1,6 +1,6 @@
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
-import { Indexer } from "~/helpers/songsIndexer";
+import { SongsIndexer } from "~/helpers/songsIndexer";
 
 // this type is used to forward the song to the ultra star app (we are the companion app)
 type UltraStarCompanionForwardRequest = {
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Missing songId" });
   }
 
-  const song = Indexer.getSongsMap().get(songId);
+  const song = SongsIndexer.getSongsMap().get(songId);
   if (!song) {
     Logger.error(`Song not found: ${songId}`);
     throw createError({ statusCode: 404, message: "Song not found" });

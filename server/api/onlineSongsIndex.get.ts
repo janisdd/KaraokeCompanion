@@ -11,6 +11,12 @@ export default defineEventHandler(async () => {
 	}
 
   const allOnlineSongInfos = AllOnlineSongsIndexer.getAllOnlineSongInfos();
+  if (!allOnlineSongInfos) {
+    throw createError({
+      status: 500,
+      message: "Online songs index not found",
+    });
+  }
   return {
     success: true,
     data: allOnlineSongInfos,

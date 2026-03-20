@@ -21,7 +21,7 @@ definePageMeta({
 
 type MatchResult = {
   spotify: { name: string; artist: string };
-  local: { id: string; title: string; artist: string };
+  local: { key: string; title: string; artist: string };
 };
 
 type CompareResponse = {
@@ -44,7 +44,7 @@ const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
 const localSongFromMatch = (match: MatchResult): SongInfo => ({
-  id: match.local.id,
+  key: match.local.key,
   title: match.local.title,
   artist: match.local.artist,
   year: null,
@@ -58,7 +58,7 @@ const localSongFromMatch = (match: MatchResult): SongInfo => ({
   songText: "",
 });
 
-const getLocalSongKey = (song: SongInfo) => song.id;
+const getLocalSongKey = (song: SongInfo) => song.key;
 
 const {
   activeAudioKey,
@@ -76,7 +76,7 @@ const {
 } = useSongListAudioPlayback({
   audioStorageKey: "compare-local-audio",
   getSongKey: getLocalSongKey,
-  getSongRowId: (song) => `local-song-row-${encodeURIComponent(song.id)}`,
+  getSongRowId: (song) => `local-song-row-${encodeURIComponent(song.key)}`,
 });
 
 const gridApi = shallowRef<GridApi | null>(null);
@@ -111,7 +111,7 @@ const sendSongToBackend = async (song: SongInfo) => {
   try {
     await $fetch("/api/sendSong", {
       method: "POST",
-      body: { songId: song.id },
+      body: { songId: song.key },
     });
   } catch (error) {
     console.error("Failed to send song", error);
@@ -165,9 +165,9 @@ const MarkCell = defineComponent({
       return h("input", {
         type: "checkbox",
         class: "h-4 w-4 accent-slate-700 dark:accent-slate-300",
-        checked: isMarkedSong(match.local.id),
+        checked: isMarkedSong(match.local.key),
         "aria-label": `Mark ${match.local.artist} - ${match.local.title}`,
-        onChange: () => toggleMarkedSong(match.local.id),
+        onChange: () => toggleMarkedSong(match.local.key),
       });
     };
   },
@@ -337,7 +337,7 @@ const scrollToActiveSongInList = () => {
 };
 
 const markAllMatches = () => {
-  const matchIds = filteredMatches.value.map((match) => match.local.id);
+  const matchIds = filteredMatches.value.map((match) => match.local.key);
   if (!matchIds.length) {
     return;
   }
@@ -455,7 +455,7 @@ const markAllMatches = () => {
                 :defaultColDef="defaultColDef"
                 :rowData="filteredMatches"
                 :rowHeight="rowHeight"
-                :getRowId="(params) => params.data.local.id"
+                :getRowId="(params) => params.data.local.key"
                 domLayout="autoHeight"
                 @grid-ready="onGridReady"
               />

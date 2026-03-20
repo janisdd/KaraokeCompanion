@@ -1,5 +1,6 @@
 export type SongInfo = {
-	id: string
+	// normally "artist-title" (@see SongKeyHelper)
+	key: string
   title: string
   artist: string
   year: number | null

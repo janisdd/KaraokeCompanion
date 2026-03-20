@@ -11,7 +11,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   const { audioStorageKey, getSongKey, getSongRowId } = options;
 
   const getAudioFile = (song: SongInfo) => {
-    const songId = song.id?.trim();
+    const songId = song.key?.trim();
     if (!songId) {
       return null;
     }
@@ -19,7 +19,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   };
 
   const getCoverFile = (song: SongInfo) => {
-    const songId = song.id?.trim();
+    const songId = song.key?.trim();
     if (!songId) {
       return null;
     }
