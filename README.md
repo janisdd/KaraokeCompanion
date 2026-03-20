@@ -24,6 +24,18 @@ you have to copy the `.env_example` to `.env` and set all values
 	- gets automatically created (recursively)
 - `IS_DEFAULT_PAGE_THEME_MODE_DARK` `true` or `false`, the page has a dark mode, if `true`, the dark mode is initially used (on first load)
 
+if you want to use the download feature, you also need to set `ULTRA_START_SONGS_DIR_PATH2` (or `3`, ...) to the path where the downloaded songs will be stored
+
+the path for the downloaded songs is set with `DOWNLOAD_SONGS_DIR`, specify the full path in `ULTRA_START_SONGS_DIR_PATH2`
+
+example:
+
+```bash
+ULTRA_START_SONGS_DIR_PATH1=/path/to/songs/dir1
+ULTRA_START_SONGS_DIR_PATH2=/path/to/download_work/
+DOWNLOAD_SONGS_DIR=download_work/
+```
+
 
 you have to copy the `secrets/.env_example` to `secrets/.env` and set all values
 
