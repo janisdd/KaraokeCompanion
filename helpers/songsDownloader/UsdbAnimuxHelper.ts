@@ -53,11 +53,42 @@ export class UsdbAnimuxHelper {
   }
 
 
-  public static async downloadSong(song: OnlineSongInfo): Promise<void> {
+  public static async downloadSong(song: OnlineSongInfo, forceDownload: boolean = false): Promise<void> {
     const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
 
     if (!downloadSongsDir) {
       throw new Error("Download songs directory not set");
+    }
+
+    // const songUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=4978`;
+    const songUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=${song.songId}`;
+
+    // e.g. url is https://usdb.animux.de/index.php?link=detail&id=4978
+    // we need to get the id from the url
+    const urlParams = new URLSearchParams(songUrl);
+    const id = urlParams.get("id");
+    if (!id) {
+      throw new Error("ID not found in URL");
+    }
+    const songId = `${id}`;
+
+    const songIdFile = `${songId}${INDEX_FILE_EXTENSION}`;
+    const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
+
+    // TODO this is a race condition...
+    // when multiple requests are made at the same time
+    // one could be before writing the file and the other after reading it
+
+    const songIdFileExists = fs.existsSync(songIdFilePath);
+    if (songIdFileExists && !forceDownload) {
+      Logger.log(`Song already downloaded: ${songIdFilePath}`);
+      return;
+    } else {
+      // create file to indicate we are downloading the song
+      if (!songIdFileExists) {
+        await fs.promises.writeFile(songIdFilePath, "");
+        Logger.log(`Song ID file created: ${songIdFilePath}`);
+      }
     }
 
     const downloadUseHeadlessMode = ConfigHelper.getDownloadUseHeadlessMode();
@@ -87,9 +118,8 @@ export class UsdbAnimuxHelper {
       await page.waitForLoadState("domcontentloaded");
       Logger.log("page loaded");
 
-      // const songUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=4978`;
-      const songUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=${song.songId}`;
-      await this._downloadSingleSong(page, songUrl, downloadSongsDir);
+      //now we are logged in
+      await this._downloadSingleSong(page, songUrl, downloadSongsDir, songId);
 
       // wait for 1s to finish
       await new Promise((resolve) => setTimeout(resolve, 1_000));
@@ -113,38 +143,10 @@ export class UsdbAnimuxHelper {
     page: Page,
     url: string,
     downloadSongsDir: string,
-    forceDownload: boolean = false,
+    songId: string,
   ) {
-    // e.g. url is https://usdb.animux.de/index.php?link=detail&id=4978
-    // we need to get the id from the url
-    const urlParams = new URLSearchParams(url);
-    const id = urlParams.get("id");
-    if (!id) {
-      throw new Error("ID not found in URL");
-    }
-    const songId = `${id}`;
-
-    const songIdFile = `${songId}${INDEX_FILE_EXTENSION}`;
-    const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
-
-    // TODO this is a race condition...
-    // when multiple requests are made at the same time
-    // one could be before writing the file and the other after reading it
-
-    const songIdFileExists = fs.existsSync(songIdFilePath);
-    if (songIdFileExists && !forceDownload) {
-      Logger.log(`Song already downloaded: ${songIdFilePath}`);
-      return;
-    } else {
-      // create file to indicate we are downloading the song
-      if (!songIdFileExists) {
-        await fs.promises.writeFile(songIdFilePath, "");
-        Logger.log(`Song ID file created: ${songIdFilePath}`);
-      }
-    }
-
+    
     Logger.log(`Downloading song from URL: ${url}`);
-    Logger.log(`Song ID: ${songId}`);
 
     // go to the page and wait for the page to load
     await page.goto(url);

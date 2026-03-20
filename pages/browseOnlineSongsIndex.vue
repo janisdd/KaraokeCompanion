@@ -8,6 +8,9 @@ import {
 import { defineComponent, h, type PropType } from "vue";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import type { SongInfo } from "~/types/song";
+import { useSongs } from "~~/composables/useSongs";
+import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
 
 defineOptions({
   name: "BrowseOnlineSongsIndexPage",
@@ -24,8 +27,20 @@ type OnlineSongsIndexResponse = {
 
 type QueuedDownload = {
   song: OnlineSongInfo;
+  overwriteExisting: boolean;
   status: "queued" | "downloading";
   controller?: AbortController;
+};
+
+type ExistingStatus = "no" | "indexed" | "downloaded";
+
+type OnlineSongRow = OnlineSongInfo & {
+  existingStatus: ExistingStatus;
+  existingSong: SongInfo | null;
+  language: SongInfo["language"];
+  year: SongInfo["year"];
+  genre: SongInfo["genre"];
+  audioAvailable: boolean;
 };
 
 const MAX_QUEUED_DOWNLOADS = 5;
@@ -44,7 +59,46 @@ const {
   error,
 } = await useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex");
 
-const onlineSongs = computed(() => response.value?.data ?? []);
+const {
+  songs: existingSongs,
+  pending: existingSongsPending,
+  error: existingSongsError,
+} = useSongs();
+
+const {
+  activeAudioKey,
+  isActiveAudioPlaying,
+  toggleAudioPlayback,
+} = useSongListAudioPlayback({
+  audioStorageKey: "browse-online-songs",
+  getSongKey: (song) => song.key,
+  getSongRowId: (song) => `browse-online-song-${encodeURIComponent(song.key)}`,
+});
+
+const existingSongsByKey = computed(() => {
+  return new Map(existingSongs.value.map((song) => [song.key, song]));
+});
+
+const onlineSongs = computed<OnlineSongRow[]>(() => {
+  return (response.value?.data ?? []).map((song) => {
+    const existingSong = existingSongsByKey.value.get(song.key) ?? null;
+    const existingStatus: ExistingStatus = existingSong
+      ? "indexed"
+      : song.existingOrAlreadyDownloaded
+        ? "downloaded"
+        : "no";
+
+    return {
+      ...song,
+      existingStatus,
+      existingSong,
+      language: existingSong?.language ?? null,
+      year: existingSong?.year ?? null,
+      genre: existingSong?.genre ?? null,
+      audioAvailable: Boolean(existingSong?.audioFile),
+    };
+  });
+});
 
 const filteredSongs = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -93,6 +147,23 @@ const removeQueuedSong = (songId: string) => {
   downloadQueue.value = downloadQueue.value.filter((item) => item.song.songId !== songId);
 };
 
+const confirmOverwriteDownload = (song: OnlineSongRow) => {
+  if (song.existingStatus === "no") {
+    return true;
+  }
+
+  const existingLabel =
+    song.existingStatus === "indexed" ? "already indexed locally" : "already downloaded";
+
+  if (!process.client) {
+    return false;
+  }
+
+  return window.confirm(
+    `${song.artist} - ${song.songName} is ${existingLabel}.\n\nDo you want to overwrite the existing song files?`,
+  );
+};
+
 const processDownloadQueue = async () => {
   if (isProcessingQueue.value) {
     return;
@@ -114,6 +185,7 @@ const processDownloadQueue = async () => {
       method: "POST",
       body: {
         songs: [nextItem.song],
+        overwriteExisting: nextItem.overwriteExisting,
       },
       signal: controller.signal,
     });
@@ -133,7 +205,7 @@ const processDownloadQueue = async () => {
   }
 };
 
-const queueDownload = (song: OnlineSongInfo) => {
+const queueDownload = (song: OnlineSongRow) => {
   if (isQueuedSong(song.songId)) {
     return;
   }
@@ -147,8 +219,16 @@ const queueDownload = (song: OnlineSongInfo) => {
     return;
   }
 
+  const overwriteExisting = confirmOverwriteDownload(song);
+  if (!overwriteExisting && song.existingStatus !== "no") {
+    return;
+  }
+
   downloadError.value = null;
-  downloadQueue.value = [...downloadQueue.value, { song, status: "queued" }];
+  downloadQueue.value = [
+    ...downloadQueue.value,
+    { song, overwriteExisting, status: "queued" },
+  ];
   void processDownloadQueue();
 };
 
@@ -178,7 +258,7 @@ const closeQueuePanel = () => {
 const DownloadCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<OnlineSongInfo>>,
+      type: Object as PropType<ICellRendererParams<OnlineSongRow>>,
       required: true,
     },
   },
@@ -191,6 +271,8 @@ const DownloadCell = defineComponent({
 
       const isQueued = isQueuedSong(song.songId);
       const isDownloading = isDownloadingSong(song.songId);
+      const isRetry = song.existingStatus !== "no";
+      const actionLabel = isRetry ? "Retry download" : "Queue download";
       return h(
         "button",
         {
@@ -205,15 +287,19 @@ const DownloadCell = defineComponent({
             !isQueued && queuedDownloadCount.value >= MAX_QUEUED_DOWNLOADS,
           "aria-label": isQueued
             ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `Queue download for ${song.artist} - ${song.songName}`,
+            : `${actionLabel} for ${song.artist} - ${song.songName}`,
           title: isQueued
             ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `Queue download for ${song.artist} - ${song.songName}`,
+            : `${actionLabel} for ${song.artist} - ${song.songName}`,
           onClick: () => (isQueued ? cancelDownload(song) : queueDownload(song)),
         },
         [
           h(FontAwesomeIcon, {
-            icon: isQueued ? "fa-solid fa-xmark" : "fa-solid fa-cloud-arrow-down",
+            icon: isQueued
+              ? "fa-solid fa-xmark"
+              : isRetry
+                ? "fa-solid fa-rotate-right"
+                : "fa-solid fa-cloud-arrow-down",
           }),
         ],
       );
@@ -227,10 +313,69 @@ const centerCellStyle = {
   justifyContent: "center",
 };
 
+const getExistingStatusLabel = (status: ExistingStatus) => {
+  switch (status) {
+    case "indexed":
+      return "Indexed";
+    case "downloaded":
+      return "Downloaded";
+    default:
+      return "No";
+  }
+};
+
+const getExistingStatusClass = (status: ExistingStatus) => {
+  switch (status) {
+    case "indexed":
+      return "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300";
+    case "downloaded":
+      return "inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
+    default:
+      return "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+  }
+};
+
+const AudioCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<OnlineSongRow>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const song = props.params.data;
+      const existingSong = song?.existingSong;
+      if (!song || !existingSong || !song.audioAvailable) {
+        return h("span", { class: "text-slate-400 dark:text-slate-500" }, "—");
+      }
+
+      const isActive =
+        activeAudioKey.value === existingSong.key && isActiveAudioPlaying.value;
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class:
+            "inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          "aria-label": isActive ? "Pause audio" : "Play audio",
+          onClick: () => toggleAudioPlayback(existingSong),
+        },
+        [
+          h(FontAwesomeIcon, {
+            icon: isActive ? "fa-solid fa-pause" : "fa-solid fa-play",
+          }),
+        ],
+      );
+    };
+  },
+});
+
 const ExistingStatusCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<OnlineSongInfo>>,
+      type: Object as PropType<ICellRendererParams<OnlineSongRow>>,
       required: true,
     },
   },
@@ -241,21 +386,19 @@ const ExistingStatusCell = defineComponent({
         return null;
       }
 
-      const exists = song.existingOrAlreadyDownloaded;
+      const status = song.existingStatus;
       return h(
         "span",
         {
-          class: exists
-            ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-            : "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+          class: getExistingStatusClass(status),
         },
-        exists ? "Yes" : "No",
+        getExistingStatusLabel(status),
       );
     };
   },
 });
 
-const columnDefs: ColDef<OnlineSongInfo>[] = [
+const columnDefs: ColDef<OnlineSongRow>[] = [
   {
     headerName: "Download",
     colId: "download",
@@ -284,17 +427,53 @@ const columnDefs: ColDef<OnlineSongInfo>[] = [
   },
   {
     headerName: "Existing",
-    field: "existingOrAlreadyDownloaded",
-    width: 90,
+    field: "existingStatus",
+    width: 120,
     cellStyle: centerCellStyle,
-    valueFormatter: (params) => (params.value ? "Yes" : "No"),
+    valueFormatter: (params) =>
+      getExistingStatusLabel((params.value as ExistingStatus) ?? "no"),
     cellRenderer: ExistingStatusCell,
+    suppressMovable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Language",
+    field: "language",
+    width: 100,
+    valueFormatter: (params) => params.value ?? "—",
+    suppressMovable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Year",
+    field: "year",
+    width: 80,
+    valueFormatter: (params) => params.value ?? "—",
+    suppressMovable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Audio",
+    colId: "audio",
+    width: 70,
+    sortable: false,
+    cellStyle: centerCellStyle,
+    valueGetter: (params) => (params.data?.audioAvailable ? 1 : 0),
+    cellRenderer: AudioCell,
+    suppressMovable: true,
+    resizable: true,
+  },
+  {
+    headerName: "Genre",
+    field: "genre",
+    width: 140,
+    valueFormatter: (params) => params.value ?? "—",
     suppressMovable: true,
     resizable: true,
   },
 ];
 
-const defaultColDef: ColDef<OnlineSongInfo> = {
+const defaultColDef: ColDef<OnlineSongRow> = {
   sortable: true,
   resizable: true,
   comparator: (valueA, valueB) => {
@@ -339,7 +518,9 @@ const defaultColDef: ColDef<OnlineSongInfo> = {
           class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400"
         >
           <span v-if="pending">Loading online songs...</span>
+          <span v-else-if="existingSongsPending">Loading existing songs...</span>
           <span v-else-if="error">Failed to load online songs.</span>
+          <span v-else-if="existingSongsError">Failed to load existing songs.</span>
           <span v-else>{{ filteredSongs.length }} song(s) found.</span>
           <span v-if="queuedDownloadCount > 0 || completedDownloadCount > 0">
             Queue: {{ completedDownloadCount }}/{{ totalTrackedDownloads }}

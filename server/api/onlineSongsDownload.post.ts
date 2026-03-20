@@ -4,6 +4,7 @@ import { UsdbAnimuxHelper } from "~/helpers/songsDownloader/UsdbAnimuxHelper";
 
 type OnlineSongsDownloadRequest = {
   songs: OnlineSongInfo[];
+  overwriteExisting?: boolean;
 };
 
 const onlySimulateDownload = true;
@@ -12,6 +13,7 @@ const debugSimulateDownloadTime = 5000;
 export default defineEventHandler(async (event) => {
   const body = await readBody<OnlineSongsDownloadRequest>(event);
   const songs = body.songs;
+  const overwriteExisting = body.overwriteExisting ?? false;
 
   if (songs.length === 0) {
     throw createError({
@@ -31,7 +33,7 @@ export default defineEventHandler(async (event) => {
     //download the songs
     for (const song of songs) {
       try {
-        await UsdbAnimuxHelper.downloadSong(song);
+        await UsdbAnimuxHelper.downloadSong(song, overwriteExisting);
       } catch (error) {
         Logger.error(
           `Error downloading song: ${error instanceof Error ? error.message : String(error)}`,
