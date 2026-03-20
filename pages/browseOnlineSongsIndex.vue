@@ -37,7 +37,7 @@ type QueuedDownload = {
   controller?: AbortController;
 };
 
-type ExistingStatus = "no" | "indexed" | "downloading";
+type ExistingStatus = "no" | "indexed" | "downloading" | "waitingForRefresh";
 
 type OnlineSongRow = OnlineSongInfo & {
   existingStatus: ExistingStatus;
@@ -53,6 +53,7 @@ const MAX_QUEUED_DOWNLOADS = 5;
 const searchQuery = ref("");
 const downloadError = ref<string | null>(null);
 const downloadQueue = ref<QueuedDownload[]>([]);
+const waitingForRefreshSongIds = ref<string[]>([]);
 const completedDownloadCount = ref(0);
 const isProcessingQueue = ref(false);
 const isDark = useState<boolean>("isDarkMode", () => false);
@@ -106,8 +107,11 @@ const onlineSongs = computed<OnlineSongRow[]>(() => {
     const isLocallyDownloading = downloadQueue.value.some(
       (item) => item.song.songId === song.songId && item.status === "downloading",
     );
+    const isWaitingForRefresh = waitingForRefreshSongIds.value.includes(song.songId);
     const existingStatus: ExistingStatus = song.indexed
       ? "indexed"
+      : isWaitingForRefresh
+        ? "waitingForRefresh"
       : song.downloading || isLocallyDownloading
         ? "downloading"
         : "no";
@@ -169,9 +173,18 @@ const isDownloadingSong = (songId: string) =>
     (item) => item.song.songId === songId && item.status === "downloading",
   );
 
+const markSongAsWaitingForRefresh = (songId: string) => {
+  if (waitingForRefreshSongIds.value.includes(songId)) {
+    return;
+  }
+
+  waitingForRefreshSongIds.value = [...waitingForRefreshSongIds.value, songId];
+};
+
 const resetQueueProgressIfIdle = () => {
   if (!downloadQueue.value.length && !isProcessingQueue.value) {
     completedDownloadCount.value = 0;
+    waitingForRefreshSongIds.value = [];
   }
 };
 
@@ -222,6 +235,7 @@ const processDownloadQueue = async () => {
       signal: controller.signal,
     });
     completedDownloadCount.value += 1;
+    markSongAsWaitingForRefresh(nextItem.song.songId);
   } catch (error: any) {
     if (error?.name !== "AbortError") {
       downloadError.value =
@@ -237,6 +251,7 @@ const processDownloadQueue = async () => {
       // we check if there were any successful downloads with > 0
     } else if (completedDownloadCount.value > 0) {
       await Promise.all([refreshOnlineSongsIndex(), refreshExistingSongs()]);
+      waitingForRefreshSongIds.value = [];
     }
   }
 };
@@ -248,6 +263,7 @@ const queueDownload = (song: OnlineSongRow) => {
 
   if (!downloadQueue.value.length) {
     completedDownloadCount.value = 0;
+    waitingForRefreshSongIds.value = [];
   }
 
   if (downloadQueue.value.length >= MAX_QUEUED_DOWNLOADS) {
@@ -290,6 +306,10 @@ const closeQueuePanel = () => {
   completedDownloadCount.value = 0;
   downloadError.value = null;
 };
+
+onBeforeRouteLeave(() => {
+  downloadQueue.value = [];
+});
 
 const DownloadCell = defineComponent({
   props: {
@@ -353,6 +373,8 @@ const getExistingStatusLabel = (status: ExistingStatus) => {
       return "Indexed";
     case "downloading":
       return "Downloading";
+    case "waitingForRefresh":
+      return "Awaiting refresh";
     default:
       return "No";
   }
@@ -364,6 +386,8 @@ const getExistingStatusClass = (status: ExistingStatus) => {
       return "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300";
     case "downloading":
       return "inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
+    case "waitingForRefresh":
+      return "inline-flex rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-800 dark:bg-sky-950/60 dark:text-sky-300";
     default:
       return "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300";
   }
@@ -521,10 +545,10 @@ const defaultColDef: ColDef<OnlineSongRow> = {
 
 <template>
   <main
-    class="min-h-screen bg-slate-50 px-6 pt-10 dark:bg-slate-950"
-    :class="activeSong ? 'pb-28' : 'pb-10'"
+    class="box-border h-[calc(100vh-3rem)] overflow-hidden bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
+    :class="activeSong ? 'pb-28' : 'pb-8'"
   >
-    <div class="mx-auto max-w-5xl space-y-6">
+    <div class="mx-auto flex h-full max-w-5xl flex-col gap-6">
       <header class="space-y-2">
         <h1
           class="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100"
@@ -532,11 +556,11 @@ const defaultColDef: ColDef<OnlineSongRow> = {
           Browse Online Songs
         </h1>
         <p class="text-sm text-slate-600 dark:text-slate-300">
-          Search the indexed online songs by artist or song name.
+          Search the indexed online songs by artist or song name. Leaving the page before the downloads are finished will clear the queue but any active downloads in progress will continue in the backend.
         </p>
       </header>
 
-      <section class="space-y-4">
+      <section class="flex min-h-0 flex-1 flex-col gap-4">
         <label class="block space-y-2">
           <span
             class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
@@ -598,19 +622,17 @@ const defaultColDef: ColDef<OnlineSongRow> = {
 
         <div
           v-if="!pending && !error"
-          class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+          class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
         >
-          <div class="h-[60vh] min-h-[24rem]">
-            <AgGridVue
-              class="ag-theme-quartz h-full w-full text-sm text-slate-700 dark:text-slate-200"
-              :theme="themeQuartz"
-              :data-ag-theme-mode="agThemeMode"
-              :columnDefs="columnDefs"
-              :defaultColDef="defaultColDef"
-              :rowData="filteredSongs"
-              @grid-ready="onGridReady"
-            />
-          </div>
+          <AgGridVue
+            class="ag-theme-quartz h-full w-full text-sm text-slate-700 dark:text-slate-200"
+            :theme="themeQuartz"
+            :data-ag-theme-mode="agThemeMode"
+            :columnDefs="columnDefs"
+            :defaultColDef="defaultColDef"
+            :rowData="filteredSongs"
+            @grid-ready="onGridReady"
+          />
         </div>
       </section>
     </div>
