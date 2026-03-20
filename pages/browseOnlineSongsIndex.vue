@@ -3,9 +3,11 @@ import { AgGridVue } from "ag-grid-vue3";
 import {
   themeQuartz,
   type ColDef,
+  type GridApi,
+  type GridReadyEvent,
   type ICellRendererParams,
 } from "ag-grid-community";
-import { defineComponent, h, type PropType } from "vue";
+import { defineComponent, h, shallowRef, type PropType } from "vue";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import type { SongInfo } from "~/types/song";
@@ -67,13 +69,28 @@ const {
 
 const {
   activeAudioKey,
+  activeCoverUrl,
+  activeSong,
+  currentTimeLabel,
+  duration,
+  durationLabel,
   isActiveAudioPlaying,
+  playerTime,
+  progressPercent,
+  scrollToActiveSong,
+  stopActiveAudio,
   toggleAudioPlayback,
 } = useSongListAudioPlayback({
   audioStorageKey: "browse-online-songs",
   getSongKey: (song) => song.key,
   getSongRowId: (song) => `browse-online-song-${encodeURIComponent(song.key)}`,
 });
+
+const gridApi = shallowRef<GridApi | null>(null);
+
+const onGridReady = (event: GridReadyEvent) => {
+  gridApi.value = event.api;
+};
 
 const existingSongsByKey = computed(() => {
   return new Map(existingSongs.value.map((song) => [song.key, song]));
@@ -99,6 +116,21 @@ const onlineSongs = computed<OnlineSongRow[]>(() => {
     };
   });
 });
+
+const scrollToActiveSongInList = () => {
+  if (!process.client || !activeSong.value || !gridApi.value) {
+    return;
+  }
+
+  const index = filteredSongs.value.findIndex(
+    (song) => song.existingSong?.key === activeSong.value?.key,
+  );
+  if (index === -1) {
+    return;
+  }
+
+  gridApi.value.ensureIndexVisible(index, "middle");
+};
 
 const filteredSongs = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -269,10 +301,12 @@ const DownloadCell = defineComponent({
         return null;
       }
 
+      if (song.existingStatus !== "no") {
+        return null;
+      }
+
       const isQueued = isQueuedSong(song.songId);
       const isDownloading = isDownloadingSong(song.songId);
-      const isRetry = song.existingStatus !== "no";
-      const actionLabel = isRetry ? "Retry download" : "Queue download";
       return h(
         "button",
         {
@@ -287,19 +321,15 @@ const DownloadCell = defineComponent({
             !isQueued && queuedDownloadCount.value >= MAX_QUEUED_DOWNLOADS,
           "aria-label": isQueued
             ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `${actionLabel} for ${song.artist} - ${song.songName}`,
+            : `Queue download for ${song.artist} - ${song.songName}`,
           title: isQueued
             ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `${actionLabel} for ${song.artist} - ${song.songName}`,
+            : `Queue download for ${song.artist} - ${song.songName}`,
           onClick: () => (isQueued ? cancelDownload(song) : queueDownload(song)),
         },
         [
           h(FontAwesomeIcon, {
-            icon: isQueued
-              ? "fa-solid fa-xmark"
-              : isRetry
-                ? "fa-solid fa-rotate-right"
-                : "fa-solid fa-cloud-arrow-down",
+            icon: isQueued ? "fa-solid fa-xmark" : "fa-solid fa-cloud-arrow-down",
           }),
         ],
       );
@@ -486,7 +516,10 @@ const defaultColDef: ColDef<OnlineSongRow> = {
 </script>
 
 <template>
-  <main class="min-h-screen bg-slate-50 px-6 py-10 dark:bg-slate-950">
+  <main
+    class="min-h-screen bg-slate-50 px-6 pt-10 dark:bg-slate-950"
+    :class="activeSong ? 'pb-28' : 'pb-10'"
+  >
     <div class="mx-auto max-w-5xl space-y-6">
       <header class="space-y-2">
         <h1
@@ -571,10 +604,26 @@ const defaultColDef: ColDef<OnlineSongRow> = {
               :columnDefs="columnDefs"
               :defaultColDef="defaultColDef"
               :rowData="filteredSongs"
+              @grid-ready="onGridReady"
             />
           </div>
         </div>
       </section>
     </div>
+
+    <SongPlayerBar
+      v-if="activeSong"
+      :activeSong="activeSong"
+      :activeCoverUrl="activeCoverUrl"
+      :currentTimeLabel="currentTimeLabel"
+      :durationLabel="durationLabel"
+      :isActiveAudioPlaying="isActiveAudioPlaying"
+      :duration="duration"
+      :progressPercent="progressPercent"
+      v-model:playerTime="playerTime"
+      :onScrollToSong="scrollToActiveSongInList"
+      :onTogglePlayback="toggleAudioPlayback"
+      :onStopPlayback="stopActiveAudio"
+    />
   </main>
 </template>

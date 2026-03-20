@@ -13,7 +13,9 @@ const debugSimulateDownloadTime = 5000;
 export default defineEventHandler(async (event) => {
   const body = await readBody<OnlineSongsDownloadRequest>(event);
   const songs = body.songs;
-  const overwriteExisting = body.overwriteExisting ?? false;
+  //not supported yet, could cause problems when ultrastar is running...
+  // const overwriteExisting = body.overwriteExisting ?? false;
+  const overwriteExisting = false;
 
   if (songs.length === 0) {
     throw createError({
