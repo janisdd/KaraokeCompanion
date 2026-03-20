@@ -18,7 +18,12 @@ export type OnlineSongInfoPlain = {
 };
 
 export type OnlineSongInfo = OnlineSongInfoPlain & {
-  existingOrAlreadyDownloaded: boolean;
+  // true: when we created the lock file and we are to download the song
+  // after the download is finished, this is still true!
+  downloading: boolean;
+  // true: after downloading the song, we indexed it -> after indexing this is true and the song
+  // can be indexed by ultrastar
+  indexed: boolean;
 };
 
 type ArtistLetterToIndexPage = {
@@ -45,24 +50,44 @@ export class AllOnlineSongsIndexer {
 
   public static getAllOnlineSongInfos(): OnlineSongInfo[] | null {
     if (!this._allOnlineSongInfos) {
-      Logger.warn(`[AllOnlineSongsIndexer] All online song infos not set (call setSongsExistsOrWereAlreadyDownloaded first), returning null`);
+      Logger.warn(
+        `[AllOnlineSongsIndexer] All online song infos not set (call setSongsExistsOrWereAlreadyDownloaded first), returning null`,
+      );
       return null;
     }
     return Array.from(this._allOnlineSongInfos.values());
   }
 
-    //song can be already downloaded or inside the ultrastar song dir...
+  // after downloading we want to add the song info to the index
+  public static addSingOnlineSongInfoToIndex(songInfo: OnlineSongInfoPlain): void {
+    if (!this._allOnlineSongInfos) {
+      throw new Error("All online song infos not set");
+    }
+    // this will overwrite the existing song info if it exists and update the state!
+    this._allOnlineSongInfosPlain.set(songInfo.key, songInfo);
+    this._allOnlineSongInfos.set(songInfo.key, {
+      ...songInfo,
+      downloading: UsdbAnimuxHelper.isSongDownloadingOrDownloaded(songInfo.songId),
+      indexed: SongsIndexer.hasSong(SongKeyHelper.getKey(songInfo.artist, songInfo.songName)),
+    });
+  }
+
+  //song can be already downloaded or inside the ultrastar song dir...
   public static setSongsExistsOrWereAlreadyDownloaded() {
-    const hasDownloadedSongIndex = UsdbAnimuxHelper.isIndexingFinished();
     const hasExistingSongIdex = SongsIndexer.isIndexingFinished();
+    const hasDownloadedSongIndex = UsdbAnimuxHelper.isIndexingFinished();
 
     let existingOrAlreadyDownloaded: boolean = false;
-    
+
     if (!hasDownloadedSongIndex) {
-      Logger.warn(`[AllOnlineSongsIndexer] UsdbAnimuxHelper is not indexed, skipping setting songs were already downloaded`);
+      Logger.warn(
+        `[AllOnlineSongsIndexer] UsdbAnimuxHelper is not indexed, skipping setting songs were already downloaded`,
+      );
     }
     if (!hasExistingSongIdex) {
-      Logger.warn(`[AllOnlineSongsIndexer] SongsIndexer is not indexed, skipping setting songs exists`);
+      Logger.warn(
+        `[AllOnlineSongsIndexer] SongsIndexer is not indexed, skipping setting songs exists`,
+      );
     }
 
     if (!hasDownloadedSongIndex && !hasExistingSongIdex) {
@@ -75,18 +100,19 @@ export class AllOnlineSongsIndexer {
     // iterate over all online song infos plain
     for (const songInfo of this._allOnlineSongInfosPlain.values()) {
       const songId = songInfo.songId;
-      const songAlreadyDownloaded = UsdbAnimuxHelper.isSongAlreadyDownloaded(songId);
+      const songDownloadingOrDownloaded =
+        UsdbAnimuxHelper.isSongDownloadingOrDownloaded(songId);
 
       // existing songs is harder because they have no songId...
       //check for same artist and song name
       const songKey = SongKeyHelper.getKey(songInfo.artist, songInfo.songName);
-      
-      const songExists = SongsIndexer.hasSong(songKey);
-      existingOrAlreadyDownloaded = songExists || songAlreadyDownloaded;
+
+      const songIndexed = SongsIndexer.hasSong(songKey);
 
       this._allOnlineSongInfos.set(songKey, {
         ...songInfo,
-        existingOrAlreadyDownloaded,
+        downloading: songDownloadingOrDownloaded,
+        indexed: songIndexed,
       });
     }
   }
@@ -309,13 +335,11 @@ export class AllOnlineSongsIndexer {
         continue;
       }
 
-      const songInfo: OnlineSongInfo = {
+      const songInfo: OnlineSongInfoPlain = {
         key: SongKeyHelper.getKey(artistName, songName),
         songId: songId,
         songName: songName,
-        artist: artistName,
-        existingOrAlreadyDownloaded:
-          UsdbAnimuxHelper.isSongAlreadyDownloaded(songId),
+        artist: artistName
       };
       onlineSongInfos.push(songInfo);
 

@@ -7,7 +7,7 @@ type OnlineSongsDownloadRequest = {
   overwriteExisting?: boolean;
 };
 
-const onlySimulateDownload = true;
+const onlySimulateDownload = false;
 const debugSimulateDownloadTime = 5000;
 
 export default defineEventHandler(async (event) => {

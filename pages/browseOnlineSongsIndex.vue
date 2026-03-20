@@ -34,7 +34,7 @@ type QueuedDownload = {
   controller?: AbortController;
 };
 
-type ExistingStatus = "no" | "indexed" | "downloaded";
+type ExistingStatus = "no" | "indexed" | "downloading";
 
 type OnlineSongRow = OnlineSongInfo & {
   existingStatus: ExistingStatus;
@@ -99,10 +99,10 @@ const existingSongsByKey = computed(() => {
 const onlineSongs = computed<OnlineSongRow[]>(() => {
   return (response.value?.data ?? []).map((song) => {
     const existingSong = existingSongsByKey.value.get(song.key) ?? null;
-    const existingStatus: ExistingStatus = existingSong
+    const existingStatus: ExistingStatus = song.indexed
       ? "indexed"
-      : song.existingOrAlreadyDownloaded
-        ? "downloaded"
+      : song.downloading
+        ? "downloading"
         : "no";
 
     return {
@@ -185,7 +185,7 @@ const confirmOverwriteDownload = (song: OnlineSongRow) => {
   }
 
   const existingLabel =
-    song.existingStatus === "indexed" ? "already indexed locally" : "already downloaded";
+    song.existingStatus === "indexed" ? "already indexed locally" : "already downloading";
 
   if (!process.client) {
     return false;
@@ -347,8 +347,8 @@ const getExistingStatusLabel = (status: ExistingStatus) => {
   switch (status) {
     case "indexed":
       return "Indexed";
-    case "downloaded":
-      return "Downloaded";
+    case "downloading":
+      return "Downloading";
     default:
       return "No";
   }
@@ -358,7 +358,7 @@ const getExistingStatusClass = (status: ExistingStatus) => {
   switch (status) {
     case "indexed":
       return "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300";
-    case "downloaded":
+    case "downloading":
       return "inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
     default:
       return "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300";

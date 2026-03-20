@@ -1,10 +1,12 @@
-import type { OnlineSongInfo } from "../allOnlineSongsIndexer";
+import type { OnlineSongInfo, OnlineSongInfoPlain } from "../allOnlineSongsIndexer";
 import path from "path";
 import fs from "fs";
 import { chromium, type Browser, type Page } from "playwright";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
 import { ChildProcess, exec } from "child_process";
+import { SongsIndexer } from "../songsIndexer";
+import { AllOnlineSongsIndexer } from "../allOnlineSongsIndexer";
 
 type AudioVideoFileNamesTuple = {
   audioName: string;
@@ -12,14 +14,15 @@ type AudioVideoFileNamesTuple = {
 };
 
 const SLOW_MO = 100;
-//in the file we store the artist and song name (just for debug)
-const INDEX_FILE_EXTENSION = ".cache";
+// just so we know we are downloading (or downloaded) the song
+const LOCK_FILE_EXTENSION = ".lock";
 
 export class UsdbAnimuxHelper {
 
 
   // key is songId
-  private static _alreadyDownloadedSongIds: Set<string> = new Set();
+  //contains downloading and downloaded song ids
+  private static _downloadingOrDownloadedSongIds: Set<string> = new Set();
 
   private static _indexingFinished = false;
 
@@ -28,7 +31,7 @@ export class UsdbAnimuxHelper {
 	}
 
   public static async checkAlreadyDownloadedSongs() {
-    this._alreadyDownloadedSongIds.clear();
+    this._downloadingOrDownloadedSongIds.clear();
     const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
     if (!downloadSongsDir) {
       throw new Error("Download songs directory not set");
@@ -37,19 +40,19 @@ export class UsdbAnimuxHelper {
     //check all files in the download songs dir
     const files = fs.readdirSync(downloadSongsDir);
     for (const file of files) {
-      if (!file.endsWith(INDEX_FILE_EXTENSION)) {
+      if (!file.endsWith(LOCK_FILE_EXTENSION)) {
         continue;
       }
       // we don't need the file content here, just the id (file anme)
       const songId = path.parse(file).name;
       const songIdFilePath = path.resolve(downloadSongsDir, file);
-      this._alreadyDownloadedSongIds.add(songId);
+      this._downloadingOrDownloadedSongIds.add(songId);
     }
     this._indexingFinished = true;
   }
 
-  public static isSongAlreadyDownloaded(songId: string): boolean {
-    return this._alreadyDownloadedSongIds.has(songId);
+  public static isSongDownloadingOrDownloaded(songId: string): boolean {
+    return this._downloadingOrDownloadedSongIds.has(songId);
   }
 
 
@@ -72,14 +75,15 @@ export class UsdbAnimuxHelper {
     }
     const songId = `${id}`;
 
-    const songIdFile = `${songId}${INDEX_FILE_EXTENSION}`;
+    const songIdFile = `${songId}${LOCK_FILE_EXTENSION}`;
     const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
 
     // TODO this is a race condition...
     // when multiple requests are made at the same time
     // one could be before writing the file and the other after reading it
 
-    const songIdFileExists = fs.existsSync(songIdFilePath);
+    // const songIdFileExists = fs.existsSync(songIdFilePath);
+    const songIdFileExists = this._downloadingOrDownloadedSongIds.has(songId);
     if (songIdFileExists && !forceDownload) {
       Logger.log(`Song already downloaded: ${songIdFilePath}`);
       return;
@@ -90,6 +94,17 @@ export class UsdbAnimuxHelper {
         Logger.log(`Song ID file created: ${songIdFilePath}`);
       }
     }
+
+    // indicate that we are downloading the song
+    this._downloadingOrDownloadedSongIds.add(songId);
+    // re-add the song to the index, this will update the indexed and downloading states
+    AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
+      key: song.key,
+      songId,
+      songName: song.songName,
+      artist: song.artist,
+    } satisfies OnlineSongInfoPlain);
+  
 
     const downloadUseHeadlessMode = ConfigHelper.getDownloadUseHeadlessMode();
     Logger.debug(`Download use headless mode: ${downloadUseHeadlessMode}`);
@@ -119,10 +134,18 @@ export class UsdbAnimuxHelper {
       Logger.log("page loaded");
 
       //now we are logged in
-      await this._downloadSingleSong(page, songUrl, downloadSongsDir, songId);
+      const { downloadSingleSongDirPath } = await this._downloadSingleSong(page, songUrl, downloadSongsDir, songId);
 
       // wait for 1s to finish
       await new Promise((resolve) => setTimeout(resolve, 1_000));
+
+      await browser.close();
+      Logger.debug("Browser closed");
+      browser = null;
+
+      // when all is done, we can index the new directory
+      await SongsIndexer.indexSingleSongDir(downloadSingleSongDirPath, downloadSongsDir, 0, 1);
+
     } catch (error) {
       Logger.error(
         `Error downloading song: ${error instanceof Error ? error.message : String(error)}`,
@@ -292,6 +315,10 @@ export class UsdbAnimuxHelper {
     Logger.log(`Txt file written to: ${txtFilePath}`);
 
     Logger.log(`Song downloaded successfully`);
+
+    return {
+      downloadSingleSongDirPath
+    }
   }
 
   private static async _waitForProcessToFinish(
