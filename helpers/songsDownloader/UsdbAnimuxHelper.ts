@@ -115,6 +115,7 @@ export class UsdbAnimuxHelper {
       browser = await chromium.launch({
         headless: downloadUseHeadlessMode,
         slowMo: SLOW_MO,
+        timeout: 35000, // in case something goes wrong, we don't want to wait forever
       });
       const page = await browser.newPage();
       await page.goto(ConfigHelper.getUsdbAnimuxUrl());
