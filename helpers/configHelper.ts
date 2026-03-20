@@ -78,38 +78,12 @@ export class ConfigHelper {
   }
 
   static getDownloadPreferredVideoHeight() {
-    if (typeof DOWNLOAD_PREFERRED_VIDEO_HEIGHT !== 'number') {
-      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
-    }
-    if (DOWNLOAD_PREFERRED_VIDEO_HEIGHT < 0) {
-      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
-    }
-    if (isNaN(DOWNLOAD_PREFERRED_VIDEO_HEIGHT)) {
-      DOWNLOAD_PREFERRED_VIDEO_HEIGHT = defaultDownloadPreferredVideoHeight;
-    }
-    return DOWNLOAD_PREFERRED_VIDEO_HEIGHT;
+    return getEnvVarAsNumber(DOWNLOAD_PREFERRED_VIDEO_HEIGHT, defaultDownloadPreferredVideoHeight);
   }
 
   static getRequiredWaitTimeForSongDownload() {
     
-    if (typeof REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD === 'string') {
-      // check with regex if number
-      const regex = /^\d+$/;
-      if (!regex.test(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD)) {
-        REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
-        Logger.warn(`REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD is not a number, using ${defaultRequiredWaitTimeForSongDownload} as default`);
-      } else {
-        REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = parseInt(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD);
-      }
-    }
-    if (isNaN(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD)) {
-      REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
-    }
-    if (REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD < 0) {
-      REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = defaultRequiredWaitTimeForSongDownload;
-    }
-    
-    return REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD;
+    return getEnvVarAsNumber(REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD, defaultRequiredWaitTimeForSongDownload);
   }
 
   static getDownloadConvertAudioFormat() {
@@ -130,4 +104,25 @@ export class ConfigHelper {
     }
     return DOWNLOAD_USE_HEADLESS_MODE;
   }
+}
+
+
+function getEnvVarAsNumber(value: string | number, defaultValue: number) {
+  if (typeof value === 'string') {
+    const regex = /^\d+$/;
+    if (!regex.test(value)) {
+      return defaultValue;
+    }
+    return parseInt(value);
+  }
+  if (typeof value === 'number') {
+    if (isNaN(value)) {
+      return defaultValue;
+    }
+    if (value < 0) {
+      return defaultValue;
+    }
+    return value;
+  }
+  return defaultValue;
 }

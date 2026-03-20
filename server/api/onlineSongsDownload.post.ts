@@ -8,7 +8,7 @@ type OnlineSongsDownloadRequest = {
 };
 
 const onlySimulateDownload = false;
-const debugSimulateDownloadTime = 5000;
+const debugSimulateDownloadTime = 7000;
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<OnlineSongsDownloadRequest>(event);

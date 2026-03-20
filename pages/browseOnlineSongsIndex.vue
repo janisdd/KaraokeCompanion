@@ -48,7 +48,8 @@ type OnlineSongRow = OnlineSongInfo & {
   audioAvailable: boolean;
 };
 
-const MAX_QUEUED_DOWNLOADS = 5;
+const DEFAULT_MAX_QUEUED_DOWNLOADS = 5;
+const runtimeConfig = useRuntimeConfig();
 
 const searchQuery = ref("");
 const downloadError = ref<string | null>(null);
@@ -165,6 +166,12 @@ const queueProgressPercent = computed(() => {
   return Math.round((completedDownloadCount.value / totalTrackedDownloads.value) * 100);
 });
 
+const maxQueuedDownloads = computed(
+  () => runtimeConfig.public.maxDownloadQueueSizeFrontend ?? DEFAULT_MAX_QUEUED_DOWNLOADS,
+);
+
+console.log(`[browseOnlineSongsIndex] maxQueuedDownloads: ${maxQueuedDownloads.value}`);
+
 const isQueuedSong = (songId: string) =>
   downloadQueue.value.some((item) => item.song.songId === songId);
 
@@ -266,8 +273,8 @@ const queueDownload = (song: OnlineSongRow) => {
     waitingForRefreshSongIds.value = [];
   }
 
-  if (downloadQueue.value.length >= MAX_QUEUED_DOWNLOADS) {
-    downloadError.value = `You can queue at most ${MAX_QUEUED_DOWNLOADS} downloads at a time.`;
+  if (downloadQueue.value.length >= maxQueuedDownloads.value) {
+    downloadError.value = `You can queue at most ${maxQueuedDownloads.value} downloads at a time.`;
     return;
   }
 
@@ -342,7 +349,7 @@ const DownloadCell = defineComponent({
                 ? "inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-sm text-red-600 shadow-sm transition hover:border-red-300 hover:bg-red-50 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/30"
               : "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800",
           disabled:
-            !isQueued && queuedDownloadCount.value >= MAX_QUEUED_DOWNLOADS,
+            !isQueued && queuedDownloadCount.value >= maxQueuedDownloads.value,
           "aria-label": isQueued
             ? `Cancel download for ${song.artist} - ${song.songName}`
             : `Queue download for ${song.artist} - ${song.songName}`,
