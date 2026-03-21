@@ -13,9 +13,29 @@ type AudioVideoFileNamesTuple = {
   videoName: string;
 };
 
+type UsdbSessionCookie = {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "Strict" | "Lax" | "None";
+};
+
 const SLOW_MO = 100;
 // just so we know we are downloading (or downloaded) the song
 const LOCK_FILE_EXTENSION = ".lock";
+const USDB_SESSION_COOKIE_NAME = "PHPSESSID";
+const USDB_SESSION_COOKIE_TIMEOUT_MS = 20 * 60 * 1000; // 20 min
+
+// TODO the cookie is a race condition (all checks related to it)
+// when one instance runs and is e.g. waiting for the txt file to be available
+// another instance might come and see an invalid cookie and try to login
+// then the first instance will get an error because the server side cookie will be invalidated (because of the login)
+// i have no idea how to solve this in node (nodejs is single threaded but we have multiple instances running??)
+// some kind of mutex would be needed...
 
 export class UsdbAnimuxHelper {
 
@@ -25,6 +45,9 @@ export class UsdbAnimuxHelper {
   private static _downloadingOrDownloadedSongIds: Set<string> = new Set();
 
   private static _indexingFinished = false;
+  private static _usdbSessionCookie: UsdbSessionCookie | null = null;
+  private static _usdbSessionCookieCreatedAt = 0;
+  private static _usdbSessionLoginPromise: Promise<UsdbSessionCookie> | null = null;
 
 	public static isIndexingFinished(): boolean {
 		return this._indexingFinished;
@@ -118,21 +141,7 @@ export class UsdbAnimuxHelper {
         timeout: 35000, // in case something goes wrong, we don't want to wait forever
       });
       const page = await browser.newPage();
-      await page.goto(ConfigHelper.getUsdbAnimuxUrl());
-      // await page.screenshot({ path: `example.png` });
-
-      const usdbAnimuxId = ConfigHelper.getUsdbAnimuxId();
-      const usdbAnimuxPw = ConfigHelper.getUsdbAnimuxPw();
-      // document.querySelector("form input[name='user']")
-      await page.fill('form input[name="user"]', usdbAnimuxId);
-      // document.querySelector("form input[name='pass']")
-      await page.fill('form input[name="pass"]', usdbAnimuxPw);
-      // document.querySelector("form input#login")
-      await page.click("form input#login");
-
-      // wait for the page to load
-      await page.waitForLoadState("domcontentloaded");
-      Logger.log("page loaded");
+      await this._ensureUsdbSession(page);
 
       //now we are logged in
       const { downloadSingleSongDirPath } = await this._downloadSingleSong(page, songUrl, downloadSongsDir, songId);
@@ -164,6 +173,15 @@ export class UsdbAnimuxHelper {
         await browser.close();
         Logger.debug("Browser closed");
       }
+      // remove the song from the downloading or downloaded song ids
+      this._downloadingOrDownloadedSongIds.delete(songId);
+      // re-add the song to the index, this will update the indexed and downloading states
+      AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
+        key: song.key,
+        songId: songId,
+        songName: song.songName,
+        artist: song.artist,
+      } satisfies OnlineSongInfoPlain);
     }
   }
 
@@ -180,8 +198,7 @@ export class UsdbAnimuxHelper {
     Logger.log(`Downloading song from URL: ${url}`);
 
     // go to the page and wait for the page to load
-    await page.goto(url);
-    await page.waitForLoadState("domcontentloaded");
+    await this._gotoUsdbPage(page, url);
     Logger.debug(`Page loaded: ${url}`);
 
     const pageTitle = await page.title();
@@ -277,8 +294,7 @@ export class UsdbAnimuxHelper {
 
     const txtUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=gettxt&id=${songId}`;
     Logger.log(`Getting txt file from URL: ${txtUrl}`);
-    await page.goto(txtUrl);
-    await page.waitForLoadState("domcontentloaded");
+    await this._gotoUsdbPage(page, txtUrl);
     Logger.debug(`page ${txtUrl} loaded`);
 
     // we need to wait for the txt file to be available
@@ -327,6 +343,121 @@ export class UsdbAnimuxHelper {
     return {
       downloadSingleSongDirPath
     }
+  }
+
+  private static async _ensureUsdbSession(page: Page): Promise<void> {
+    const cachedSessionCookie = this._getCachedUsdbSessionCookie();
+    if (cachedSessionCookie) {
+      await page.context().addCookies([cachedSessionCookie]);
+      Logger.debug(`Reusing cached ${USDB_SESSION_COOKIE_NAME} cookie`);
+      return;
+    }
+
+    if (!this._usdbSessionLoginPromise) {
+      this._usdbSessionLoginPromise = this._loginAndCacheUsdbSession(page);
+    }
+
+    const loginPromise = this._usdbSessionLoginPromise;
+    try {
+      const sessionCookie = await loginPromise;
+      await page.context().addCookies([sessionCookie]);
+    } finally {
+      if (this._usdbSessionLoginPromise === loginPromise) {
+        this._usdbSessionLoginPromise = null;
+      }
+    }
+  }
+
+  private static async _loginAndCacheUsdbSession(page: Page): Promise<UsdbSessionCookie> {
+    await page.goto(ConfigHelper.getUsdbAnimuxUrl());
+
+    const usdbAnimuxId = ConfigHelper.getUsdbAnimuxId();
+    const usdbAnimuxPw = ConfigHelper.getUsdbAnimuxPw();
+    await page.fill('form input[name="user"]', usdbAnimuxId);
+    await page.fill('form input[name="pass"]', usdbAnimuxPw);
+    await page.click("form input#login");
+
+    await page.waitForLoadState("domcontentloaded");
+    Logger.log("page loaded");
+
+    const sessionCookie = await this._extractUsdbSessionCookie(page);
+    this._usdbSessionCookie = sessionCookie;
+    this._usdbSessionCookieCreatedAt = Date.now();
+    Logger.debug(
+      `Cached ${USDB_SESSION_COOKIE_NAME} cookie for ${USDB_SESSION_COOKIE_TIMEOUT_MS}ms`,
+    );
+
+    return sessionCookie;
+  }
+
+  private static async _gotoUsdbPage(page: Page, url: string): Promise<void> {
+   
+    await page.goto(url);
+    await page.waitForLoadState("domcontentloaded");
+
+    if (await this._isErrorPage(page)) {
+      this._clearCachedUsdbSessionCookie();
+      throw new Error(`USDB returned an error page for ${url}, probably because the session cookie is invalid`);
+    }
+
+  }
+
+  private static async _isUsdbLoginPage(page: Page): Promise<boolean> {
+    const userInputCount = await page.locator('form input[name="user"]').count();
+    const loginButtonCount = await page.locator("form input#login").count();
+    return userInputCount > 0 && loginButtonCount > 0;
+  }
+
+  private static async _isErrorPage(page: Page): Promise<boolean> {
+    const errorMessage = await page.locator("#tablebg .row1").textContent();
+
+    if (errorMessage && errorMessage.toLowerCase().includes("error")) {
+      return true;
+    }
+    return false;
+  }
+
+  private static _getCachedUsdbSessionCookie(): UsdbSessionCookie | null {
+    if (!this._usdbSessionCookie) {
+      return null;
+    }
+
+    const cookieAgeMs = Date.now() - this._usdbSessionCookieCreatedAt;
+    if (cookieAgeMs > USDB_SESSION_COOKIE_TIMEOUT_MS) {
+      Logger.debug(
+        `Cached ${USDB_SESSION_COOKIE_NAME} cookie expired after ${cookieAgeMs}ms`,
+      );
+      this._clearCachedUsdbSessionCookie();
+      return null;
+    }
+
+    return this._usdbSessionCookie;
+  }
+
+  private static _clearCachedUsdbSessionCookie(): void {
+    this._usdbSessionCookie = null;
+    this._usdbSessionCookieCreatedAt = 0;
+  }
+
+  private static async _extractUsdbSessionCookie(page: Page): Promise<UsdbSessionCookie> {
+    const usdbSessionCookie = (await page.context().cookies()).find(
+      (cookie) => cookie.name === USDB_SESSION_COOKIE_NAME,
+    );
+
+    if (!usdbSessionCookie) {
+      throw new Error(`${USDB_SESSION_COOKIE_NAME} cookie not found after login`);
+    }
+
+    return {
+      name: usdbSessionCookie.name,
+      value: usdbSessionCookie.value,
+      domain: usdbSessionCookie.domain,
+      path: usdbSessionCookie.path,
+      expires: usdbSessionCookie.expires,
+      httpOnly: usdbSessionCookie.httpOnly,
+      secure: usdbSessionCookie.secure,
+      sameSite: usdbSessionCookie.sameSite,
+    };
   }
 
   private static async _waitForProcessToFinish(
