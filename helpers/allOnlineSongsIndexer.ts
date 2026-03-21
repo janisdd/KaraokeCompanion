@@ -26,6 +26,8 @@ export type OnlineSongInfo = OnlineSongInfoPlain & {
   indexed: boolean;
 };
 
+type CachedOnlineSongInfo = Omit<OnlineSongInfoPlain, "key">;
+
 type ArtistLetterToIndexPage = {
   text: string;
   href: string;
@@ -34,7 +36,7 @@ type ArtistLetterToIndexPage = {
 // we need the version in case we need to change the structure of the index object
 type OnlineSongInfoIndexObj = {
   version: string;
-  index: OnlineSongInfoPlain[];
+  index: CachedOnlineSongInfo[];
 };
 
 export class AllOnlineSongsIndexer {
@@ -120,7 +122,9 @@ export class AllOnlineSongsIndexer {
   public static saveIndexToFile() {
     // the real index should not contain the alreadyDownloaded (tmp) property
     // the tmp properties are already re-calculated on startup
-    const plainIndex = Array.from(this._allOnlineSongInfosPlain.values());
+    const plainIndex: CachedOnlineSongInfo[] = Array.from(
+      this._allOnlineSongInfosPlain.values(),
+    ).map(({ key: _key, ...songInfo }) => songInfo);
 
     const indexObj: OnlineSongInfoIndexObj = {
       version: "1.0.0",
@@ -141,7 +145,14 @@ export class AllOnlineSongsIndexer {
     }
     const index = indexObj.index;
     for (const songInfo of index) {
-      this._allOnlineSongInfosPlain.set(songInfo.key, songInfo);
+      const songInfoWithKey: OnlineSongInfoPlain = {
+        ...songInfo,
+        key:
+          "key" in songInfo && typeof songInfo.key === "string"
+            ? songInfo.key
+            : SongKeyHelper.getKey(songInfo.artist, songInfo.songName),
+      };
+      this._allOnlineSongInfosPlain.set(songInfoWithKey.key, songInfoWithKey);
     }
   }
 
