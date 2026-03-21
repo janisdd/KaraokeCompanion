@@ -1,9 +1,10 @@
-import dotenv from 'dotenv'
+import dotenv, {config as loadEnv} from 'dotenv'
 import fs from "fs";
 import { Logger, LogLevelEnum } from './logger';
 
 //NOTE: startup-env must be run before this, else the process.env variables are not set
 
+loadEnv();
 dotenv.config({ path: "./secrets/.env" });
 
 const defaultRequiredWaitTimeForSongDownload = 30;
