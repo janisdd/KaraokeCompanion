@@ -324,7 +324,9 @@ export class UsdbAnimuxHelper {
     }
     Logger.debug(`Txt area text found: ${txtAreaText}`);
 
-    const songNotes = txtAreaText.split("\n").map((line) => line.trim());
+    // do not trim the lines, because ultrastar will concatenate the lines without spaces!
+    // so the spaces need to be preserved!
+    const songNotes = txtAreaText.split("\n");
     const songNoteLines = this._ensureSongNoteMetaEntries(
       songNotes,
       coverImageName,
@@ -594,11 +596,11 @@ export class UsdbAnimuxHelper {
     // - #COMMENT
 
     const metaEntries = [
-      `#COVER: ${songCoverImageName}`,
-      `#MP3: ${songAudioName}`,
-      `#AUDIO: ${songAudioName}`,
-      `#VIDEO: ${songVideoName}`,
-      `#COMMENT: Automatically downloaded by UltraStar Karaoke Companion`,
+      `#COVER:${songCoverImageName}`,
+      `#MP3:${songAudioName}`,
+      `#AUDIO:${songAudioName}`,
+      `#VIDEO:${songVideoName}`,
+      `#COMMENT:Automatically downloaded by UltraStar Karaoke Companion`,
     ];
 
     // if we have entries, then overwrite the existing entries
