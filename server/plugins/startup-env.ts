@@ -79,7 +79,6 @@ export default defineNitroPlugin(async () => {
   Logger.log(`[nuxt start] DOWNLOAD_SONGS_DIR: ${ConfigHelper.getDownloadSongsDir()}`);
 
 
-  await UsdbAnimuxHelper.checkAlreadyDownloadedSongs();
   await AllOnlineSongsIndexer.indexAllOnlineSongs();
 
   try {

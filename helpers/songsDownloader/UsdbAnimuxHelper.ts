@@ -25,8 +25,6 @@ type UsdbSessionCookie = {
 };
 
 const SLOW_MO = 100;
-// just so we know we are downloading (or downloaded) the song
-const LOCK_FILE_EXTENSION = ".lock";
 const USDB_SESSION_COOKIE_NAME = "PHPSESSID";
 const USDB_SESSION_COOKIE_TIMEOUT_MS = 20 * 60 * 1000; // 20 min
 //invalid characters will be replaced with an underscore
@@ -41,9 +39,8 @@ const INVALID_SONG_TITLE_CHARS_REGEX = /[^a-zA-Z0-9- äöüß\,\(\)\[\]]/g;
 
 export class UsdbAnimuxHelper {
 
-
   // key is songId
-  //contains downloading and downloaded song ids
+  // contains song ids currently downloading in this process or finished
   private static _downloadingOrDownloadedSongIds: Set<string> = new Set();
 
   private static _indexingFinished = false;
@@ -55,31 +52,9 @@ export class UsdbAnimuxHelper {
 		return this._indexingFinished;
 	}
 
-  public static async checkAlreadyDownloadedSongs() {
-    this._downloadingOrDownloadedSongIds.clear();
-    const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
-    if (!downloadSongsDir) {
-      throw new Error("Download songs directory not set");
-    }
-
-    //check all files in the download songs dir
-    const files = fs.readdirSync(downloadSongsDir);
-    for (const file of files) {
-      if (!file.endsWith(LOCK_FILE_EXTENSION)) {
-        continue;
-      }
-      // we don't need the file content here, just the id (file anme)
-      const songId = path.parse(file).name;
-      const songIdFilePath = path.resolve(downloadSongsDir, file);
-      this._downloadingOrDownloadedSongIds.add(songId);
-    }
-    this._indexingFinished = true;
-  }
-
   public static isSongDownloadingOrDownloaded(songId: string): boolean {
     return this._downloadingOrDownloadedSongIds.has(songId);
   }
-
 
   public static async downloadSong(song: OnlineSongInfo, forceDownload: boolean = false): Promise<void> {
     const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
@@ -100,25 +75,15 @@ export class UsdbAnimuxHelper {
     }
     const songId = `${id}`;
 
-    const songIdFile = `${songId}${LOCK_FILE_EXTENSION}`;
-    const songIdFilePath = path.resolve(downloadSongsDir, songIdFile);
+    const songIsDownloading = this._downloadingOrDownloadedSongIds.has(songId);
+    if (songIsDownloading && !forceDownload) {
+      Logger.log(`Song already downloading: ${songId}`);
+      return;
+    }
 
     // TODO this is a race condition...
     // when multiple requests are made at the same time
     // one could be before writing the file and the other after reading it
-
-    // const songIdFileExists = fs.existsSync(songIdFilePath);
-    const songIdFileExists = this._downloadingOrDownloadedSongIds.has(songId);
-    if (songIdFileExists && !forceDownload) {
-      Logger.log(`Song already downloaded: ${songIdFilePath}`);
-      return;
-    } else {
-      // create file to indicate we are downloading the song
-      if (!songIdFileExists) {
-        await fs.promises.writeFile(songIdFilePath, "");
-        Logger.log(`Song ID file created: ${songIdFilePath}`);
-      }
-    }
 
     // indicate that we are downloading the song
     this._downloadingOrDownloadedSongIds.add(songId);
@@ -175,7 +140,7 @@ export class UsdbAnimuxHelper {
         await browser.close();
         Logger.debug("Browser closed");
       }
-      // remove the song from the downloading or downloaded song ids
+      // remove the song from the currently downloading song ids
       this._downloadingOrDownloadedSongIds.delete(songId);
       // re-add the song to the index, this will update the indexed and downloading states
       AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
@@ -188,8 +153,6 @@ export class UsdbAnimuxHelper {
   }
 
   // if forceDownload is true, then the song will be downloaded even if it already exists
-  //we place a empty txt file in the songs dir with the song id as name to indicate that the song was downloaded
-  // because only with the url there is no way to check if the song was already downloaded (we don't have the name yet)
   private static async _downloadSingleSong(
     page: Page,
     url: string,
