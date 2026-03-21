@@ -4,7 +4,7 @@ import fs from "fs";
 import { chromium, type Browser, type Page } from "playwright";
 import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
-import { ChildProcess, exec } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import { SongsIndexer } from "../songsIndexer";
 import { AllOnlineSongsIndexer } from "../allOnlineSongsIndexer";
 
@@ -470,9 +470,15 @@ export class UsdbAnimuxHelper {
     const videoFormatOption = `best[ext=${preferredVideoFormat}][height<=${preferredVideoHeight}]`;
     const videoUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
 
-    const videoDownloadCommand = `yt-dlp -f "${videoFormatOption}" -o "${videoOutputFileName}"  "${videoUrl}"`;
-    Logger.log(`Downloading video with command: ${videoDownloadCommand}`);
-    const videoDownloadProcess = exec(videoDownloadCommand, {
+    const videoDownloadArgs = [
+      "-f",
+      videoFormatOption,
+      "-o",
+      videoOutputFileName,
+      videoUrl,
+    ];
+    Logger.log(`Downloading video with command: yt-dlp ${videoDownloadArgs.join(" ")}`);
+    const videoDownloadProcess = spawn("yt-dlp", videoDownloadArgs, {
       cwd: downloadSingleSongDirPath,
     });
     const videoDownloadResult = await this._waitForProcessToFinish(
@@ -493,9 +499,20 @@ export class UsdbAnimuxHelper {
     // e.g. ffmpeg -i infile.mp4 -an -c:v copy videoout.mp4 -vn -map 0:a audioout.mp3
     const audioOnlyOutputFileName = `${songTitleSanitized}.${targetAudioFormat}`;
     const videoOnlyOutputFileName = `${songTitleSanitized}.${preferredVideoFormat}`;
-    const audioDownloadCommand = `ffmpeg -i "${videoOutputFileName}" -an -c:v copy "${videoOnlyOutputFileName}" -vn -map 0:a "${audioOnlyOutputFileName}"`;
-    Logger.log(`Downloading audio with command: ${audioDownloadCommand}`);
-    const audioDownloadResultPromise = exec(audioDownloadCommand, {
+    const audioDownloadArgs = [
+      "-i",
+      videoOutputFileName,
+      "-an",
+      "-c:v",
+      "copy",
+      videoOnlyOutputFileName,
+      "-vn",
+      "-map",
+      "0:a",
+      audioOnlyOutputFileName,
+    ];
+    Logger.log(`Downloading audio with command: ffmpeg ${audioDownloadArgs.join(" ")}`);
+    const audioDownloadResultPromise = spawn("ffmpeg", audioDownloadArgs, {
       cwd: downloadSingleSongDirPath,
     });
     const audioDownloadResult = await this._waitForProcessToFinish(
