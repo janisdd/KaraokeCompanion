@@ -29,6 +29,8 @@ const SLOW_MO = 100;
 const LOCK_FILE_EXTENSION = ".lock";
 const USDB_SESSION_COOKIE_NAME = "PHPSESSID";
 const USDB_SESSION_COOKIE_TIMEOUT_MS = 20 * 60 * 1000; // 20 min
+//invalid characters will be replaced with an underscore
+const INVALID_SONG_TITLE_CHARS_REGEX = /[^a-zA-Z0-9- äöüß\,\(\)\[\]]/g;
 
 // TODO the cookie is a race condition (all checks related to it)
 // when one instance runs and is e.g. waiting for the txt file to be available
@@ -219,7 +221,7 @@ export class UsdbAnimuxHelper {
     const preferredVideoFormat = ConfigHelper.getDownloadPreferredVideoFormat();
     const convertAudioFormat = ConfigHelper.getDownloadConvertAudioFormat();
 
-    const songTitleSanitized = songTitle.replace(/[^a-zA-Z0-9- ]/g, "_");
+    const songTitleSanitized = songTitle.replace(INVALID_SONG_TITLE_CHARS_REGEX, "_");
     const downloadSingleSongDirPath = path.resolve(
       downloadSongsDir,
       songTitleSanitized,

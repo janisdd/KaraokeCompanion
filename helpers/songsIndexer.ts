@@ -118,6 +118,7 @@ export class SongsIndexer {
       (file: string) => file.endsWith(".txt"),
     );
     if (txtFiles.length === 0) {
+      Logger.warn(`No txt files found for song dir: ${songDirectoryPath}`);
       return null;
     }
     let selectedPath = path.join(songDirectoryPath, txtFiles[0]);
