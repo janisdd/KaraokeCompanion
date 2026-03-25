@@ -10,6 +10,7 @@ import {
 import { defineComponent, h, shallowRef, type PropType } from "vue";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs";
 import type { SongInfo } from "~/types/song";
 import { useSongs } from "~~/composables/useSongs";
 import {
@@ -38,6 +39,7 @@ type QueuedDownload = {
 };
 
 type ExistingStatus = "no" | "indexed" | "downloading" | "waitingForRefresh";
+type DownloadStatusTone = "success" | "warning";
 
 type OnlineSongRow = OnlineSongInfo & {
   existingStatus: ExistingStatus;
@@ -53,6 +55,8 @@ const runtimeConfig = useRuntimeConfig();
 
 const searchQuery = ref("");
 const downloadError = ref<string | null>(null);
+const downloadStatusMessage = ref<string | null>(null);
+const downloadStatusTone = ref<DownloadStatusTone | null>(null);
 const downloadQueue = ref<QueuedDownload[]>([]);
 const waitingForRefreshSongIds = ref<string[]>([]);
 const completedDownloadCount = ref(0);
@@ -233,16 +237,26 @@ const processDownloadQueue = async () => {
   nextItem.controller = controller;
 
   try {
-    await $fetch("/api/onlineSongsDownload", {
+    const response = await $fetch<OnlineSongsDownloadResponse>(
+      "/api/onlineSongsDownload",
+      {
       method: "POST",
       body: {
         songs: [nextItem.song],
         overwriteExisting: nextItem.overwriteExisting,
       },
       signal: controller.signal,
-    });
+      },
+    );
     completedDownloadCount.value += 1;
     markSongAsWaitingForRefresh(nextItem.song.songId);
+    if (response.reindexError) {
+      downloadStatusTone.value = "warning";
+      downloadStatusMessage.value = `Downloaded ${nextItem.song.artist} - ${nextItem.song.songName}, but refreshing local songs failed: ${response.reindexError}`;
+    } else {
+      downloadStatusTone.value = "success";
+      downloadStatusMessage.value = `Downloaded ${nextItem.song.artist} - ${nextItem.song.songName} and requested a local songs refresh.`;
+    }
   } catch (error: any) {
     if (error?.name !== "AbortError") {
       downloadError.value =
@@ -271,6 +285,8 @@ const queueDownload = (song: OnlineSongRow) => {
   if (!downloadQueue.value.length) {
     completedDownloadCount.value = 0;
     waitingForRefreshSongIds.value = [];
+    downloadStatusMessage.value = null;
+    downloadStatusTone.value = null;
   }
 
   if (downloadQueue.value.length >= maxQueuedDownloads.value) {
@@ -312,6 +328,8 @@ const closeQueuePanel = () => {
 
   completedDownloadCount.value = 0;
   downloadError.value = null;
+  downloadStatusMessage.value = null;
+  downloadStatusTone.value = null;
 };
 
 onBeforeRouteLeave(() => {
@@ -597,6 +615,16 @@ const defaultColDef: ColDef<OnlineSongRow> = {
           <span v-if="downloadError" class="text-red-600 dark:text-red-400">
             {{ downloadError }}
           </span>
+          <span
+            v-if="downloadStatusMessage"
+            :class="
+              downloadStatusTone === 'warning'
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-emerald-700 dark:text-emerald-300'
+            "
+          >
+            {{ downloadStatusMessage }}
+          </span>
         </div>
 
         <div
@@ -625,6 +653,17 @@ const defaultColDef: ColDef<OnlineSongRow> = {
               :style="{ width: `${queueProgressPercent}%` }"
             />
           </div>
+          <p
+            v-if="downloadStatusMessage"
+            class="text-sm"
+            :class="
+              downloadStatusTone === 'warning'
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-emerald-700 dark:text-emerald-300'
+            "
+          >
+            {{ downloadStatusMessage }}
+          </p>
         </div>
 
         <div

@@ -2,6 +2,7 @@ import { ConfigHelper } from "~/helpers/configHelper";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { Logger } from "~/helpers/logger";
 import { UsdbAnimuxHelper } from "~/helpers/songsDownloader/UsdbAnimuxHelper";
+import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs";
 
 type OnlineSongsDownloadRequest = {
   songs: OnlineSongInfo[];
@@ -30,7 +31,12 @@ export default defineEventHandler(async (event) => {
   }
 
   console.log("Received online songs:", songs);
-  let didThrow = false;
+  const response: OnlineSongsDownloadResponse = {
+    ok: true,
+    count: songs.length,
+    reindexRequested: true,
+    reindexError: null,
+  };
 
   try {
     if (onlySimulateDownload) {
@@ -51,27 +57,22 @@ export default defineEventHandler(async (event) => {
         }
       }
     }
-
-    return {
-      ok: true,
-      count: songs.length,
-    };
-  } catch (error) {
-    didThrow = true;
-    throw error;
   } finally {
+    // this is in finally to ensure that the reindex is always requested, even if an error occurs (some songs might be downloaded)
     try {
       await requestSongsReindex();
     } catch (error) {
+      const reindexErrorMessage =
+        error instanceof Error ? error.message : String(error);
       Logger.error(
-        `Failed to reindex songs directory after download: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to reindex songs directory after download: ${reindexErrorMessage}`,
       );
-
-      if (!didThrow) {
-        throw error;
-      }
+      response.reindexRequested = false;
+      response.reindexError = reindexErrorMessage;
     }
   }
+
+  return response;
 });
 
 async function requestSongsReindex() {
