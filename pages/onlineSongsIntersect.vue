@@ -515,10 +515,10 @@ const scrollToActiveSongInList = () => {
 
 <template>
   <main
-    class="min-h-screen bg-slate-50 px-6 pt-10 dark:bg-slate-950"
+    class="min-h-screen bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
     :class="activeSong ? 'pb-28' : 'pb-10'"
   >
-    <div class="mx-auto max-w-4xl space-y-6">
+    <div class="mx-auto max-w-5xl space-y-6">
       <header class="space-y-2">
         <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
           Spotify Playlist vs Online Songs
