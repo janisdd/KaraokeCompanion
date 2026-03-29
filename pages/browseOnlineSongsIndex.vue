@@ -10,13 +10,19 @@ import {
 import { defineComponent, h, shallowRef, type PropType } from "vue";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs";
+import type { ExistingStatus, OnlineSongsIndexResponse } from "~/types/onlineSongs";
 import type { SongInfo } from "~/types/song";
 import { useSongs } from "~~/composables/useSongs";
 import {
   scrollToGridSong,
   useSongListAudioPlayback,
 } from "~~/composables/useSongListAudioPlayback";
+import {
+  getExistingStatusClass,
+  getExistingStatusLabel,
+  resolveExistingStatus,
+  useOnlineSongDownloads,
+} from "~~/composables/useOnlineSongDownloads";
 
 defineOptions({
   name: "BrowseOnlineSongsIndexPage",
@@ -25,21 +31,6 @@ defineOptions({
 definePageMeta({
   title: "Browse Online Songs",
 });
-
-type OnlineSongsIndexResponse = {
-  success: boolean;
-  data: OnlineSongInfo[];
-};
-
-type QueuedDownload = {
-  song: OnlineSongInfo;
-  overwriteExisting: boolean;
-  status: "queued" | "downloading";
-  controller?: AbortController;
-};
-
-type ExistingStatus = "no" | "indexed" | "downloading" | "waitingForRefresh";
-type DownloadStatusTone = "success" | "warning";
 
 type OnlineSongRow = OnlineSongInfo & {
   existingStatus: ExistingStatus;
@@ -50,17 +41,7 @@ type OnlineSongRow = OnlineSongInfo & {
   audioAvailable: boolean;
 };
 
-const DEFAULT_MAX_QUEUED_DOWNLOADS = 5;
-const runtimeConfig = useRuntimeConfig();
-
 const searchQuery = ref("");
-const downloadError = ref<string | null>(null);
-const downloadStatusMessage = ref<string | null>(null);
-const downloadStatusTone = ref<DownloadStatusTone | null>(null);
-const downloadQueue = ref<QueuedDownload[]>([]);
-const waitingForRefreshSongIds = ref<string[]>([]);
-const completedDownloadCount = ref(0);
-const isProcessingQueue = ref(false);
 const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
@@ -77,6 +58,29 @@ const {
   error: existingSongsError,
   refresh: refreshExistingSongs,
 } = useSongs();
+
+const {
+  cancelDownload,
+  closeQueuePanel,
+  completedDownloadCount,
+  currentDownloadSongLabel,
+  downloadError,
+  downloadStatusMessage,
+  downloadStatusTone,
+  isDownloadingSong,
+  isQueueFinished,
+  isQueuedSong,
+  isWaitingForRefreshSong,
+  maxQueuedDownloads,
+  queueDownload,
+  queueProgressPercent,
+  queuedDownloadCount,
+  totalTrackedDownloads,
+} = useOnlineSongDownloads<OnlineSongRow>({
+  getDownloadSong: (song) => song,
+  refreshOnlineSongs: refreshOnlineSongsIndex,
+  refreshExistingSongs,
+});
 
 const {
   activeAudioKey,
@@ -109,17 +113,14 @@ const existingSongsByKey = computed(() => {
 const onlineSongs = computed<OnlineSongRow[]>(() => {
   return (response.value?.data ?? []).map((song) => {
     const existingSong = existingSongsByKey.value.get(song.key) ?? null;
-    const isLocallyDownloading = downloadQueue.value.some(
-      (item) => item.song.songId === song.songId && item.status === "downloading",
-    );
-    const isWaitingForRefresh = waitingForRefreshSongIds.value.includes(song.songId);
-    const existingStatus: ExistingStatus = song.indexed
-      ? "indexed"
-      : isWaitingForRefresh
-        ? "waitingForRefresh"
-      : song.downloading || isLocallyDownloading
-        ? "downloading"
-        : "no";
+    const existingStatus = resolveExistingStatus({
+      hasExistingSong: Boolean(existingSong),
+      backendIndexed: song.indexed,
+      backendDownloading: song.downloading,
+      songId: song.songId,
+      isDownloadingSong,
+      isWaitingForRefreshSong,
+    });
 
     return {
       ...song,
@@ -150,190 +151,6 @@ const filteredSongs = computed(() => {
   return onlineSongs.value.filter((song) => {
     return `${song.artist} ${song.songName}`.toLowerCase().includes(query);
   });
-});
-
-const queuedDownloadCount = computed(() => downloadQueue.value.length);
-const totalTrackedDownloads = computed(
-  () => queuedDownloadCount.value + completedDownloadCount.value,
-);
-const isQueueFinished = computed(
-  () =>
-    completedDownloadCount.value > 0 &&
-    queuedDownloadCount.value === 0 &&
-    !isProcessingQueue.value,
-);
-const queueProgressPercent = computed(() => {
-  if (!totalTrackedDownloads.value) {
-    return 0;
-  }
-
-  return Math.round((completedDownloadCount.value / totalTrackedDownloads.value) * 100);
-});
-
-const maxQueuedDownloads = computed(
-  () => runtimeConfig.public.maxDownloadQueueSizeFrontend ?? DEFAULT_MAX_QUEUED_DOWNLOADS,
-);
-
-console.log(`[browseOnlineSongsIndex] maxQueuedDownloads: ${maxQueuedDownloads.value}`);
-
-const isQueuedSong = (songId: string) =>
-  downloadQueue.value.some((item) => item.song.songId === songId);
-
-const isDownloadingSong = (songId: string) =>
-  downloadQueue.value.some(
-    (item) => item.song.songId === songId && item.status === "downloading",
-  );
-
-const markSongAsWaitingForRefresh = (songId: string) => {
-  if (waitingForRefreshSongIds.value.includes(songId)) {
-    return;
-  }
-
-  waitingForRefreshSongIds.value = [...waitingForRefreshSongIds.value, songId];
-};
-
-const resetQueueProgressIfIdle = () => {
-  if (!downloadQueue.value.length && !isProcessingQueue.value) {
-    completedDownloadCount.value = 0;
-    waitingForRefreshSongIds.value = [];
-  }
-};
-
-const removeQueuedSong = (songId: string) => {
-  downloadQueue.value = downloadQueue.value.filter((item) => item.song.songId !== songId);
-};
-
-const confirmOverwriteDownload = (song: OnlineSongRow) => {
-  if (song.existingStatus === "no") {
-    return true;
-  }
-
-  const existingLabel =
-    song.existingStatus === "indexed" ? "already indexed locally" : "already downloading";
-
-  if (!process.client) {
-    return false;
-  }
-
-  return window.confirm(
-    `${song.artist} - ${song.songName} is ${existingLabel}.\n\nDo you want to overwrite the existing song files?`,
-  );
-};
-
-const processDownloadQueue = async () => {
-  if (isProcessingQueue.value) {
-    return;
-  }
-
-  const nextItem = downloadQueue.value.find((item) => item.status === "queued");
-  if (!nextItem) {
-    isProcessingQueue.value = false;
-    return;
-  }
-
-  isProcessingQueue.value = true;
-  nextItem.status = "downloading";
-  const controller = new AbortController();
-  nextItem.controller = controller;
-
-  try {
-    const response = await $fetch<OnlineSongsDownloadResponse>(
-      "/api/onlineSongsDownload",
-      {
-      method: "POST",
-      body: {
-        songs: [nextItem.song],
-        overwriteExisting: nextItem.overwriteExisting,
-      },
-      signal: controller.signal,
-      },
-    );
-    completedDownloadCount.value += 1;
-    markSongAsWaitingForRefresh(nextItem.song.songId);
-    if (response.reindexError) {
-      downloadStatusTone.value = "warning";
-      downloadStatusMessage.value = `Downloaded ${nextItem.song.artist} - ${nextItem.song.songName}, but refreshing local songs failed: ${response.reindexError}`;
-    } else {
-      downloadStatusTone.value = "success";
-      downloadStatusMessage.value = `Downloaded ${nextItem.song.artist} - ${nextItem.song.songName} and requested a local songs refresh.`;
-    }
-  } catch (error: any) {
-    if (error?.name !== "AbortError") {
-      downloadError.value =
-        error?.data?.message ?? error?.message ?? "Failed to download song.";
-      console.error("Failed to download online song", error);
-    }
-  } finally {
-    removeQueuedSong(nextItem.song.songId);
-    isProcessingQueue.value = false;
-    if (downloadQueue.value.length) {
-      void processDownloadQueue();
-
-      // we check if there were any successful downloads with > 0
-    } else if (completedDownloadCount.value > 0) {
-      await Promise.all([refreshOnlineSongsIndex(), refreshExistingSongs()]);
-      waitingForRefreshSongIds.value = [];
-    }
-  }
-};
-
-const queueDownload = (song: OnlineSongRow) => {
-  if (isQueuedSong(song.songId)) {
-    return;
-  }
-
-  if (!downloadQueue.value.length) {
-    completedDownloadCount.value = 0;
-    waitingForRefreshSongIds.value = [];
-    downloadStatusMessage.value = null;
-    downloadStatusTone.value = null;
-  }
-
-  if (downloadQueue.value.length >= maxQueuedDownloads.value) {
-    downloadError.value = `You can queue at most ${maxQueuedDownloads.value} downloads at a time.`;
-    return;
-  }
-
-  const overwriteExisting = confirmOverwriteDownload(song);
-  if (!overwriteExisting && song.existingStatus !== "no") {
-    return;
-  }
-
-  downloadError.value = null;
-  downloadQueue.value = [
-    ...downloadQueue.value,
-    { song, overwriteExisting, status: "queued" },
-  ];
-  void processDownloadQueue();
-};
-
-const cancelDownload = (song: OnlineSongInfo) => {
-  const queuedItem = downloadQueue.value.find((item) => item.song.songId === song.songId);
-  if (!queuedItem) {
-    return;
-  }
-
-  if (queuedItem.status === "downloading") {
-    queuedItem.controller?.abort();
-  }
-
-  removeQueuedSong(song.songId);
-  resetQueueProgressIfIdle();
-};
-
-const closeQueuePanel = () => {
-  if (!isQueueFinished.value) {
-    return;
-  }
-
-  completedDownloadCount.value = 0;
-  downloadError.value = null;
-  downloadStatusMessage.value = null;
-  downloadStatusTone.value = null;
-};
-
-onBeforeRouteLeave(() => {
-  downloadQueue.value = [];
 });
 
 const DownloadCell = defineComponent({
@@ -390,32 +207,6 @@ const centerCellStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-};
-
-const getExistingStatusLabel = (status: ExistingStatus) => {
-  switch (status) {
-    case "indexed":
-      return "Indexed";
-    case "downloading":
-      return "Downloading";
-    case "waitingForRefresh":
-      return "Awaiting refresh";
-    default:
-      return "No";
-  }
-};
-
-const getExistingStatusClass = (status: ExistingStatus) => {
-  switch (status) {
-    case "indexed":
-      return "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300";
-    case "downloading":
-      return "inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
-    case "waitingForRefresh":
-      return "inline-flex rounded-full bg-sky-100 px-2 py-1 text-xs font-medium text-sky-800 dark:bg-sky-950/60 dark:text-sky-300";
-    default:
-      return "inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300";
-  }
 };
 
 const AudioCell = defineComponent({
@@ -581,7 +372,7 @@ const defaultColDef: ColDef<OnlineSongRow> = {
           Browse Online Songs
         </h1>
         <p class="text-sm text-slate-600 dark:text-slate-300">
-          Search the indexed online songs by artist or song name. Leaving the page before the downloads are finished will clear the queue but any active downloads in progress will continue in the backend.
+          Search the indexed online songs by artist or song name. The download queue stays in sync when you switch between views, and active downloads continue in the backend while the local song list refresh catches up.
         </p>
       </header>
 
@@ -632,7 +423,15 @@ const defaultColDef: ColDef<OnlineSongRow> = {
           class="space-y-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
         >
           <div class="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
-            <span>Download queue</span>
+            <div class="flex flex-col gap-1">
+              <span>Download queue</span>
+              <span
+                v-if="currentDownloadSongLabel"
+                class="text-xs text-slate-500 dark:text-slate-400"
+              >
+                Current: {{ currentDownloadSongLabel }}
+              </span>
+            </div>
             <div class="flex items-center gap-3">
               <span>{{ queueProgressPercent }}%</span>
               <button

@@ -9,9 +9,13 @@ import { SongsIndexer } from "./songsIndexer";
 const ONLINE_SONGS_INDEX_JSON_FILE_NAME = "online_songs_index.json";
 
 export type OnlineSongInfoPlain = {
-  //this is just artist-songname (to make it unique and never change)
+  /**
+   * this is just artist-songname (to make it unique and never change)
+   */
   key: string;
-  // we can create the href from the id: ?link=detail&id=<songId>
+  /**
+   * we can create the href from the id: ?link=detail&id=<songId>
+   */
   songId: string;
   songName: string;
   artist: string;

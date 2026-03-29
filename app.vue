@@ -24,18 +24,18 @@
             Browse Songs
           </NuxtLink>
           <NuxtLink
-            to="/browseOnlineSongsIndex"
-            class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
-            active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
-          >
-            Online Songs
-          </NuxtLink>
-          <NuxtLink
             to="/markedSongsList"
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
             Marked Songs
+          </NuxtLink>
+          <NuxtLink
+            to="/browseOnlineSongsIndex"
+            class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+            active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
+          >
+            Online Songs
           </NuxtLink>
           <NuxtLink
             to="/localSongsIntersect"
@@ -45,12 +45,13 @@
             Spotify vs Local
           </NuxtLink>
           <NuxtLink
-            to="/compareSpotifyPlaylists"
+            to="/onlineSongsIntersect"
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
-          Spotify Compare
+            Spotify vs Online
           </NuxtLink>
+
           <button
             type="button"
             class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -94,20 +95,20 @@
             Browse Songs
           </NuxtLink>
           <NuxtLink
-            to="/browseOnlineSongsIndex"
-            class="rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
-            active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
-            @click="isMobileMenuOpen = false"
-          >
-            Online Songs
-          </NuxtLink>
-          <NuxtLink
             to="/markedSongsList"
             class="rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
             @click="isMobileMenuOpen = false"
           >
             Marked Songs
+          </NuxtLink>
+          <NuxtLink
+            to="/browseOnlineSongsIndex"
+            class="rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+            active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
+            @click="isMobileMenuOpen = false"
+          >
+            Online Songs
           </NuxtLink>
           <NuxtLink
             to="/localSongsIntersect"
@@ -118,12 +119,12 @@
             Spotify vs Local
           </NuxtLink>
           <NuxtLink
-            to="/compareSpotifyPlaylists"
+            to="/onlineSongsIntersect"
             class="rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
             @click="isMobileMenuOpen = false"
           >
-            Spotify Playlist Compare
+            Spotify vs Online
           </NuxtLink>
           <div class="flex items-center gap-2 pt-2">
             <button
