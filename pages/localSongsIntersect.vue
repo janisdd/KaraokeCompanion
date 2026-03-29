@@ -350,16 +350,24 @@ const markAllMatches = () => {
     class="min-h-screen bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
     :class="activeSong ? 'pb-28' : 'pb-10'"
   >
-    <div class="mx-auto max-w-5xl space-y-6">
+    <div class="mx-auto max-w-5xl space-y-4">
       <header class="space-y-2">
         <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
           Spotify Playlist vs Local Songs
         </h1>
-        <p class="text-sm text-slate-600 dark:text-slate-300">
-          Provide a Spotify playlist URL to find local UltraStar matches.
-          <!-- does not work with playlists from spotify itself-->
-          <b>The playlist must be public and a custom playlist!</b>
-        </p>
+        <details
+          class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+        >
+          <summary
+            class="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+          >
+            About this page
+          </summary>
+          <p class="mt-3">
+            Provide a Spotify playlist URL to find local UltraStar matches.
+            <b>The playlist must be public and a custom playlist!</b>
+          </p>
+        </details>
       </header>
 
       <section class="text-sm text-slate-600 dark:text-slate-300">
