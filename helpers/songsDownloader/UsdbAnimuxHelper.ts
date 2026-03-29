@@ -68,18 +68,21 @@ export class UsdbAnimuxHelper {
 
     // e.g. url is https://usdb.animux.de/index.php?link=detail&id=4978
     // we need to get the id from the url
-    const urlParams = new URLSearchParams(songUrl);
-    const id = urlParams.get("id");
-    if (!id) {
-      throw new Error("ID not found in URL");
-    }
-    const songId = `${id}`;
+    // const urlParams = new URLSearchParams(songUrl);
+    // const id = urlParams.get("id");
+    // if (!id) {
+    //   throw new Error(`ID not found in URL for song ${song.songName} (id: ${song.songId})`);
+    // }
+    // const songId = `${id}`;
+    const songId = song.songId;
 
     const songIsDownloading = this._downloadingOrDownloadedSongIds.has(songId);
     if (songIsDownloading && !forceDownload) {
       Logger.log(`Song already downloading: ${songId}`);
       return;
     }
+
+    Logger.log(`Downloading song ${song.songName} (id: ${song.songId})`);
 
     // TODO this is a race condition...
     // when multiple requests are made at the same time
@@ -241,7 +244,7 @@ export class UsdbAnimuxHelper {
     }
     const youtubeVideoId = this._getYoutubeVideoId(youtubeVideoIframeUrl);
     if (!youtubeVideoId) {
-      throw new Error("Youtube video ID not found");
+      throw new Error(`Youtube video ID not found in url: ${youtubeVideoIframeUrl}`);
     }
     Logger.log(`Youtube video ID found: ${youtubeVideoId}`);
 
@@ -269,10 +272,13 @@ export class UsdbAnimuxHelper {
     Logger.log(
       `Waiting for ${requiredWaitTimeForSongDownload} seconds for txt file to be available`,
     );
-    await new Promise((resolve) =>
-      setTimeout(resolve, requiredWaitTimeForSongDownload * 1000),
-    );
-    Logger.log(`Txt file is available`);
+
+    // wait and log ever 5 seconds (not perfectly accurate, but good enough)
+    for (let i = 0; i < requiredWaitTimeForSongDownload; i += 5) {
+      Logger.log(`Waiting for ${i} seconds for txt file to be available (song name: ${songTitleSanitized})...`);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    Logger.log(`Txt file is available (song name: ${songTitleSanitized})`);
 
     // to check if the txt file is available, we need to check for document.querySelector("#tablebg textarea")
     const txtArea = await page.locator("#tablebg textarea").first();
@@ -554,12 +560,12 @@ export class UsdbAnimuxHelper {
     };
   }
 
-  // from somewhere on the internet
+  // from https://stackoverflow.com/questions/3452546/how-do-i-get-the-youtube-video-id-from-a-url
   private static _getYoutubeVideoId(url: string): string | null {
     const regExp =
-      /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+      /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
-    return match && match[7].length == 11 ? match[7] : null;
+    return match && match[2].length == 11 ? match[2] : null;
   }
 
   private static _ensureSongNoteMetaEntries(
