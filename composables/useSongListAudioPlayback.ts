@@ -34,6 +34,12 @@ export const scrollToGridSong = <TRow>(options: ScrollToGridSongOptions<TRow>) =
 
   if (targetRowIndex !== null) {
     gridApi.ensureIndexVisible(targetRowIndex, "middle");
+    requestAnimationFrame(() => {
+      const targetRow = document.querySelector<HTMLElement>(
+        `.ag-row[row-index="${targetRowIndex}"]`,
+      );
+      targetRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 };
 
