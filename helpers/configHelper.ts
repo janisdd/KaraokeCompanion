@@ -25,6 +25,7 @@ let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMA
 let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT || "mp3";
 let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || `${USDB_ANIMUX_URL}/index.php?link=byartist`;
 let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false;
+let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
 
 if (!PlaylistCacheDirPath) {
   throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
@@ -104,6 +105,10 @@ export class ConfigHelper {
       }
     }
     return DOWNLOAD_USE_HEADLESS_MODE;
+  }
+
+  static getAdminPagePw() {
+    return ADMIN_PAGE_PW;
   }
 }
 

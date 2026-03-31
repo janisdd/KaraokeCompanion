@@ -17,7 +17,7 @@
         </NuxtLink>
         <nav class="hidden items-center gap-3 text-sm text-slate-600 dark:text-slate-300 md:flex">
           <NuxtLink
-            to="/browseSongs"
+            to="/browseLocalSongsIndex"
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
@@ -87,7 +87,7 @@
       >
         <nav class="flex flex-col gap-2">
           <NuxtLink
-            to="/browseSongs"
+            to="/browseLocalSongsIndex"
             class="rounded-xl px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
             @click="isMobileMenuOpen = false"
