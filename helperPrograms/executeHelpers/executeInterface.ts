@@ -3,6 +3,8 @@ import fs from "fs"
 
 /**
  * in contrast to analyze helpers, execute helpers are used to execute a command on a song directory
+ * currently we always execute on the original file as input and output the result in a different file
+ * this way the analyzer is always related to the original file and never the result file
  */
 export interface ExecuteHelper {
   readonly logPrefix: string
