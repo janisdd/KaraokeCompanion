@@ -523,6 +523,19 @@ const runChangeRelativeLoudness = async () => {
       @show-song-tools="showSongTools"
       @run-analyzer="runAnalyzer"
     >
+      <template #header-below-title>
+        <details
+          class="hidden rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+        >
+          <summary class="cursor-pointer font-medium text-slate-700 dark:text-slate-200">
+            About loudness stats and tools
+          </summary>
+          <p class="mt-2">
+            Loudness stats are always calculated from the original audio files.
+            the tools only work with the original audio files.
+          </p>
+        </details>
+      </template>
       <template #header-actions>
         <div
           class="flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"

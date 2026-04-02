@@ -518,6 +518,7 @@ watch(
             <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
               {{ title }}
             </h1>
+            <slot name="header-below-title" />
           </div>
         </div>
       </header>

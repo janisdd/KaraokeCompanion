@@ -93,6 +93,7 @@ export const analyzeLoudness = {
 
         try {
           resolve(loudnessAnalyzeResultSchema.parse(JSON.parse(stdout)))
+          Logger.debug(`${analyzeLoudness.logPrefix} successfuly analyzed loudness for '${intputFileName}'`)
         } catch (parseError) {
           reject(
             new Error(
