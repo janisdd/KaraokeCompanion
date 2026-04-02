@@ -6,9 +6,9 @@ import { Logger } from "./logger";
 import { SongKeyHelper } from "./songKeyHelper";
 
 export class SongsIndexer {
-  // key is songId, value is song info
+  // key is songKey, value is song info
   private static _songsMap = new Map<string, SongInfo>();
-  // key is songId, value is root directory path of the song (where all songs are located)
+  // key is songKey, value is root directory path of the song (where all songs are located)
   private static _songRootMap = new Map<string, string>();
 
   private static _indexingFinished = false;

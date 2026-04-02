@@ -1,40 +1,57 @@
 <script setup lang="ts">
-import { AgGridVue } from "ag-grid-vue3";
+import { AgGridVue } from "ag-grid-vue3"
 import {
   themeQuartz,
   type ColDef,
   type GridApi,
   type GridReadyEvent,
   type ICellRendererParams,
-} from "ag-grid-community";
-import type { PropType } from "vue";
-import { defineComponent, h, resolveComponent, shallowRef } from "vue";
-import { scrollToGridSong } from "~~/composables/useSongListAudioPlayback";
-import { useSongListView } from "~~/composables/useSongListView";
-import { useSongs } from "~~/composables/useSongs";
-import type { SongInfo } from "~~/types/song";
+  type ValueGetterParams,
+} from "ag-grid-community"
+import type { PropType } from "vue"
+import { defineComponent, h, resolveComponent, shallowRef } from "vue"
+import { scrollToGridSong } from "~~/composables/useSongListAudioPlayback"
+import { useSongListView } from "~~/composables/useSongListView"
+import { useSongs } from "~~/composables/useSongs"
+import type {
+  AnalyzeResultKey,
+  AnalyzeResultsMap,
+  AnalyzeResultsSongEntry,
+} from "~/types/analyzeResults"
+import { analyzeResultColumns } from "~/types/analyzeResults"
+import type { SongInfo } from "~~/types/song"
 
 defineOptions({
   name: "AdminSongListView",
-});
+})
+
+const emit = defineEmits<{
+  "show-analyzer-result": [payload: { title: string; content: string }]
+  "show-song-info": [payload: { title: string; content: string }]
+  "run-analyzer": [payload: { songKey: string; analyzerKey: AnalyzeResultKey }]
+}>()
 
 const props = withDefaults(
   defineProps<{
-    title?: string;
-    emptyMessage?: string;
+    title?: string
+    emptyMessage?: string
+    analyzerResults?: AnalyzeResultsSongEntry[]
+    activeAnalyzeRequestKey?: string | null
   }>(),
   {
     title: "Manage Songs",
     emptyMessage: "No songs found.",
+    analyzerResults: () => [],
+    activeAnalyzeRequestKey: null,
   },
-);
+)
 
-const { songs, pending, error } = useSongs();
-const totalCount = computed(() => songs.value?.length ?? 0);
+const { songs, pending, error } = useSongs()
+const totalCount = computed(() => songs.value?.length ?? 0)
 
-const songSource = computed(() => songs.value ?? []);
-const isDark = useState<boolean>("isDarkMode", () => false);
-const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
+const songSource = computed(() => songs.value ?? [])
+const isDark = useState<boolean>("isDarkMode", () => false)
+const agThemeMode = computed(() => (isDark.value ? "dark" : "light"))
 
 const {
   activeAudioKey,
@@ -58,21 +75,36 @@ const {
   songs: songSource,
   stateKeyPrefix: "admin-songs",
   audioStorageKey: "admin-songs",
-});
+})
 
-const rowHeight = 48;
-const gridApi = shallowRef<GridApi | null>(null);
+const rowHeight = 48
+const gridApi = shallowRef<GridApi | null>(null)
 
 const onGridReady = (event: GridReadyEvent) => {
-  gridApi.value = event.api;
-};
+  gridApi.value = event.api
+}
 
 const refreshGrid = () => {
   if (!gridApi.value) {
-    return;
+    return
   }
-  gridApi.value.refreshCells({ force: true });
-};
+  gridApi.value.refreshCells({ force: true })
+}
+
+const getAnalyzerEntryKey = (songKey: string, songDirName: string) =>
+  `${songKey}::${songDirName}`
+
+const getAnalyzeRequestKey = (songKey: string, analyzerKey: AnalyzeResultKey) =>
+  `${songKey}::${analyzerKey}`
+
+const analyzerResultsBySong = computed(() => {
+  return new Map(
+    props.analyzerResults.map((entry) => [
+      getAnalyzerEntryKey(entry.songKey, entry.songDirName),
+      entry,
+    ]),
+  )
+})
 
 const AudioCell = defineComponent({
   props: {
@@ -82,18 +114,18 @@ const AudioCell = defineComponent({
     },
   },
   setup(props) {
-    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
     return () => {
-      const song = props.params.data;
+      const song = props.params.data
       if (!song) {
-        return null;
+        return null
       }
-      const audioFile = getAudioFile(song);
+      const audioFile = getAudioFile(song)
       if (!audioFile) {
-        return h("span", { class: "text-slate-400 dark:text-slate-500" }, "—");
+        return h("span", { class: "text-slate-400 dark:text-slate-500" }, "—")
       }
       const isActive =
-        activeAudioKey.value === getSongKey(song) && isActiveAudioPlaying.value;
+        activeAudioKey.value === getSongKey(song) && isActiveAudioPlaying.value
       return h(
         "button",
         {
@@ -108,10 +140,119 @@ const AudioCell = defineComponent({
             icon: isActive ? "fa-solid fa-pause" : "fa-solid fa-play",
           }),
         ],
-      );
-    };
+      )
+    }
   },
-});
+})
+
+type AnalyzerCellValue = {
+  analyzerKey: AnalyzeResultKey
+  analyzerLabel: string
+  hasResult: boolean
+  result?: AnalyzeResultsMap[AnalyzeResultKey]
+  songLabel: string
+  songKey: string
+  isAnalyzeRunning: boolean
+  isAnalyzeDisabled: boolean
+}
+
+const analyzerButtonClass =
+  "inline-flex h-7 items-center justify-center rounded-md border border-slate-200 px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+
+const AnalyzerActionsCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo, AnalyzerCellValue>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const value = props.params.value
+      if (!value) {
+        return null
+      }
+
+      const buttons = []
+      if (value.hasResult) {
+        buttons.push(
+          h(
+            "button",
+            {
+              type: "button",
+              class: analyzerButtonClass,
+              onClick: () =>
+                emit("show-analyzer-result", {
+                  title: `${value.analyzerLabel} result`,
+                  content: `Song: ${value.songLabel}\n\n${JSON.stringify(value.result, null, 2)}`,
+                }),
+            },
+            "Result",
+          ),
+        )
+      }
+
+      buttons.push(
+        h(
+          "button",
+          {
+            type: "button",
+            class: analyzerButtonClass,
+            disabled: value.isAnalyzeDisabled,
+            onClick: () =>
+              emit("run-analyzer", {
+                songKey: value.songKey,
+                analyzerKey: value.analyzerKey,
+              }),
+          },
+          value.isAnalyzeRunning
+            ? h("span", { class: "flex items-center gap-2" }, [
+                h("span", {
+                  class:
+                    "h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300",
+                  "aria-hidden": "true",
+                }),
+                h("span", "Analyzing"),
+              ])
+            : "Analyze",
+        ),
+      )
+
+      return h("div", { class: "flex items-center justify-center gap-2" }, buttons)
+    }
+  },
+})
+
+const SongInfoCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const song = props.params.data
+      if (!song) {
+        return null
+      }
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class: analyzerButtonClass,
+          onClick: () =>
+            emit("show-song-info", {
+              title: `${song.artist} - ${song.title}`,
+              content: JSON.stringify(song, null, 2),
+            }),
+        },
+        "Info",
+      )
+    }
+  },
+})
 
 const makeTextCell = (className: string) =>
   defineComponent({
@@ -127,15 +268,15 @@ const makeTextCell = (className: string) =>
           "span",
           { class: `song-cell-2lines ${className}` },
           props.params.value ?? "—",
-        );
+        )
     },
-  });
+  })
 
 const centerCellStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-};
+}
 
 const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
@@ -160,35 +301,95 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     cellRenderer: AudioCell,
   },
   {
-    headerName: "Language",
-    field: "language",
-    width: 100,
-    valueFormatter: (params) => params.value ?? "—",
-    cellRenderer: makeTextCell("song-cell-language"),
+    headerName: "Info",
+    colId: "info",
+    width: 90,
+    sortable: false,
+    resizable: false,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    cellRenderer: SongInfoCell,
   },
-]);
+  ...analyzeResultColumns.map((analyzer) => ({
+    headerName: analyzer.label,
+    colId: analyzer.key,
+    width: 170,
+    sortable: false,
+    resizable: false,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    valueGetter: (params: ValueGetterParams<SongInfo>): AnalyzerCellValue => {
+      const song = params.data
+      const requestKey = song
+        ? getAnalyzeRequestKey(song.key, analyzer.key)
+        : null
+      const isAnalyzeRunning = props.activeAnalyzeRequestKey === requestKey
+      const isAnalyzeDisabled = Boolean(props.activeAnalyzeRequestKey)
+
+      if (!song) {
+        return {
+          analyzerKey: analyzer.key,
+          analyzerLabel: analyzer.label,
+          hasResult: false,
+          result: undefined,
+          songLabel: "Unknown song",
+          songKey: "",
+          isAnalyzeRunning,
+          isAnalyzeDisabled,
+        }
+      }
+
+      const analyzerEntry = analyzerResultsBySong.value.get(
+        getAnalyzerEntryKey(song.key, song.songDirName),
+      )
+
+      return {
+        analyzerKey: analyzer.key,
+        analyzerLabel: analyzer.label,
+        hasResult: Boolean(analyzerEntry?.results[analyzer.key]),
+        result: analyzerEntry?.results[analyzer.key],
+        songLabel: `${song.artist} - ${song.title}`,
+        songKey: song.key,
+        isAnalyzeRunning,
+        isAnalyzeDisabled,
+      }
+    },
+    cellRenderer: AnalyzerActionsCell,
+  })),
+])
 
 const defaultColDef: ColDef = {
   sortable: true,
   resizable: true,
   suppressMovable: true,
-};
+}
 
 const scrollToActiveSongInList = () => {
   scrollToGridSong({
     gridApi: gridApi.value,
     songKey: activeSong.value ? getSongKey(activeSong.value) : null,
     getRowSongKey: getSongKey,
-  });
-};
+  })
+}
 
 watch([activeAudioKey, isActiveAudioPlaying], () => {
-  refreshGrid();
-});
+  refreshGrid()
+})
 
 watch([searchMode, lyricsQuery], () => {
-  refreshGrid();
-});
+  refreshGrid()
+})
+
+watch(analyzerResultsBySong, () => {
+  refreshGrid()
+})
+
+watch(
+  () => props.activeAnalyzeRequestKey,
+  () => {
+    refreshGrid()
+  },
+)
 </script>
 
 <template>
@@ -334,10 +535,6 @@ watch([searchMode, lyricsQuery], () => {
 
 .song-cell-artist {
   max-width: 20rem;
-}
-
-.song-cell-language {
-  max-width: 12rem;
 }
 
 ::global(.dark .ag-theme-quartz) {

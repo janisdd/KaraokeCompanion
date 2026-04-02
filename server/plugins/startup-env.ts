@@ -1,5 +1,6 @@
 import { config as loadEnv } from 'dotenv'
 import { Logger, LogLevels, parseLogLevel } from '~/helpers/logger'
+import { SongsAnalyzerIndexer } from '~/helpers/songsAnalyzerIndexer'
 import { SongsIndexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
@@ -69,6 +70,8 @@ export default defineNitroPlugin(async () => {
     }
     Logger.log(`[nuxt start] All Songs indexed successfully for ${songsDirPaths.length} dirs`);
     Logger.log(`[nuxt start] Total songs indexed: ${SongsIndexer.getSongsMap().size}`);
+    await SongsAnalyzerIndexer.loadExistingAnalyzeResults()
+    Logger.log(`[nuxt start] Existing analyze helper results loaded`);
   } catch (error) {
     Logger.error(`[nuxt start] Error indexing songs: ${error instanceof Error ? error.message : String(error)}`);
   }

@@ -4,8 +4,8 @@ import path from "path";
 import { Logger, LogLevels, parseLogLevel } from "../helpers/logger";
 import { SongsIndexer } from "../helpers/songsIndexer";
 import { knownAnalyzeHelpers } from "./knownHelpers";
+import { ConfigHelper } from "../helpers/configHelper";
 
-const NUM_WORKERS = 2
 
 type CreateErrorInput = {
   statusCode?: number;
@@ -92,7 +92,7 @@ async function runAllAnalyzeHelpers(): Promise<void> {
     return
   }
 
-  Logger.log(`${logPrefix} Running ${analyzeTasks.length} analyze task(s) with ${NUM_WORKERS} worker(s)`)
+  Logger.log(`${logPrefix} Running ${analyzeTasks.length} analyze task(s) with ${ConfigHelper.getNumAnalyzeWorkers()} worker(s)`)
 
   let taskIndex = 0
   let completedTaskCount = 0
@@ -108,7 +108,7 @@ async function runAllAnalyzeHelpers(): Promise<void> {
     }
   }
 
-  const workerCount = Math.min(NUM_WORKERS, analyzeTasks.length)
+  const workerCount = Math.min(ConfigHelper.getNumAnalyzeWorkers(), analyzeTasks.length)
   const workers: Promise<void>[] = []
 
   for (let workerIndex = 0; workerIndex < workerCount; workerIndex += 1) {

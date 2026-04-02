@@ -1,5 +1,5 @@
 import type { AnalyzeHelper } from "./analyzeHelpers/analyzeInterface";
-import { analyzeLoudness } from "./analyzeHelpers/loudness/analyze_loudnes";
+import { analyzeLoudness } from "./analyzeHelpers/loudness/analyze_loudness";
 import { changeRelativeLoudness } from "./executeHelpers/changeRelativeLoudness/changeRelativeLoudness";
 import type { ExecuteHelper } from "./executeHelpers/executeInterface";
 

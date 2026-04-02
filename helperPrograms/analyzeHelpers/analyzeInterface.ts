@@ -1,11 +1,38 @@
+import fs from "fs"
+import path from "path"
+
 /**
  * the idea is that every analyze helper can be run on every song and it will analyze the audio file and store the results in a file (json)
  * this is intended for long running analysis that we want to only run once and then store the results
  */
+export function resolveAnalyzeHelperScriptPath(
+  helperDirName: string,
+  currentDirPath: string,
+  scriptFileName: string,
+): string {
+  const cwdScriptPath = path.join(
+    process.cwd(),
+    "helperPrograms",
+    "analyzeHelpers",
+    helperDirName,
+    scriptFileName,
+  )
+
+  if (fs.existsSync(cwdScriptPath)) {
+    return cwdScriptPath
+  }
+
+  return path.join(currentDirPath, scriptFileName)
+}
+
 export interface AnalyzeHelper {
+  // should be unique
+  readonly analyzerKey: string;
+  // name for ui
+  readonly displayName: string;
   readonly logPrefix: string;
   readonly resultsFileName: string;
-  // key is the full path to the song directory
+  // key is the full path to the song directory (songsRootDir + songDirName)
   // cache results for each song
   resultsMap: Map<string, any>;
   getScriptPath(): string;

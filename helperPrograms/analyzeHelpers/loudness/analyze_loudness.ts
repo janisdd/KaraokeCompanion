@@ -1,12 +1,14 @@
 import path from "path"
 import { fileURLToPath } from "url"
 import { Logger } from "../../../helpers/logger"
-import type { AnalyzeHelper } from "../analyzeInterface"
+import { resolveAnalyzeHelperScriptPath, type AnalyzeHelper } from "../analyzeInterface"
 import fs from "fs"
 import { execFile } from "child_process"
 import { z } from "zod"
 
 const currentDirPath = path.dirname(fileURLToPath(import.meta.url))
+const helperDirName = "loudness"
+const pythonScriptFileName = "analyze_loudness.py"
 
 /**
  @example {
@@ -22,7 +24,7 @@ const currentDirPath = path.dirname(fileURLToPath(import.meta.url))
   "target_offset": "-1.63"
 }
  */
-const loudnessAnalyzeResultSchema = z.object({
+export const loudnessAnalyzeResultSchema = z.object({
   input_i: z.string(),
   input_tp: z.string(),
   input_lra: z.string(),
@@ -35,19 +37,21 @@ const loudnessAnalyzeResultSchema = z.object({
   target_offset: z.string(),
 })
 
-type LoudnessAnalyzeResult = z.infer<typeof loudnessAnalyzeResultSchema>
+export type LoudnessAnalyzeResult = z.infer<typeof loudnessAnalyzeResultSchema>
 
 const storedLoudnessAnalyzeResultSchema = loudnessAnalyzeResultSchema.extend({
   version: z.literal("1").default("1"),
 })
 
 export const analyzeLoudness = {
+  analyzerKey: "analyzeLoudness",
+  displayName: "Loudness",
   logPrefix: "[AnalyzeLoudness]",
   resultsFileName: "loudness.json",
   resultsMap: new Map<string, LoudnessAnalyzeResult>(),
 
   getScriptPath(): string {
-    return path.join(currentDirPath, "analyze_loudnes.py")
+    return resolveAnalyzeHelperScriptPath(helperDirName, currentDirPath, pythonScriptFileName)
   },
 
   async analyze(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string): Promise<void> {
@@ -64,6 +68,7 @@ export const analyzeLoudness = {
       Logger.debug(`${analyzeLoudness.logPrefix} running command: python3 ${pythonScriptPath} ${inputFilePath}`)
       execFile("python3", [pythonScriptPath, inputFilePath], (error, stdout, stderr) => {
         if (error) {
+          Logger.debug(`${analyzeLoudness.logPrefix} failed to run command: python3 ${pythonScriptPath} ${inputFilePath}`)
           reject(
             new Error(
               `${analyzeLoudness.logPrefix} Failed to run loudness analyzer for '${intputFileName}': ${stderr || error.message}`,
