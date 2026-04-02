@@ -1,6 +1,6 @@
 import dotenv, {config as loadEnv} from 'dotenv'
 import fs from "fs";
-import { Logger, LogLevelEnum } from './logger';
+import { Logger } from './logger';
 
 //NOTE: startup-env must be run before this, else the process.env variables are not set
 
@@ -38,6 +38,20 @@ if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
 export class ConfigHelper {
   static getUsdbAnimuxUrl() {
     return USDB_ANIMUX_URL;
+  }
+
+  static getUltraStarSongsDirPaths() {
+    const songsDirKeys = Object.keys(process.env)
+      .filter((key) => /^ULTRA_START_SONGS_DIR_PATH\d+$/.test(key))
+      .sort((a, b) => {
+        const aNum = Number(a.replace('ULTRA_START_SONGS_DIR_PATH', ''));
+        const bNum = Number(b.replace('ULTRA_START_SONGS_DIR_PATH', ''));
+        return aNum - bNum;
+      });
+
+    return songsDirKeys
+      .map((key) => process.env[key])
+      .filter((value): value is string => Boolean(value));
   }
 
   static getPlaylistCacheDirPath() {

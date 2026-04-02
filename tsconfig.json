@@ -2,6 +2,7 @@
   // https://nuxt.com/docs/guide/concepts/typescript
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
-    "types": ["node", "qrcode"]
+    "types": ["node", "qrcode"],
+    "allowImportingTsExtensions": true
   }
 }

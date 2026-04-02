@@ -166,12 +166,6 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     valueFormatter: (params) => params.value ?? "—",
     cellRenderer: makeTextCell("song-cell-language"),
   },
-  {
-    headerName: "Year",
-    field: "year",
-    width: 80,
-    valueFormatter: (params) => params.value ?? "—",
-  },
 ]);
 
 const defaultColDef: ColDef = {

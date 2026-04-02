@@ -4,7 +4,6 @@ import { SongsIndexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
-import { UsdbAnimuxHelper } from '~/helpers/songsDownloader/UsdbAnimuxHelper';
 
 
 export default defineNitroPlugin(async () => {
@@ -15,16 +14,7 @@ export default defineNitroPlugin(async () => {
     Logger.warn("Secrets file not found");
   }
   
-  const songsDirKeys = Object.keys(process.env)
-    .filter((key) => /^ULTRA_START_SONGS_DIR_PATH\d+$/.test(key))
-    .sort((a, b) => {
-      const aNum = Number(a.replace('ULTRA_START_SONGS_DIR_PATH', ''))
-      const bNum = Number(b.replace('ULTRA_START_SONGS_DIR_PATH', ''))
-      return aNum - bNum
-    })
-  const songsDirPaths = songsDirKeys
-    .map((key) => process.env[key])
-    .filter((value): value is string => Boolean(value))
+  const songsDirPaths = ConfigHelper.getUltraStarSongsDirPaths()
 
   if (songsDirPaths.length > 0) {
     Logger.log(`[nuxt start] found the following song dirs for ULTRA_START_SONGS_DIR_PATH*:`);
