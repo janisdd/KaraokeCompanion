@@ -157,7 +157,7 @@ type AnalyzerCellValue = {
 }
 
 const analyzerButtonClass =
-  "inline-flex h-7 items-center justify-center rounded-md border border-slate-200 px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
 
 const AnalyzerActionsCell = defineComponent({
   props: {
@@ -167,6 +167,8 @@ const AnalyzerActionsCell = defineComponent({
     },
   },
   setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
     return () => {
       const value = props.params.value
       if (!value) {
@@ -181,13 +183,17 @@ const AnalyzerActionsCell = defineComponent({
             {
               type: "button",
               class: analyzerButtonClass,
+              "aria-label": `Show ${value.analyzerLabel} result`,
+              title: `Show ${value.analyzerLabel} result`,
               onClick: () =>
                 emit("show-analyzer-result", {
                   title: `${value.analyzerLabel} result`,
                   content: `Song: ${value.songLabel}\n\n${JSON.stringify(value.result, null, 2)}`,
                 }),
             },
-            "Result",
+            h(FontAwesomeIcon as any, {
+              icon: "fa-solid fa-chart-simple",
+            }),
           ),
         )
       }
@@ -198,6 +204,12 @@ const AnalyzerActionsCell = defineComponent({
           {
             type: "button",
             class: analyzerButtonClass,
+            "aria-label": value.isAnalyzeRunning
+              ? `Running ${value.analyzerLabel} analyzer`
+              : `Run ${value.analyzerLabel} analyzer`,
+            title: value.isAnalyzeRunning
+              ? `Running ${value.analyzerLabel} analyzer`
+              : `Run ${value.analyzerLabel} analyzer`,
             disabled: value.isAnalyzeDisabled,
             onClick: () =>
               emit("run-analyzer", {
@@ -214,7 +226,9 @@ const AnalyzerActionsCell = defineComponent({
                 }),
                 h("span", "Analyzing"),
               ])
-            : "Analyze",
+            : h(FontAwesomeIcon as any, {
+                icon: "fa-solid fa-terminal",
+              }),
         ),
       )
 
@@ -231,6 +245,8 @@ const SongInfoCell = defineComponent({
     },
   },
   setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
     return () => {
       const song = props.params.data
       if (!song) {
@@ -242,13 +258,17 @@ const SongInfoCell = defineComponent({
         {
           type: "button",
           class: analyzerButtonClass,
+          "aria-label": `Show info for ${song.artist} - ${song.title}`,
+          title: `Show info for ${song.artist} - ${song.title}`,
           onClick: () =>
             emit("show-song-info", {
               title: `${song.artist} - ${song.title}`,
               content: JSON.stringify(song, null, 2),
             }),
         },
-        "Info",
+        h(FontAwesomeIcon as any, {
+          icon: "fa-solid fa-circle-info",
+        }),
       )
     }
   },
@@ -303,7 +323,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
     headerName: "Info",
     colId: "info",
-    width: 90,
+    width: 60,
     sortable: false,
     resizable: false,
     suppressMovable: true,
@@ -313,7 +333,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   ...analyzeResultColumns.map((analyzer) => ({
     headerName: analyzer.label,
     colId: analyzer.key,
-    width: 170,
+    width: 100,
     sortable: false,
     resizable: false,
     suppressMovable: true,
