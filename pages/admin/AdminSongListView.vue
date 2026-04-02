@@ -17,6 +17,7 @@ import type {
   AnalyzeResultKey,
   AnalyzeResultsMap,
   AnalyzeResultsSongEntry,
+  LoudnessWarning,
 } from "~/types/analyzeResults"
 import { analyzeResultColumns } from "~/types/analyzeResults"
 import type { SongInfo } from "~~/types/song"
@@ -26,9 +27,11 @@ defineOptions({
 })
 
 const emit = defineEmits<{
-  "show-analyzer-result": [payload: { title: string; content: string }]
-  "show-song-info": [payload: { title: string; content: string }]
-  "run-analyzer": [payload: { songKey: string; analyzerKey: AnalyzeResultKey }]
+  (event: "show-analyzer-result", payload: { title: string; content: string }): void
+  (event: "show-loudness-warning", payload: LoudnessWarning): void
+  (event: "show-song-info", payload: { title: string; content: string }): void
+  (event: "show-song-tools", payload: { songKey: string; title: string }): void
+  (event: "run-analyzer", payload: { songKey: string; analyzerKey: AnalyzeResultKey }): void
 }>()
 
 const props = withDefaults(
@@ -37,12 +40,14 @@ const props = withDefaults(
     emptyMessage?: string
     analyzerResults?: AnalyzeResultsSongEntry[]
     activeAnalyzeRequestKey?: string | null
+    loudnessWarningsBySong?: Record<string, LoudnessWarning>
   }>(),
   {
     title: "Manage Songs",
     emptyMessage: "No songs found.",
     analyzerResults: () => [],
     activeAnalyzeRequestKey: null,
+    loudnessWarningsBySong: () => ({}),
   },
 )
 
@@ -150,6 +155,7 @@ type AnalyzerCellValue = {
   analyzerLabel: string
   hasResult: boolean
   result?: AnalyzeResultsMap[AnalyzeResultKey]
+  loudnessWarning?: LoudnessWarning
   songLabel: string
   songKey: string
   isAnalyzeRunning: boolean
@@ -175,7 +181,47 @@ const AnalyzerActionsCell = defineComponent({
         return null
       }
 
-      const buttons = []
+      const buttons = [
+        h(
+          "button",
+          {
+            type: "button",
+            class: analyzerButtonClass,
+            "aria-label": value.isAnalyzeRunning
+              ? `Running ${value.analyzerLabel} analyzer`
+              : `Run ${value.analyzerLabel} analyzer`,
+            title: value.isAnalyzeRunning
+              ? `Running ${value.analyzerLabel} analyzer`
+              : `Run ${value.analyzerLabel} analyzer`,
+            disabled: value.isAnalyzeDisabled,
+            onClick: () => {
+              if (
+                value.hasResult &&
+                !window.confirm(
+                  `Re-run ${value.analyzerLabel} analyzer for ${value.songLabel}?`,
+                )
+              ) {
+                return
+              }
+
+              emit("run-analyzer", {
+                songKey: value.songKey,
+                analyzerKey: value.analyzerKey,
+              })
+            },
+          },
+          value.isAnalyzeRunning
+            ? h("span", {
+                class:
+                  "h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300",
+                "aria-hidden": "true",
+              })
+            : h(FontAwesomeIcon as any, {
+                icon: "fa-solid fa-terminal",
+              }),
+        ),
+      ]
+
       if (value.hasResult) {
         buttons.push(
           h(
@@ -198,41 +244,29 @@ const AnalyzerActionsCell = defineComponent({
         )
       }
 
-      buttons.push(
-        h(
-          "button",
-          {
-            type: "button",
-            class: analyzerButtonClass,
-            "aria-label": value.isAnalyzeRunning
-              ? `Running ${value.analyzerLabel} analyzer`
-              : `Run ${value.analyzerLabel} analyzer`,
-            title: value.isAnalyzeRunning
-              ? `Running ${value.analyzerLabel} analyzer`
-              : `Run ${value.analyzerLabel} analyzer`,
-            disabled: value.isAnalyzeDisabled,
-            onClick: () =>
-              emit("run-analyzer", {
-                songKey: value.songKey,
-                analyzerKey: value.analyzerKey,
-              }),
-          },
-          value.isAnalyzeRunning
-            ? h("span", { class: "flex items-center gap-2" }, [
-                h("span", {
-                  class:
-                    "h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300",
-                  "aria-hidden": "true",
+      if (value.loudnessWarning) {
+        buttons.push(
+          h(
+            "button",
+            {
+              type: "button",
+              class: `${analyzerButtonClass} text-amber-600 dark:text-amber-400`,
+              "aria-label": `Show loudness warning for ${value.songLabel}`,
+              title: `${value.loudnessWarning.status}\nMeasured: ${value.loudnessWarning.measuredLoudness.toFixed(2)} LUFS\nDifference: ${value.loudnessWarning.difference > 0 ? "+" : ""}${value.loudnessWarning.difference.toFixed(2)} LUFS`,
+              onClick: () =>
+                (emit as any)("show-loudness-warning", {
+                  ...value.loudnessWarning,
+                  songLabel: value.songLabel,
                 }),
-                h("span", "Analyzing"),
-              ])
-            : h(FontAwesomeIcon as any, {
-                icon: "fa-solid fa-terminal",
-              }),
-        ),
-      )
+            },
+            h(FontAwesomeIcon as any, {
+              icon: "fa-solid fa-triangle-exclamation",
+            }),
+          ),
+        )
+      }
 
-      return h("div", { class: "flex items-center justify-center gap-2" }, buttons)
+      return h("div", { class: "flex min-w-[6.5rem] items-center justify-start gap-2" }, buttons)
     }
   },
 })
@@ -268,6 +302,43 @@ const SongInfoCell = defineComponent({
         },
         h(FontAwesomeIcon as any, {
           icon: "fa-solid fa-circle-info",
+        }),
+      )
+    }
+  },
+})
+
+const SongToolsCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
+    return () => {
+      const song = props.params.data
+      if (!song) {
+        return null
+      }
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class: analyzerButtonClass,
+          "aria-label": `Open tools for ${song.artist} - ${song.title}`,
+          title: `Open tools for ${song.artist} - ${song.title}`,
+          onClick: () =>
+            emit("show-song-tools", {
+              songKey: song.key,
+              title: `${song.artist} - ${song.title}`,
+            }),
+        },
+        h(FontAwesomeIcon as any, {
+          icon: "fa-solid fa-wrench",
         }),
       )
     }
@@ -325,17 +396,27 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     colId: "info",
     width: 60,
     sortable: false,
-    resizable: false,
+    resizable: true,
     suppressMovable: true,
     cellStyle: centerCellStyle,
     cellRenderer: SongInfoCell,
+  },
+  {
+    headerName: "Tools",
+    colId: "tools",
+    width: 70,
+    sortable: false,
+    resizable: true,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    cellRenderer: SongToolsCell,
   },
   ...analyzeResultColumns.map((analyzer) => ({
     headerName: analyzer.label,
     colId: analyzer.key,
     width: 100,
     sortable: false,
-    resizable: false,
+    resizable: true,
     suppressMovable: true,
     cellStyle: centerCellStyle,
     valueGetter: (params: ValueGetterParams<SongInfo>): AnalyzerCellValue => {
@@ -351,6 +432,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
           analyzerKey: analyzer.key,
           analyzerLabel: analyzer.label,
           hasResult: false,
+          loudnessWarning: undefined,
           result: undefined,
           songLabel: "Unknown song",
           songKey: "",
@@ -367,6 +449,10 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
         analyzerKey: analyzer.key,
         analyzerLabel: analyzer.label,
         hasResult: Boolean(analyzerEntry?.results[analyzer.key]),
+        loudnessWarning:
+          analyzer.key === "analyzeLoudness"
+            ? props.loudnessWarningsBySong[song.key]
+            : undefined,
         result: analyzerEntry?.results[analyzer.key],
         songLabel: `${song.artist} - ${song.title}`,
         songKey: song.key,
@@ -403,6 +489,14 @@ watch([searchMode, lyricsQuery], () => {
 watch(analyzerResultsBySong, () => {
   refreshGrid()
 })
+
+watch(
+  () => props.loudnessWarningsBySong,
+  () => {
+    refreshGrid()
+  },
+  { deep: true },
+)
 
 watch(
   () => props.activeAnalyzeRequestKey,

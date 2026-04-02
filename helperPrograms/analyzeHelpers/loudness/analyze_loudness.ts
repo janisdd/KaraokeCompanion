@@ -2,6 +2,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { Logger } from "../../../helpers/logger"
 import { resolveAnalyzeHelperScriptPath, type AnalyzeHelper } from "../analyzeInterface"
+import { executeOriginalFileNameSuffix } from "../../executeHelpers/executeInterface"
 import fs from "fs"
 import { execFile } from "child_process"
 import { z } from "zod"
@@ -54,13 +55,26 @@ export const analyzeLoudness = {
     return resolveAnalyzeHelperScriptPath(helperDirName, currentDirPath, pythonScriptFileName)
   },
 
-  async analyze(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string): Promise<void> {
+  async analyze(
+    songsRootDir: string,
+    songDirWithFileWithExtension: string,
+    songDirName: string,
+    useOriginalFile = true,
+  ): Promise<void> {
     const songDirPath = path.join(songsRootDir, songDirName)
-    const inputFilePath = path.join(songsRootDir, songDirWithFileWithExtension)
     const resultsFilePath = path.join(songDirPath, analyzeLoudness.resultsFileName)
     const pythonScriptPath = analyzeLoudness.getScriptPath()
-
     const intputFileName = path.basename(songDirWithFileWithExtension)
+    const inputFileExtension = path.extname(intputFileName)
+    const inputFileBaseName = path.basename(intputFileName, inputFileExtension)
+    const originalFilePath = path.join(
+      songDirPath,
+      `${inputFileBaseName}${executeOriginalFileNameSuffix}${inputFileExtension}`,
+    )
+    const currentFilePath = path.join(songsRootDir, songDirWithFileWithExtension)
+    const inputFilePath = useOriginalFile && fs.existsSync(originalFilePath)
+      ? originalFilePath
+      : currentFilePath
 
     Logger.log(`${analyzeLoudness.logPrefix} analyzing loudness for '${intputFileName}'`)
 

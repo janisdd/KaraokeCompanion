@@ -24,6 +24,16 @@ export type AnalyzeResultsSongEntry = {
   results: AnalyzeResultsMap
 }
 
+export type LoudnessWarning = {
+  songKey: string
+  songLabel: string
+  measuredLoudness: number
+  targetLoudness: number
+  difference: number
+  absoluteDifference: number
+  status: "too loud" | "too quiet"
+}
+
 export type AnalyzeResultsResponse = {
   success: boolean
   data: AnalyzeResultsSongEntry[]

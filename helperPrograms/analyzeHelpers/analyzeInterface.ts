@@ -27,25 +27,32 @@ export function resolveAnalyzeHelperScriptPath(
 
 export interface AnalyzeHelper {
   // should be unique
-  readonly analyzerKey: string;
+  readonly analyzerKey: string
   // name for ui
-  readonly displayName: string;
-  readonly logPrefix: string;
-  readonly resultsFileName: string;
+  readonly displayName: string
+  readonly logPrefix: string
+  // the file (name) where the result is stored
+  readonly resultsFileName: string
   // key is the full path to the song directory (songsRootDir + songDirName)
   // cache results for each song
-  resultsMap: Map<string, any>;
-  getScriptPath(): string;
+  resultsMap: Map<string, any>
+  getScriptPath(): string
   /**
    * 
    * @param songsRootDir - The absolute path to the song directory
    * @param songDirWithFileWithExtension - the full path to the song directory with the file name with extension (including the song directory name and the file name with extension)
    * @param songDirName - The name of the song directory (every song has a dir with all files, this is last part of the absolute path)
+   * @param useOriginalFile - when true, prefer the `_original` audio file copy if it exists
    */
-  analyze(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string): Promise<void>;
+  analyze(
+    songsRootDir: string,
+    songDirWithFileWithExtension: string,
+    songDirName: string,
+    useOriginalFile?: boolean,
+  ): Promise<void>
   // check if the results file exists
-  hasRealResult(songsRootDir: string, songDirName: string): Promise<boolean>;
+  hasRealResult(songsRootDir: string, songDirName: string): Promise<boolean>
   // check if the results are cached in memory
-  hasResult(songsRootDir: string, songDirName: string): boolean;
-  loadResult(songsRootDir: string, songDirName: string): Promise<void>;
+  hasResult(songsRootDir: string, songDirName: string): boolean
+  loadResult(songsRootDir: string, songDirName: string): Promise<void>
 }

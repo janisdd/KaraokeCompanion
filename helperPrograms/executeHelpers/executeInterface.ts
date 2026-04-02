@@ -1,13 +1,18 @@
 import path from "path"
 import fs from "fs"
+import { Logger } from "~/helpers/logger"
 
 /**
  * in contrast to analyze helpers, execute helpers are used to execute a command on a song directory
- * currently we always execute on the original file as input and output the result in a different file
- * this way the analyzer is always related to the original file and never the result file
+ * before running an execute helper we keep a copy of the initial audio file with an `_original` suffix
+ * the helper then operates on the current file name so sidecar files that reference the audio file name stay valid
  */
 export interface ExecuteHelper {
   readonly logPrefix: string
+  // should be unique
+  readonly executorKey: string
+  // name for ui
+  readonly displayName: string
 
   getScriptPath(): string
   /**
@@ -17,60 +22,97 @@ export interface ExecuteHelper {
    * @param inputFile - this is the file name inside the song directory that is the input file
    * @param params - the parameters for the execute helper (use zod to validate the params)
    */
-  execute(absoluteSongDirPath: string, songDirName: string, inputFile: string, params: any): Promise<void>
+  execute(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string, params: any): Promise<void>
 }
 
-// we keep the original file and name, when we execute a helper, create a copy or reuse an existing result file
-export const executeResultFileNameSuffix = "_result"
+export function resolveExecuteHelperScriptPath(
+  helperDirName: string,
+  currentDirPath: string,
+  scriptFileName: string,
+): string {
+  const cwdScriptPath = path.join(
+    process.cwd(),
+    "helperPrograms",
+    "executeHelpers",
+    helperDirName,
+    scriptFileName,
+  )
 
-
-export function prepareAndGetResultFilePath(absoluteSongDirPath: string, songDirName: string, inputFileWithExtension: string): string {
-  const songDirPath = path.join(absoluteSongDirPath, songDirName)
-  const inputFilePath = path.join(songDirPath, inputFileWithExtension)
-  const resultFilePath = path.join(songDirPath, path.basename(inputFileWithExtension, path.extname(inputFileWithExtension)) + executeResultFileNameSuffix + path.extname(inputFileWithExtension))
-  
-  // check if the result file exists
-  if (fs.existsSync(resultFilePath)) {
-    // then apply execute helper to the result file
-    return resultFilePath
+  if (fs.existsSync(cwdScriptPath)) {
+    return cwdScriptPath
   }
 
-  // copy the input file to the result file
-  fs.copyFileSync(inputFilePath, resultFilePath)
-  return resultFilePath
-  
+  return path.join(currentDirPath, scriptFileName)
 }
 
-export function getTempResultFilePath(resultFilePath: string): string {
-  const resultFileExtension = path.extname(resultFilePath)
-  const resultFileBaseName = path.basename(resultFilePath, resultFileExtension)
+// we keep a backup of the initial audio file before the current file gets modified
+export const executeOriginalFileNameSuffix = "_original"
+
+type ExecuteFilePaths = {
+  originalFilePath: string
+  currentFilePath: string
+}
+
+export function prepareOriginalCopyAndGetExecutionFilePaths(
+  songsRootDir: string,
+  songDirWithFileWithExtension: string,
+  songDirName: string,
+): ExecuteFilePaths {
+  const fileNameWithExtension = path.basename(songDirWithFileWithExtension)
+  const fileExtension = path.extname(fileNameWithExtension)
+  const fileBaseName = path.basename(fileNameWithExtension, fileExtension)
+  const originalFilePath = path.join(songsRootDir, songDirName, fileBaseName + executeOriginalFileNameSuffix + fileExtension)
+
+  // when we don't have an original already, use the current file as original
+  const currentFilePath = path.join(songsRootDir, songDirName, fileBaseName + fileExtension)
+
+  if (!fs.existsSync(originalFilePath)) {
+    Logger.log(`[ExecuteHelperInterface] preparing original copy for '${currentFilePath}'`)
+    fs.copyFileSync(currentFilePath, originalFilePath)
+  }
+
+  return {
+    originalFilePath,
+    currentFilePath,
+  }
+}
+
+export function getTempExecutionFilePath(executionFilePath: string): string {
+  const executionFileExtension = path.extname(executionFilePath)
+  const executionFileBaseName = path.basename(executionFilePath, executionFileExtension)
+  const outputFileBaseName = executionFileBaseName.endsWith(executeOriginalFileNameSuffix)
+    ? executionFileBaseName.slice(0, -executeOriginalFileNameSuffix.length)
+    : executionFileBaseName
 
   return path.join(
-    path.dirname(resultFilePath),
-    `${resultFileBaseName}.tmp${resultFileExtension}`,
+    path.dirname(executionFilePath),
+    `${outputFileBaseName}.tmp${executionFileExtension}`,
   )
 }
 
-export async function executeWithTempResultFile(
-  absoluteSongDirPath: string,
+export async function executeWithTempFileSwap(
+  songsRootDir: string,
+  songDirWithFileWithExtension: string,
   songDirName: string,
-  inputFileWithExtension: string,
-  executeFn: (resultFilePath: string, tempResultFilePath: string) => Promise<void>,
+  executeFn: (sourceFilePath: string, tempExecutionFilePath: string) => Promise<void>,
 ): Promise<string> {
-  const resultFilePath = prepareAndGetResultFilePath(
-    absoluteSongDirPath,
+  const {
+    originalFilePath,
+    currentFilePath,
+  } = prepareOriginalCopyAndGetExecutionFilePaths(
+    songsRootDir,
+    songDirWithFileWithExtension,
     songDirName,
-    inputFileWithExtension,
   )
-  const tempResultFilePath = getTempResultFilePath(resultFilePath)
+  const tempExecutionFilePath = getTempExecutionFilePath(originalFilePath)
 
   try {
-    await executeFn(resultFilePath, tempResultFilePath)
-    fs.renameSync(tempResultFilePath, resultFilePath)
-    return resultFilePath
+    await executeFn(originalFilePath, tempExecutionFilePath)
+    fs.renameSync(tempExecutionFilePath, currentFilePath)
+    return currentFilePath
   } catch (error) {
-    if (fs.existsSync(tempResultFilePath)) {
-      fs.unlinkSync(tempResultFilePath)
+    if (fs.existsSync(tempExecutionFilePath)) {
+      fs.unlinkSync(tempExecutionFilePath)
     }
 
     throw error

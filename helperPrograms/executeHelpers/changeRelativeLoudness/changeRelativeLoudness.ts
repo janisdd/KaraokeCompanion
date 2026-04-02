@@ -3,9 +3,11 @@ import { fileURLToPath } from "url"
 import { Logger } from "../../../helpers/logger"
 import { execFile } from "child_process"
 import { z } from "zod"
-import { executeWithTempResultFile, type ExecuteHelper } from "../executeInterface"
+import { executeWithTempFileSwap, resolveExecuteHelperScriptPath, type ExecuteHelper } from "../executeInterface"
 
 const currentDirPath = path.dirname(fileURLToPath(import.meta.url))
+const helperDirName = "changeRelativeLoudness"
+const pythonScriptFileName = "changeRelativeLoudness.py"
 
 
 const changeRelativeLoudnessParamsSchema = z.object({
@@ -15,29 +17,31 @@ const changeRelativeLoudnessParamsSchema = z.object({
 export type ChangeRelativeLoudnessParams = z.infer<typeof changeRelativeLoudnessParamsSchema>
 
 export const changeRelativeLoudness = {
+  executorKey: "changeRelativeLoudness",
+  displayName: "Change relative loudness",
   logPrefix: "[ChangeRelativeLoudness]",
 
   getScriptPath(): string {
-    return path.join(currentDirPath, "changeRelativeLoudness.py")
+    return resolveExecuteHelperScriptPath(helperDirName, currentDirPath, pythonScriptFileName)
   },
 
-  async execute(absoluteSongDirPath: string, songDirName: string, inputFile: string, params: ChangeRelativeLoudnessParams): Promise<void> {
+  async execute(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string, params: ChangeRelativeLoudnessParams): Promise<void> {
     const pythonScriptPath = changeRelativeLoudness.getScriptPath()
-    const dbChange = changeRelativeLoudnessParamsSchema.parse(params).dbChange;
+    const dbChange = changeRelativeLoudnessParamsSchema.parse(params).dbChange
 
-    await executeWithTempResultFile(
-      absoluteSongDirPath,
+    await executeWithTempFileSwap(
+      songsRootDir,
+      songDirWithFileWithExtension,
       songDirName,
-      inputFile,
-      async (resultFilePath, tempResultFilePath) => {
+      async (sourceFilePath, tempExecutionFilePath) => {
         Logger.log(
-          `${changeRelativeLoudness.logPrefix} changing loudness by ${dbChange} dB for ${resultFilePath}`,
+          `${changeRelativeLoudness.logPrefix} changing loudness by ${dbChange} dB for '${sourceFilePath}'`,
         )
 
         await new Promise<void>((resolve, reject) => {
           execFile(
             "python3",
-            [pythonScriptPath, resultFilePath, String(dbChange), tempResultFilePath],
+            [pythonScriptPath, sourceFilePath, String(dbChange), tempExecutionFilePath],
             (error, stdout, stderr) => {
               if (error) {
                 reject(
