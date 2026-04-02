@@ -11,6 +11,7 @@ import { defineComponent, h, resolveComponent, shallowRef, type PropType } from 
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
 import type { SongInfo } from "~~/types/song";
+import type { MatchResult } from "~/server/api/localSongsIntersect.post";
 defineOptions({
   name: "ComparePlaylistLocalPage",
 });
@@ -19,10 +20,6 @@ definePageMeta({
   title: "Spotify vs Local Songs",
 });
 
-type MatchResult = {
-  spotify: { name: string; artist: string };
-  local: { key: string; title: string; artist: string };
-};
 
 type CompareResponse = {
   matches?: MatchResult[];

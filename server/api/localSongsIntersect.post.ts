@@ -15,9 +15,9 @@ const CLIENT_ID = ConfigHelper.getClientId();
 const CLIENT_SECRET = ConfigHelper.getClientSecret();
 const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT_ID, CLIENT_SECRET) : null;
 
-type MatchResult = {
+export type MatchResult = {
   spotify: StrippedTrack;
-  local: Pick<SongInfo, "id" | "title" | "artist">;
+  local: Pick<SongInfo, "key" | "title" | "artist">;
 };
 
 type CachedPlaylist = CacheResult<StrippedTrack[]>;
