@@ -1,6 +1,11 @@
 import dotenv, { config as loadEnv } from "dotenv";
 import fs from "fs";
 import path from "path";
+import { Logger, LogLevels, parseLogLevel } from "../helpers/logger";
+import { SongsIndexer } from "../helpers/songsIndexer";
+import { knownAnalyzeHelpers } from "./knownHelpers";
+
+const NUM_WORKERS = 2
 
 type CreateErrorInput = {
   statusCode?: number;
@@ -26,35 +31,20 @@ if (typeof globalWithCreateError.createError !== "function") {
 loadEnv();
 dotenv.config({ path: "./secrets/.env" });
 
-import { Logger, LogLevelEnum } from "../helpers/logger";
-import { SongsIndexer } from "../helpers/songsIndexer";
-import { ConfigHelper } from "../helpers/configHelper";
-import { knownAnalyzeHelpers } from "./knownHelpers";
 
 const logPrefix = "[RunAllHelpers]";
 
 function setLoggerLevel(): void {
-  switch (process.env.LOG_LEVEL) {
-    case "DEBUG":
-      Logger.setLogLevel(LogLevelEnum.DEBUG);
-      break;
-    case "INFO":
-      Logger.setLogLevel(LogLevelEnum.INFO);
-      break;
-    case "WARN":
-      Logger.setLogLevel(LogLevelEnum.WARN);
-      break;
-    case "ERROR":
-      Logger.setLogLevel(LogLevelEnum.ERROR);
-      break;
-    default:
-      Logger.setLogLevel(LogLevelEnum.DEBUG);
-      console.warn(`${logPrefix} LOG_LEVEL is not set, using DEBUG as default`);
-      break;
+  const parsedLogLevel = parseLogLevel(process.env.LOG_LEVEL)
+  const logLevel = parsedLogLevel ?? LogLevels.DEBUG
+  Logger.setLogLevel(logLevel)
+
+  if (!parsedLogLevel) {
+    console.warn(`${logPrefix} LOG_LEVEL is not set, using DEBUG as default`)
   }
 }
 
-async function runAnalyzeHelpers(): Promise<void> {
+async function runAllAnalyzeHelpers(): Promise<void> {
   if (knownAnalyzeHelpers.length === 0) {
     Logger.log(`${logPrefix} No analyze helpers registered`);
     return;
@@ -62,6 +52,7 @@ async function runAnalyzeHelpers(): Promise<void> {
 
   const songs = Array.from(SongsIndexer.getSongsMap().values());
   const songRootMap = SongsIndexer.getSongRootMap();
+  const analyzeTasks: Array<() => Promise<void>> = []
 
   Logger.log(
     `${logPrefix} Running ${knownAnalyzeHelpers.length} analyze helper(s) for ${songs.length} indexed song(s)`,
@@ -79,16 +70,57 @@ async function runAnalyzeHelpers(): Promise<void> {
       continue;
     }
 
-    const inputFile = path.join(songRootDir, song.audioFile);
+    // audio file already contains the songDirName and the file name with extension
+    const songDirWithInputFileWithExtension = song.audioFile;
 
     for (const helper of knownAnalyzeHelpers) {
-      Logger.debug(`${logPrefix} ${helper.logPrefix} analyzing ${inputFile}`);
-      await helper.analyze(inputFile);
+      analyzeTasks.push(async () => {
+        if (await helper.hasRealResult(songRootDir, song.songDirName)) {
+          Logger.debug(`${logPrefix} ${helper.logPrefix} loading existing results for '${song.songDirName}'`)
+          await helper.loadResult(songRootDir, song.songDirName)
+          return
+        }
+
+        Logger.debug(`${logPrefix} ${helper.logPrefix} analyzing '${songDirWithInputFileWithExtension}'`)
+        await helper.analyze(songRootDir, songDirWithInputFileWithExtension, song.songDirName)
+      })
     }
   }
+
+  if (analyzeTasks.length === 0) {
+    Logger.log(`${logPrefix} No analyze tasks to run`)
+    return
+  }
+
+  Logger.log(`${logPrefix} Running ${analyzeTasks.length} analyze task(s) with ${NUM_WORKERS} worker(s)`)
+
+  let taskIndex = 0
+  let completedTaskCount = 0
+
+  async function runWorker(): Promise<void> {
+    while (taskIndex < analyzeTasks.length) {
+      const currentTaskIndex = taskIndex
+      taskIndex += 1
+
+      Logger.log(`${logPrefix} Analyze progress ${currentTaskIndex + 1}/${analyzeTasks.length} started`)
+      await analyzeTasks[currentTaskIndex]()
+      completedTaskCount += 1
+    }
+  }
+
+  const workerCount = Math.min(NUM_WORKERS, analyzeTasks.length)
+  const workers: Promise<void>[] = []
+
+  for (let workerIndex = 0; workerIndex < workerCount; workerIndex += 1) {
+    workers.push(runWorker())
+  }
+
+  await Promise.all(workers)
 }
 
 async function main(): Promise<void> {
+  const { ConfigHelper } = await import("../helpers/configHelper")
+
   if (!fs.existsSync("./secrets/.env")) {
     Logger.warn(`${logPrefix} Secrets file not found`);
   }
@@ -106,7 +138,7 @@ async function main(): Promise<void> {
 
   setLoggerLevel();
 
-  Logger.log(`${logPrefix} LOG_LEVEL set to ${process.env.LOG_LEVEL}`);
+  Logger.log(`${logPrefix} LOG_LEVEL set to ${parseLogLevel(process.env.LOG_LEVEL) ?? LogLevels.DEBUG}`);
   Logger.log(`${logPrefix} PLAYLIST_CACHE_DIR_PATH: ${ConfigHelper.getPlaylistCacheDirPath()}`);
   Logger.log(`${logPrefix} IS_DEFAULT_PAGE_THEME_MODE_DARK: ${process.env.IS_DEFAULT_PAGE_THEME_MODE_DARK}`);
   Logger.log(`${logPrefix} ULTRA_STAR_COMPANION_PORT: ${ConfigHelper.getUltraStarCompanionPort()}`);
@@ -152,7 +184,7 @@ async function main(): Promise<void> {
     }
     Logger.log(`${logPrefix} All Songs indexed successfully for ${songsDirPaths.length} dirs`);
     Logger.log(`${logPrefix} Total songs indexed: ${SongsIndexer.getSongsMap().size}`);
-    await runAnalyzeHelpers();
+    await runAllAnalyzeHelpers();
     Logger.log(`${logPrefix} All analyze helpers finished successfully`);
   } catch (error) {
     Logger.error(

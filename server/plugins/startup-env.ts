@@ -1,5 +1,5 @@
 import { config as loadEnv } from 'dotenv'
-import { Logger, LogLevelEnum } from '~/helpers/logger'
+import { Logger, LogLevels, parseLogLevel } from '~/helpers/logger'
 import { SongsIndexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
@@ -28,26 +28,15 @@ export default defineNitroPlugin(async () => {
   Logger.log(`[nuxt start] IS_DEFAULT_PAGE_THEME_MODE_DARK: ${process.env.IS_DEFAULT_PAGE_THEME_MODE_DARK}`);
   Logger.log(`[nuxt start] ULTRA_STAR_COMPANION_PORT: ${process.env.ULTRA_STAR_COMPANION_PORT}`);
   
-  switch (process.env.LOG_LEVEL) {
-    case 'DEBUG':
-      Logger.setLogLevel(LogLevelEnum.DEBUG);
-      break;
-    case 'INFO':
-      Logger.setLogLevel(LogLevelEnum.INFO);
-      break;
-    case 'WARN':
-      Logger.setLogLevel(LogLevelEnum.WARN);
-      break;
-    case 'ERROR':
-      Logger.setLogLevel(LogLevelEnum.ERROR);
-      break;
-    default:
-      Logger.setLogLevel(LogLevelEnum.DEBUG);
-      console.warn(`[nuxt start] LOG_LEVEL is not set, using DEBUG as default`);
-      break;
+  const parsedLogLevel = parseLogLevel(process.env.LOG_LEVEL)
+  const logLevel = parsedLogLevel ?? LogLevels.DEBUG
+  Logger.setLogLevel(logLevel)
+
+  if (!parsedLogLevel) {
+    console.warn(`[nuxt start] LOG_LEVEL is not set, using DEBUG as default`)
   }
 
-  Logger.log(`[nuxt start] LOG_LEVEL set to ${process.env.LOG_LEVEL}`);
+  Logger.log(`[nuxt start] LOG_LEVEL set to ${logLevel}`);
 
   if (songsDirPaths.length === 0) {
     Logger.error('[nuxt start] ULTRA_START_SONGS_DIR_PATH* is not set');

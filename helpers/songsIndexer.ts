@@ -185,6 +185,7 @@ export class SongsIndexer {
 
     const songInfo: SongInfo = {
       key: "",
+      songDirName: "",
       title: "",
       artist: "",
       year: null,
@@ -294,6 +295,8 @@ export class SongsIndexer {
     if (!songInfo.title || !songInfo.artist) {
       Logger.warn(`Empty song title or artist for song: ${songDirectoryPath}`);
     }
+
+    songInfo.songDirName = path.basename(songDirectoryPath);
 
     songInfo.key = SongKeyHelper.getKey(songInfo.artist, songInfo.title);
 

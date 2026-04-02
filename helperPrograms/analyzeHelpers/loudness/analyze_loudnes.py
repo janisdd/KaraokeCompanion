@@ -12,30 +12,20 @@ def run_loudnorm_analysis(file_path):
         "-"
     ]
 
+    # print(f"Running command: {' '.join(cmd)}")
     result = subprocess.run(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 
     stderr = result.stderr
-    start = stderr.find("{")
+    loudnorm_start = stderr.find("[Parsed_loudnorm")
+    start = stderr.find("{", loudnorm_start)
     end = stderr.rfind("}") + 1
+
+    if loudnorm_start == -1 or start == -1 or end == 0:
+        raise ValueError("Could not locate loudnorm JSON output in ffmpeg stderr")
+
     json_str = stderr[start:end]
 
     return json.loads(json_str)
-
-
-def build_loudnorm_filter(measured, target):
-    return (
-        "loudnorm="
-        f"I={target['I']}:"
-        f"LRA={target['LRA']}:"
-        f"TP={target['TP']}:"
-        f"measured_I={measured['input_i']}:"
-        f"measured_LRA={measured['input_lra']}:"
-        f"measured_TP={measured['input_tp']}:"
-        f"measured_thresh={measured['input_thresh']}:"
-        f"offset={measured['target_offset']}:"
-        "linear=true:"
-        "print_format=summary"
-    )
 
 
 def get_loudness_stats(input_file):
@@ -45,7 +35,7 @@ def get_loudness_stats(input_file):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python get_loudness_stats.py input.mp3")
+        print("Usage: python analyze_loudness.py input.mp3")
         sys.exit(1)
 
     in_file = sys.argv[1]

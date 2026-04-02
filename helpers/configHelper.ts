@@ -28,7 +28,7 @@ let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false
 let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
 
 if (!PlaylistCacheDirPath) {
-  throw createError({ statusCode: 500, message: "Playlist cache directory not set" });
+  throw new Error("Playlist cache directory not set")
 }
 
 if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {

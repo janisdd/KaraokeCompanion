@@ -11,14 +11,14 @@ export interface AnalyzeHelper {
   getScriptPath(): string;
   /**
    * 
-   * @param absoluteSongDirPath - The absolute path to the song directory
+   * @param songsRootDir - The absolute path to the song directory
+   * @param songDirWithFileWithExtension - the full path to the song directory with the file name with extension (including the song directory name and the file name with extension)
    * @param songDirName - The name of the song directory (every song has a dir with all files, this is last part of the absolute path)
-   * @param inputFile - this is the file name inside the song directory that is the input file
    */
-  analyze(absoluteSongDirPath: string, songDirName: string, inputFile: string): Promise<void>;
+  analyze(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string): Promise<void>;
   // check if the results file exists
-  hasRealResults(absoluteSongDirPath: string, songDirName: string): Promise<boolean>;
+  hasRealResult(songsRootDir: string, songDirName: string): Promise<boolean>;
   // check if the results are cached in memory
-  hasResults(absoluteSongDirPath: string, songDirName: string): boolean;
-  loadResults(absoluteSongDirPath: string, songDirName: string): Promise<void>;
+  hasResult(songsRootDir: string, songDirName: string): boolean;
+  loadResult(songsRootDir: string, songDirName: string): Promise<void>;
 }

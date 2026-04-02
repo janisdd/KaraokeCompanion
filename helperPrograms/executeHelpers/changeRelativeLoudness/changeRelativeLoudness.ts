@@ -1,8 +1,11 @@
 import path from "path"
+import { fileURLToPath } from "url"
 import { Logger } from "../../../helpers/logger"
 import { execFile } from "child_process"
 import { z } from "zod"
 import { executeWithTempResultFile, type ExecuteHelper } from "../executeInterface"
+
+const currentDirPath = path.dirname(fileURLToPath(import.meta.url))
 
 
 const changeRelativeLoudnessParamsSchema = z.object({
@@ -15,7 +18,7 @@ export const changeRelativeLoudness = {
   logPrefix: "[ChangeRelativeLoudness]",
 
   getScriptPath(): string {
-    return path.join(__dirname, "changeRelativeLoudness.py")
+    return path.join(currentDirPath, "changeRelativeLoudness.py")
   },
 
   async execute(absoluteSongDirPath: string, songDirName: string, inputFile: string, params: ChangeRelativeLoudnessParams): Promise<void> {
