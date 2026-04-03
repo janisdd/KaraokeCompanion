@@ -5,6 +5,7 @@ import { SongsIndexer } from '~/helpers/songsIndexer'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
+import { UsersIndexer } from "~/helpers/usersIndexer"
 
 
 export default defineNitroPlugin(async () => {
@@ -78,6 +79,13 @@ export default defineNitroPlugin(async () => {
 
   // after we have info about existing and downloaded songs
   AllOnlineSongsIndexer.setSongsExistsOrWereAlreadyDownloaded();
+
+  // load users after all other startup tasks
+  try {
+    UsersIndexer.loadAllUsers()
+  } catch (error) {
+    Logger.error(`[nuxt start] Error loading users: ${error instanceof Error ? error.message : String(error)}`)
+  }
 
   // do not use logger here, we always want to show this message (regardless of log level)
   console.log(`[nuxt start] --- Startup completed --- `);

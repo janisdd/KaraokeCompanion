@@ -19,6 +19,7 @@ const ULTRA_STAR_COMPANION_PORT = process.env.ULTRA_STAR_COMPANION_PORT || "";
 const PlaylistCacheDirPath = process.env.PLAYLIST_CACHE_DIR_PATH || "";
 const USDB_ANIMUX_ID = process.env.USDB_ANIMUX_ID || "";
 const USDB_ANIMUX_PW = process.env.USDB_ANIMUX_PW || "";
+const USERS_DIR = process.env.USERS_DIR || "";
 const DOWNLOAD_SONGS_DIR = process.env.DOWNLOAD_SONGS_DIR || "";
 let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD || defaultRequiredWaitTimeForSongDownload;
 let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
@@ -29,6 +30,10 @@ let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false
 let NUM_ANALYZE_WORKERS = process.env.NUM_ANALYZE_WORKERS || defaultNumAnalyzeWorkers; // 2 for in case of low cpu power
 let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
 let NORMAL_LOUDNESS = process.env.NORMAL_LOUDNESS || defaultNormalLoudness; // normal loudness target in LUFS (Loudness Units Full Scale), e.g. -16
+
+if (!USERS_DIR) {
+  throw new Error("Users directory not set")
+}
 
 if (!PlaylistCacheDirPath) {
   throw new Error("Playlist cache directory not set")
@@ -82,6 +87,10 @@ export class ConfigHelper {
 
   static getUltraStarCompanionPort() {
     return ULTRA_STAR_COMPANION_PORT;
+  }
+
+  static getUsersDir() {
+    return USERS_DIR;
   }
 
   static getUsdbAnimuxId() {
