@@ -145,11 +145,13 @@ export const useOnlineSongDownloads = <
     );
   });
 
-  const maxQueuedDownloads = computed(
-    () =>
-      runtimeConfig.public.maxDownloadQueueSizeFrontend ??
-      DEFAULT_MAX_QUEUED_DOWNLOADS,
-  );
+  const maxQueuedDownloads = computed((): number => {
+    const raw = runtimeConfig.public.maxDownloadQueueSizeFrontend;
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+      return raw;
+    }
+    return DEFAULT_MAX_QUEUED_DOWNLOADS;
+  });
 
   const isQueuedSong = (songId: string) =>
     downloadQueue.value.some((item) => item.song.songId === songId);

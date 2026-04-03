@@ -45,6 +45,13 @@ export default defineEventHandler(async (event) => {
     loadLocalSongs(),
   ]);
 
+  if (!localSongs.length) {
+    throw createError({
+      statusCode: 503,
+      message: "No local songs are indexed yet. Check your songs directory configuration and wait for indexing to finish.",
+    });
+  }
+
   const matches = matchPlaylistToLocal(playlistResult.data, localSongs);
 
   return {

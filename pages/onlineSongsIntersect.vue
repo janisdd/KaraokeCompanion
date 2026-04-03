@@ -152,7 +152,7 @@ const comparePlaylist = async () => {
   isSubmitting.value = true;
 
   try {
-    const response = await $fetch<CompareResponse>("/api/comparePlaylistOnline", {
+    const response = await $fetch<CompareResponse>("/api/onlineSongsIntersect", {
       method: "POST",
       body: {
         playListUrl: playListUrl.value.trim(),
@@ -431,7 +431,7 @@ const columnDefs: ColDef<MatchResult>[] = [
   {
     headerName: "Existing",
     field: "existingStatus",
-    width: 120,
+    width: 90,
     cellStyle: centerCellStyle,
     valueFormatter: (params) =>
       getExistingStatusLabel((params.value as ExistingStatus) ?? "no"),
@@ -549,48 +549,51 @@ const scrollToActiveSongInList = () => {
 
       <section class="text-sm text-slate-600 dark:text-slate-300">
         <form class="space-y-4" @submit.prevent="comparePlaylist">
-          <label class="space-y-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Playlist URL
-            <input
-              v-model.trim="playListUrl"
-              type="url"
-              placeholder="https://open.spotify.com/playlist/..."
-              class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-slate-600"
-            />
-          </label>
-
           <div class="space-y-2">
-            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Comparison mode
-            </span>
-            <div
-              class="inline-flex flex-wrap rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
-              role="radiogroup"
-              aria-label="Comparison mode"
-            >
-              <label
-                v-for="option in compareModeOptions"
-                :key="option.value"
-                class="cursor-pointer"
-              >
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
+              <label class="min-w-0 flex-1 space-y-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Playlist URL
                 <input
-                  v-model="compareMode"
-                  type="radio"
-                  name="compare-mode"
-                  class="sr-only"
-                  :value="option.value"
+                  v-model.trim="playListUrl"
+                  type="url"
+                  placeholder="https://open.spotify.com/playlist/..."
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-slate-600"
                 />
-                <span
-                  class="inline-flex rounded-lg px-4 py-2 text-sm font-medium transition"
-                  :class="
-                    compareMode === option.value
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                  "
-                >
-                  {{ option.label }}
-                </span>
               </label>
+              <div class="shrink-0 space-y-2">
+                <span class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Comparison mode
+                </span>
+                <div
+                  class="inline-flex flex-wrap rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                  role="radiogroup"
+                  aria-label="Comparison mode"
+                >
+                  <label
+                    v-for="option in compareModeOptions"
+                    :key="option.value"
+                    class="cursor-pointer"
+                  >
+                    <input
+                      v-model="compareMode"
+                      type="radio"
+                      name="compare-mode"
+                      class="sr-only"
+                      :value="option.value"
+                    />
+                    <span
+                      class="inline-flex rounded-lg px-4 py-2 text-sm font-medium transition"
+                      :class="
+                        compareMode === option.value
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                      "
+                    >
+                      {{ option.label }}
+                    </span>
+                  </label>
+                </div>
+              </div>
             </div>
             <p class="text-xs text-slate-500 dark:text-slate-400">
               {{ selectedCompareMode.description }}

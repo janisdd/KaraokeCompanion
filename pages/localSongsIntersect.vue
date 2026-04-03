@@ -94,7 +94,7 @@ const comparePlaylist = async () => {
   isSubmitting.value = true;
 
   try {
-    const response = await $fetch<CompareResponse>("/api/comparePlaylistLocal", {
+    const response = await $fetch<CompareResponse>("/api/localSongsIntersect", {
       method: "POST",
       body: {
         playListUrl: playListUrl.value.trim(),
