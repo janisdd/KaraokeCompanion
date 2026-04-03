@@ -57,7 +57,7 @@
             class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
             aria-label="Show QR code"
             title="Show QR code"
-            @click="isQrModalOpen = true"
+            @click="openQrModal"
           >
             <font-awesome-icon icon="fa-solid fa-qrcode" class="h-4 w-4" />
           </button>
@@ -70,6 +70,64 @@
           >
             <font-awesome-icon :icon="isDark ? 'sun' : 'moon'" class="h-4 w-4" />
           </button>
+          <NuxtLink
+            v-if="!loggedIn"
+            to="/users/usersList"
+            class="inline-flex rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+            aria-label="Choose a user to log in"
+            title="Choose a user to log in"
+          >
+            <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
+          </NuxtLink>
+          <div
+            v-else
+            data-user-menu
+            class="relative"
+          >
+            <button
+              type="button"
+              class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              :aria-expanded="isUserMenuOpen"
+              aria-haspopup="menu"
+              :aria-label="loggedInUserName ? `Account: ${loggedInUserName}` : 'Account menu'"
+              :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
+              @click="toggleUserMenu"
+            >
+              <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
+            </button>
+            <div
+              v-if="isUserMenuOpen"
+              class="absolute right-0 z-[60] mt-1 min-w-[10rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+              role="menu"
+              aria-label="Account"
+            >
+              <div
+                class="px-3 py-2 text-sm font-medium text-slate-900 dark:text-slate-100"
+                role="menuitem"
+              >
+                {{ loggedInUserName || 'User' }}
+              </div>
+              <div class="border-t border-slate-200 dark:border-slate-700">
+                <NuxtLink
+                  to="/users/usersList"
+                  class="block w-full px-3 py-2 text-left text-sm text-slate-700 no-underline hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                  role="menuitem"
+                  @click="closeMenusAfterUserNav"
+                >
+                  Users
+                </NuxtLink>
+                <button
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-200 dark:hover:bg-slate-800"
+                  role="menuitem"
+                  :disabled="isLoggingOut"
+                  @click="logout"
+                >
+                  {{ isLoggingOut ? 'Logging out…' : 'Log out' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </nav>
         <button
           type="button"
@@ -132,10 +190,69 @@
               class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               aria-label="Show QR code"
               title="Show QR code"
-              @click="isQrModalOpen = true"
+              @click="openQrModal"
             >
               <font-awesome-icon icon="fa-solid fa-qrcode" class="h-4 w-4" />
             </button>
+            <NuxtLink
+              v-if="!loggedIn"
+              to="/users/usersList"
+              class="inline-flex rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              aria-label="Choose a user to log in"
+              title="Choose a user to log in"
+              @click="isMobileMenuOpen = false"
+            >
+              <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
+            </NuxtLink>
+            <div
+              v-else
+              data-user-menu
+              class="relative"
+            >
+              <button
+                type="button"
+                class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                :aria-expanded="isUserMenuOpen"
+                aria-haspopup="menu"
+                :aria-label="loggedInUserName ? `Account: ${loggedInUserName}` : 'Account menu'"
+                :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
+                @click="toggleUserMenu"
+              >
+                <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
+              </button>
+              <div
+                v-if="isUserMenuOpen"
+                class="absolute right-0 z-[60] mt-1 min-w-[10rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                role="menu"
+                aria-label="Account"
+              >
+                <div
+                  class="px-3 py-2 text-sm font-medium text-slate-900 dark:text-slate-100"
+                  role="menuitem"
+                >
+                  {{ loggedInUserName || 'User' }}
+                </div>
+                <div class="border-t border-slate-200 dark:border-slate-700">
+                  <NuxtLink
+                    to="/users/usersList"
+                    class="block w-full px-3 py-2 text-left text-sm text-slate-700 no-underline hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                    role="menuitem"
+                    @click="closeMenusAfterUserNav"
+                  >
+                    Users
+                  </NuxtLink>
+                  <button
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-200 dark:hover:bg-slate-800"
+                    role="menuitem"
+                    :disabled="isLoggingOut"
+                    @click="logout"
+                  >
+                    {{ isLoggingOut ? 'Logging out…' : 'Log out' }}
+                  </button>
+                </div>
+              </div>
+            </div>
             <button
               type="button"
               class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
@@ -265,6 +382,15 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const runtimeConfig = useRuntimeConfig()
 const defaultThemeDark = runtimeConfig.public.defaultThemeDark === true
 const appVersion = runtimeConfig.public.appVersion
+const { user, loggedIn, fetch: refetchUserSession } = useUserSession()
+const loggedInUserName = computed(() => {
+  const sessionUser = user.value
+  if (!sessionUser || typeof sessionUser !== 'object' || !('name' in sessionUser)) {
+    return ''
+  }
+  const name = (sessionUser as { name: unknown }).name
+  return typeof name === 'string' ? name : ''
+})
 const themeCookie = useCookie<string | null>('theme')
 const route = useRoute()
 const pageTitle = computed(() => {
@@ -279,7 +405,62 @@ const isDark = useState(
   () => themeCookie.value === 'dark' || (themeCookie.value == null && defaultThemeDark)
 )
 const isQrModalOpen = ref(false)
+const isUserMenuOpen = ref(false)
 const isMobileMenuOpen = ref(false)
+
+const closeUserMenu = () => {
+  isUserMenuOpen.value = false
+}
+
+const closeMenusAfterUserNav = () => {
+  closeUserMenu()
+  isMobileMenuOpen.value = false
+}
+
+const isLoggingOut = ref(false)
+
+const logout = async () => {
+  if (isLoggingOut.value) {
+    return
+  }
+
+  isLoggingOut.value = true
+  try {
+    await $fetch('/api/users/logout', { method: 'POST' })
+    await refetchUserSession()
+    closeUserMenu()
+  } finally {
+    isLoggingOut.value = false
+  }
+}
+
+const toggleUserMenu = () => {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+}
+
+const openQrModal = () => {
+  closeUserMenu()
+  isQrModalOpen.value = true
+}
+
+const onDocumentPointerDownCloseUserMenu = (event: Event) => {
+  if (!isUserMenuOpen.value || !import.meta.client) {
+    return
+  }
+
+  const target = event.target
+  if (!(target instanceof Node)) {
+    return
+  }
+
+  for (const root of document.querySelectorAll('[data-user-menu]')) {
+    if (root.contains(target)) {
+      return
+    }
+  }
+
+  closeUserMenu()
+}
 const qrCodeDataUrl = ref<string | null>(null)
 const qrCodeUrl = ref<string | null>(null)
 const isQrCodeLoading = ref(false)
@@ -341,6 +522,7 @@ const initTheme = () => {
 }
 
 const toggleDarkMode = () => {
+  closeUserMenu()
   setTheme(!isDark.value)
 }
 
@@ -430,8 +612,23 @@ const openQrPrintPage = () => {
   printWindow.focus()
 }
 
+watch(loggedIn, (isLogged) => {
+  if (!isLogged) {
+    closeUserMenu()
+  }
+})
+
+watch(() => route.fullPath, () => {
+  closeUserMenu()
+})
+
 onMounted(() => {
   initTheme()
+  document.addEventListener('pointerdown', onDocumentPointerDownCloseUserMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDownCloseUserMenu)
 })
 
 watch(isQrModalOpen, (isOpen) => {

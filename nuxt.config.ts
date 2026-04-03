@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   ssr: false,
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  modules: ['@nuxt/hints', '@nuxtjs/tailwindcss'],
+  modules: ['@nuxt/hints', '@nuxtjs/tailwindcss', 'nuxt-auth-utils'],
   css: ['~/assets/css/main.css', '@fortawesome/fontawesome-svg-core/styles.css'],
   app: {
     head: {
