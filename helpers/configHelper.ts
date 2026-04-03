@@ -10,7 +10,7 @@ dotenv.config({ path: "./secrets/.env" });
 const defaultRequiredWaitTimeForSongDownload = 30;
 const defaultDownloadPreferredVideoHeight = 720;
 const defaultNumAnalyzeWorkers = 2;
-const defaultNormalLoudness = 16;
+const defaultNormalLoudness = -16;
 const USDB_ANIMUX_URL = "https://usdb.animux.de";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
@@ -28,7 +28,7 @@ let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || `${USDB_A
 let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false;
 let NUM_ANALYZE_WORKERS = process.env.NUM_ANALYZE_WORKERS || defaultNumAnalyzeWorkers; // 2 for in case of low cpu power
 let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
-let NORMAL_LOUDNESS = process.env.NORMAL_LOUDNESS || defaultNormalLoudness; // apparently the normal loudness is 16 LUFS (Loudness Units Full Scale)
+let NORMAL_LOUDNESS = process.env.NORMAL_LOUDNESS || defaultNormalLoudness; // normal loudness target in LUFS (Loudness Units Full Scale), e.g. -16
 
 if (!PlaylistCacheDirPath) {
   throw new Error("Playlist cache directory not set")
@@ -133,14 +133,19 @@ export class ConfigHelper {
   }
 
   static getNormalLoudness() {
-    return getEnvVarAsNumber(NORMAL_LOUDNESS, defaultNormalLoudness);
+    return getEnvVarAsNumber(NORMAL_LOUDNESS, defaultNormalLoudness, { allowNegative: true });
   }
 }
 
 
-function getEnvVarAsNumber(value: string | number, defaultValue: number) {
+function getEnvVarAsNumber(
+  value: string | number,
+  defaultValue: number,
+  options: { allowNegative?: boolean } = {},
+) {
+  const allowNegative = options.allowNegative ?? false
   if (typeof value === 'string') {
-    const regex = /^\d+$/;
+    const regex = allowNegative ? /^-?\d+$/ : /^\d+$/;
     if (!regex.test(value)) {
       return defaultValue;
     }
@@ -150,7 +155,7 @@ function getEnvVarAsNumber(value: string | number, defaultValue: number) {
     if (isNaN(value)) {
       return defaultValue;
     }
-    if (value < 0) {
+    if (!allowNegative && value < 0) {
       return defaultValue;
     }
     return value;

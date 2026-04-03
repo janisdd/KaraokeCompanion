@@ -57,9 +57,7 @@ const isMatchLoudnessTwoPassByReferenceRunning = ref(false)
 const toolsActionError = ref<string | null>(null)
 
 const normalLoudness = computed(() => normalLoudnessResponse.value?.data ?? null)
-const targetLoudness = computed(() =>
-  normalLoudness.value === null ? null : -normalLoudness.value,
-)
+const targetLoudness = computed(() => normalLoudness.value)
 const songsByKey = computed(() => {
   return new Map((songs.value ?? []).map((song) => [song.key, song]))
 })
