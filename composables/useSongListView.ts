@@ -4,7 +4,6 @@ import { useSongs } from "~~/composables/useSongs";
 
 type SortKey = "title" | "artist" | "year" | "genre" | "language";
 type SortDirection = "asc" | "desc";
-type SearchMode = "metadata" | "lyrics";
 
 type SongListViewOptions = {
   songs: Ref<SongInfo[]>;
@@ -26,12 +25,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     `${stateKeyPrefix}-sort-direction`,
     () => "asc",
   );
-  const searchMode = useState<SearchMode>(
-    `${stateKeyPrefix}-search-mode`,
-    () => "metadata",
-  );
   const metadataQuery = useState(`${stateKeyPrefix}-metadata-query`, () => "");
-  const lyricsQuery = useState(`${stateKeyPrefix}-lyrics-query`, () => "");
   const selectedSongKey = useState<string | null>(
     `${stateKeyPrefix}-selected-key`,
     () => null,
@@ -60,10 +54,7 @@ export const useSongListView = (options: SongListViewOptions) => {
       return [];
     }
 
-    const query =
-      searchMode.value === "lyrics"
-        ? lyricsQuery.value.trim().toLowerCase()
-        : metadataQuery.value.trim().toLowerCase();
+    const query = metadataQuery.value.trim().toLowerCase();
     if (!query) {
       return source;
     }
@@ -71,19 +62,16 @@ export const useSongListView = (options: SongListViewOptions) => {
     return source.filter((song) => {
       const cachedEntry = searchIndex.value[song.key];
       const haystack =
-        searchMode.value === "lyrics"
-          ? cachedEntry?.lyrics ??
-            (song.songText ?? song.songTextAsWords.join(" ")).toLowerCase()
-          : cachedEntry?.metadata ??
-            [
-              song.title,
-              song.artist,
-              song.year == null ? "" : String(song.year),
-              song.genre ?? "",
-              song.language ?? "",
-            ]
-              .join(" ")
-              .toLowerCase();
+        cachedEntry?.metadata ??
+        [
+          song.title,
+          song.artist,
+          song.year == null ? "" : String(song.year),
+          song.genre ?? "",
+          song.language ?? "",
+        ]
+          .join(" ")
+          .toLowerCase();
 
       return haystack.includes(query);
     });
@@ -132,47 +120,13 @@ export const useSongListView = (options: SongListViewOptions) => {
   const getSongText = (song: SongInfo) =>
     song.songTextAsWords?.join(" ").trim() || "";
 
-  const getLyricsPreview = (song: SongInfo, query: string) => {
-    const text = getSongText(song);
-    const trimmedQuery = query.trim();
-    if (!text || !trimmedQuery) {
-      return "";
-    }
-
-    const lowerText = text.toLowerCase();
-    const lowerQuery = trimmedQuery.toLowerCase();
-    const matchIndex = lowerText.indexOf(lowerQuery);
-    if (matchIndex === -1) {
-      return "";
-    }
-
-    const context = 15;
-    const start = Math.max(0, matchIndex - context);
-    const end = Math.min(text.length, matchIndex + trimmedQuery.length + context);
-    const prefix = start > 0 ? "…" : "";
-    const suffix = end < text.length ? "…" : "";
-
-    return `${prefix}${text.slice(start, end)}${suffix}`;
-  };
-
   const getSongTextPreview = (song: SongInfo) => {
-    if (searchMode.value === "lyrics") {
-      const preview = getLyricsPreview(song, lyricsQuery.value);
-      if (preview) {
-        return preview;
-      }
-    }
-
     const words = song.songTextAsWords?.slice(0, 5).join(" ");
     if (words) {
       return `${words}...`;
     }
 
-    const fallbackText = song.songText
-      ? song.songText.split(/\s+/).slice(0, 5).join(" ")
-      : "";
-
-    return fallbackText ? `${fallbackText}...` : "—";
+    return "—";
   };
 
   const toggleSongText = (song: SongInfo) => {
@@ -227,12 +181,10 @@ export const useSongListView = (options: SongListViewOptions) => {
     getSongRowId,
     getSongTextPreview,
     isActiveAudioPlaying,
-    lyricsQuery,
     metadataQuery,
     playerTime,
     progressPercent,
     scrollToActiveSong,
-    searchMode,
     selectedSongKey,
     selectedSongName,
     selectedSongText,

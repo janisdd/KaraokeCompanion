@@ -1022,7 +1022,6 @@ const runMatchLoudnessTwoPassByReference = async () => {
     </div>
 
     <AdminSongListView
-      :showLyricsSearch="false"
       :songs-catalog-key="adminSongsCatalogKey"
       :defer-song-fetch="adminSessionPending || !isAdminAuthenticated"
       :admin-authenticated="isAdminAuthenticated"

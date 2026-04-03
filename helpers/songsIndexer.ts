@@ -258,7 +258,6 @@ export class SongsIndexer {
       videoFileName: null,
       coverFileName: null,
       songTextAsWords: [],
-      songText: "",
     };
 
     for (const line of lines) {
@@ -340,9 +339,6 @@ export class SongsIndexer {
         // const length = parseInt(lineParts[2])
         // const pitch = parseInt(lineParts[3])
         const text = lineParts.slice(4).join(" ").trim();
-        //remove all ~ characters
-        const textWithoutTildes = text.replace(/~/g, "");
-        songInfo.songText += textWithoutTildes;
         songInfo.songTextAsWords.push(text);
       }
     }

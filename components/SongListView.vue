@@ -44,11 +44,9 @@ const {
   getSongKey,
   getSongTextPreview,
   isActiveAudioPlaying,
-  lyricsQuery,
   metadataQuery,
   playerTime,
   progressPercent,
-  searchMode,
   selectedSongKey,
   selectedSongName,
   selectedSongText,
@@ -370,7 +368,7 @@ watch([activeAudioKey, isActiveAudioPlaying, selectedSongKey], () => {
   refreshGrid();
 });
 
-watch([searchMode, lyricsQuery], () => {
+watch(metadataQuery, () => {
   refreshGrid();
 });
 
@@ -402,40 +400,17 @@ watch(
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex w-full flex-col gap-3 md:max-w-2xl">
           <div class="flex flex-wrap items-center gap-3">
-            <fieldset class="m-0 flex flex-wrap items-center gap-4 border-0 p-0 text-xs text-slate-600 dark:text-slate-300">
-              <label class="flex items-center gap-2">
-                <input v-model="searchMode" type="radio" value="metadata" />
-                Search metadata
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="searchMode" type="radio" value="lyrics" />
-                Search song text
-              </label>
-            </fieldset>
             <slot name="search-mode-actions" />
           </div>
           <div class="flex flex-col gap-2 md:flex-row">
             <label
-              v-if="searchMode === 'metadata'"
               class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
-              <span class="text-slate-500 dark:text-slate-400">Metadata</span>
+              <span class="text-slate-500 dark:text-slate-400">Search</span>
               <input
                 v-model="metadataQuery"
                 type="search"
                 placeholder="Title, artist, year, genre, language"
-                class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </label>
-            <label
-              v-else
-              class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <span class="text-slate-500 dark:text-slate-400">Text</span>
-              <input
-                v-model="lyricsQuery"
-                type="search"
-                placeholder="Lyrics or words from the song text"
                 class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>

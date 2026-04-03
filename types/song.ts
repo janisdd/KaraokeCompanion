@@ -13,5 +13,4 @@ export type SongInfo = {
 	videoFileName: string | null
 	coverFileName: string | null
 	songTextAsWords: string[]
-	songText: string | ''
 }

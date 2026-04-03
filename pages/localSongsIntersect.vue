@@ -58,7 +58,6 @@ const localSongFromMatch = (match: MatchResult): SongInfo => ({
   videoFileName: null,
   coverFileName: null,
   songTextAsWords: [],
-  songText: "",
 });
 
 const getLocalSongKey = (song: SongInfo) => song.key;

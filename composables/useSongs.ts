@@ -2,11 +2,7 @@ import type { SongInfo } from "~~/types/song";
 
 type SongSearchEntry = {
   metadata: string;
-  lyrics: string;
 };
-
-const normalizeSearchText = (value: string | null | undefined) =>
-  value ? value.trim().toLowerCase() : "";
 
 const buildSearchIndex = (songs: SongInfo[]) => {
   const index: Record<string, SongSearchEntry> = {};
@@ -21,12 +17,8 @@ const buildSearchIndex = (songs: SongInfo[]) => {
       .join(" ")
       .toLowerCase();
 
-    const lyricsSource =
-      song.songText ?? song.songTextAsWords?.join(" ") ?? "";
-
     index[song.key] = {
       metadata,
-      lyrics: normalizeSearchText(lyricsSource),
     };
   }
 
