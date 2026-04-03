@@ -52,27 +52,28 @@
           </div>
         </div>
 
-        <div class="space-y-2">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Marked songs</span>
-          <div
-            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          >
-            {{ sessionUserProfile.markedSongs.length }}
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:items-end">
+          <div class="min-w-0 space-y-2">
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Marked songs</span>
+            <div
+              class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            >
+              {{ sessionUserProfile.markedSongs.length }}
+            </div>
           </div>
+          <label class="block min-w-0 space-y-2">
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Theme</span>
+            <select
+              :value="sessionUserProfile.theme"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500"
+              :disabled="isSettingsThemeSaving"
+              @change="onThemeChange"
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
         </div>
-
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Theme</span>
-          <select
-            :value="sessionUserProfile.theme"
-            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500"
-            :disabled="isSettingsThemeSaving"
-            @change="onThemeChange"
-          >
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-          </select>
-        </label>
 
         <div class="space-y-3">
           <div>

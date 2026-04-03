@@ -192,45 +192,46 @@
           >
             Spotify vs Online
           </NuxtLink>
-          <div class="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              aria-label="Show QR code"
-              title="Show QR code"
-              @click="openQrModal"
-            >
-              <font-awesome-icon icon="fa-solid fa-qrcode" class="h-4 w-4" />
-            </button>
-            <NuxtLink
-              v-if="!loggedIn"
-              to="/users/usersList"
-              class="inline-flex rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              aria-label="Choose a user to log in"
-              title="Choose a user to log in"
-              @click="isMobileMenuOpen = false"
-            >
-              <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
-            </NuxtLink>
+          <div class="flex flex-col gap-2 pt-2">
             <div
-              v-else
+              v-if="loggedIn"
               data-user-menu
-              class="relative"
+              class="w-full min-w-0"
             >
-              <button
-                type="button"
-                class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-                :aria-expanded="isUserMenuOpen"
-                aria-haspopup="menu"
-                :aria-label="loggedInUserName ? `Account: ${loggedInUserName}` : 'Account menu'"
-                :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
-                @click="toggleUserMenu"
-              >
-                <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  aria-label="Show QR code"
+                  title="Show QR code"
+                  @click="openQrModal"
+                >
+                  <font-awesome-icon icon="fa-solid fa-qrcode" class="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                  :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                  @click="toggleDarkMode"
+                >
+                  <font-awesome-icon :icon="isDark ? 'sun' : 'moon'" class="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  :aria-expanded="isUserMenuOpen"
+                  aria-haspopup="menu"
+                  :aria-label="loggedInUserName ? `Account: ${loggedInUserName}` : 'Account menu'"
+                  :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
+                  @click="toggleUserMenu"
+                >
+                  <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
+                </button>
+              </div>
               <div
                 v-if="isUserMenuOpen"
-                class="absolute right-0 z-[60] mt-1 min-w-[10rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                class="mt-1 w-full rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
                 role="menu"
                 aria-label="Account"
               >
@@ -269,15 +270,35 @@
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-              :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-              :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-              @click="toggleDarkMode"
-            >
-              <font-awesome-icon :icon="isDark ? 'sun' : 'moon'" class="h-4 w-4" />
-            </button>
+            <div v-else class="flex items-center gap-2">
+              <button
+                type="button"
+                class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                aria-label="Show QR code"
+                title="Show QR code"
+                @click="openQrModal"
+              >
+                <font-awesome-icon icon="fa-solid fa-qrcode" class="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                class="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                @click="toggleDarkMode"
+              >
+                <font-awesome-icon :icon="isDark ? 'sun' : 'moon'" class="h-4 w-4" />
+              </button>
+              <NuxtLink
+                to="/users/usersList"
+                class="inline-flex rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                aria-label="Choose a user to log in"
+                title="Choose a user to log in"
+                @click="isMobileMenuOpen = false"
+              >
+                <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
+              </NuxtLink>
+            </div>
           </div>
         </nav>
       </div>

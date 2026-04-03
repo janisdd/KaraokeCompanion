@@ -37,6 +37,12 @@ export default defineNuxtConfig({
     transpile: ['@fortawesome/vue-fontawesome'],
   },
   runtimeConfig: {
+    // h3 session defaults to secure cookies; those work on http://localhost but not on http://<LAN_IP>
+    session: {
+      cookie: {
+        secure: false,
+      },
+    },
     public: {
       defaultThemeDark: process.env.IS_DEFAULT_PAGE_THEME_MODE_DARK === 'true',
       appVersion: pkg.version,

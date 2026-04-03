@@ -1,11 +1,22 @@
 <script setup lang="ts">
 defineOptions({
   name: "HomePage",
-});
+})
 
 definePageMeta({
   title: "Karaoke Companion",
-});
+})
+
+const { user, loggedIn } = useUserSession()
+const loggedInUserName = computed(() => {
+  const sessionUser = user.value
+  if (!sessionUser || typeof sessionUser !== "object" || !("name" in sessionUser)) {
+    return ""
+  }
+
+  const name = (sessionUser as { name: unknown }).name
+  return typeof name === "string" ? name : ""
+})
 </script>
 
 <template>
@@ -19,6 +30,17 @@ definePageMeta({
           Pick a view to explore your songs or compare Spotify playlists.
         </p>
       </header>
+
+      <div v-if="loggedIn" class="text-center">
+        <p class="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-5xl">
+          <template v-if="loggedInUserName">
+            Hello, {{ loggedInUserName }}
+          </template>
+          <template v-else>
+            Welcome back
+          </template>
+        </p>
+      </div>
 
       <section class="grid gap-6 md:grid-cols-2">
         <NuxtLink
