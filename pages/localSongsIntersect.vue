@@ -42,6 +42,7 @@ const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
 const localSongFromMatch = (match: MatchResult): SongInfo => ({
   key: match.local.key,
+  songDirName: match.local.songDirName,
   title: match.local.title,
   artist: match.local.artist,
   year: null,
@@ -108,7 +109,7 @@ const sendSongToBackend = async (song: SongInfo) => {
   try {
     await $fetch("/api/sendSong", {
       method: "POST",
-      body: { songId: song.key },
+      body: { songKey: song.key },
     });
   } catch (error) {
     console.error("Failed to send song", error);

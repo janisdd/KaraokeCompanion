@@ -4,13 +4,13 @@ import { SongsIndexer } from "~/helpers/songsIndexer"
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const songId = typeof query.id === "string" ? query.id.trim() : ""
+  const songKey = typeof query.songKey === "string" ? query.songKey.trim() : ""
 
-  if (!songId) {
-    throw createError({ statusCode: 400, message: "Missing song id" })
+  if (!songKey) {
+    throw createError({ statusCode: 400, message: "Missing songKey" })
   }
 
-  const song = SongsIndexer.getSongsMap().get(songId)
+  const song = SongsIndexer.getSongsMap().get(songKey)
   if (!song) {
     throw createError({ statusCode: 404, message: "Song not found" })
   }
@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: "Invalid audio file" })
   }
 
-  const songRoot = SongsIndexer.getSongRootMap().get(songId)
+  const songRoot = SongsIndexer.getSongRootMap().get(songKey)
   if (!songRoot) {
     throw createError({ statusCode: 404, message: "Song root not found" })
   }

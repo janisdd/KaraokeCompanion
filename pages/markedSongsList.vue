@@ -47,7 +47,7 @@ const sendCompanionPlaylist = async () => {
   try {
     await $fetch("/api/companionPlaylist", {
       method: "POST",
-      body: { songIds: markedSongs.value.map((song) => song.key) },
+      body: { songKeys: markedSongs.value.map((song) => song.key) },
     });
   } catch (error) {
     console.error("Failed to send companion playlist", error);

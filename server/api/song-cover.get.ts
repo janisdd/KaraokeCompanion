@@ -14,10 +14,10 @@ const allowedExtensions = new Map<string, string>([
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const songKey = typeof query.id === "string" ? query.id.trim() : ""
+  const songKey = typeof query.songKey === "string" ? query.songKey.trim() : ""
 
   if (!songKey) {
-    throw createError({ statusCode: 400, message: "Missing song id" })
+    throw createError({ statusCode: 400, message: "Missing songKey" })
   }
 
   const song = SongsIndexer.getSongsMap().get(songKey)

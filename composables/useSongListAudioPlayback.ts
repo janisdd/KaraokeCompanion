@@ -47,20 +47,20 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   const { audioStorageKey, getSongKey, getSongRowId } = options;
 
   const getAudioFile = (song: SongInfo) => {
-    const songId = song.key?.trim();
-    if (!songId) {
-      return null;
+    const songKey = song.key?.trim()
+    if (!songKey) {
+      return null
     }
-    return `/api/song-audio?id=${encodeURIComponent(songId)}`;
-  };
+    return `/api/song-audio?songKey=${encodeURIComponent(songKey)}`
+  }
 
   const getCoverFile = (song: SongInfo) => {
-    const songId = song.key?.trim();
-    if (!songId) {
-      return null;
+    const songKey = song.key?.trim()
+    if (!songKey) {
+      return null
     }
-    return `/api/song-cover?id=${encodeURIComponent(songId)}`;
-  };
+    return `/api/song-cover?songKey=${encodeURIComponent(songKey)}`
+  }
 
   const {
     activeAudioKey,

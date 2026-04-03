@@ -537,7 +537,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     headerName: "Files",
     colId: "files",
     width: 70,
-    sortable: false,
+    sortable: true,
     resizable: true,
     suppressMovable: true,
     cellStyle: centerCellStyle,

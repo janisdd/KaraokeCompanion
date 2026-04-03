@@ -231,7 +231,7 @@ const sendSongToBackend = async (song: SongInfo) => {
   try {
     await $fetch("/api/sendSong", {
       method: "POST",
-      body: { songId: song.key },
+      body: { songKey: song.key },
     });
   } catch (error) {
     console.error("Failed to send song", error);
