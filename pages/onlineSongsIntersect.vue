@@ -67,8 +67,13 @@ const compareModeOptions: Array<{
 ];
 
 const playListUrl = useState("compare-online-playlist-url", () => "");
-const { isMarkedSong, toggleMarkedSong, markedSongKeys, setMarkedSongKeys } =
-  useMarkedSongs();
+const {
+  isMarkedSong,
+  toggleMarkedSong,
+  markedSongKeys,
+  setMarkedSongKeys,
+  isMarkedSongsAuthenticated,
+} = useMarkedSongs();
 const compareMode = useState<CompareMode>(
   "compare-online-playlist-mode",
   () => "strict",
@@ -250,6 +255,9 @@ const MarkCell = defineComponent({
       const match = props.params.data;
       const song = match?.localSong;
       if (!match) {
+        return null;
+      }
+      if (song && !isMarkedSongsAuthenticated.value) {
         return null;
       }
       if (!song) {

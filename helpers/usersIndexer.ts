@@ -122,6 +122,56 @@ export class UsersIndexer {
     return this.usersMap.get(name)
   }
 
+  public static updateUserTheme(name: string, theme: FrontendUiTheme): UserWithDir {
+    const existing = this.usersMap.get(name)
+    if (!existing) {
+      throw new Error(`User '${name}' not found`)
+    }
+
+    const { userDirName, ...rest } = existing
+    const updated = userSchema.parse({
+      ...rest,
+      theme,
+    })
+    const userFilePath = this.getUserFilePath(userDirName)
+
+    fs.writeFileSync(userFilePath, JSON.stringify(updated, null, 2), "utf-8")
+
+    const userWithDir: UserWithDir = {
+      ...updated,
+      userDirName,
+    }
+    this.usersMap.set(name, userWithDir)
+    Logger.log(`${logPrefix} Updated theme for user '${name}' to '${theme}'`)
+
+    return userWithDir
+  }
+
+  public static updateUserMarkedSongs(name: string, markedSongs: User["markedSongs"]): UserWithDir {
+    const existing = this.usersMap.get(name)
+    if (!existing) {
+      throw new Error(`User '${name}' not found`)
+    }
+
+    const { userDirName, ...rest } = existing
+    const updated = userSchema.parse({
+      ...rest,
+      markedSongs,
+    })
+    const userFilePath = this.getUserFilePath(userDirName)
+
+    fs.writeFileSync(userFilePath, JSON.stringify(updated, null, 2), "utf-8")
+
+    const userWithDir: UserWithDir = {
+      ...updated,
+      userDirName,
+    }
+    this.usersMap.set(name, userWithDir)
+    Logger.log(`${logPrefix} Updated marked songs for user '${name}' (${markedSongs.length} song(s))`)
+
+    return userWithDir
+  }
+
   private static getUsersDir(): string {
     const usersDir = ConfigHelper.getUsersDir()
 

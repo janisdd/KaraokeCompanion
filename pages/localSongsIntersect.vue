@@ -26,8 +26,13 @@ type CompareResponse = {
   playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
-const { isMarkedSong, toggleMarkedSong, markedSongKeys, setMarkedSongKeys } =
-  useMarkedSongs();
+const {
+  isMarkedSong,
+  toggleMarkedSong,
+  markedSongKeys,
+  setMarkedSongKeys,
+  isMarkedSongsAuthenticated,
+} = useMarkedSongs();
 const playListUrl = useState("compare-local-playlist-url", () => "");
 const compareResult = useState<CompareResponse | null>(
   "compare-local-playlist-result",
@@ -158,6 +163,9 @@ const MarkCell = defineComponent({
     return () => {
       const match = props.params.data;
       if (!match) {
+        return null;
+      }
+      if (!isMarkedSongsAuthenticated.value) {
         return null;
       }
       return h("input", {

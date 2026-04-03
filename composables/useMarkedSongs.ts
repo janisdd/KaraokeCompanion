@@ -1,64 +1,235 @@
-const STORAGE_KEY = "karaoke-marked-songs";
+type MarkedSongsResponse = {
+  markedSongs?: string[]
+}
+
+type SessionUser = {
+  name?: string
+} | null | undefined
 
 const normalizeKeys = (keys: string[]) =>
-  Array.from(new Set(keys.map((key) => key.trim()).filter(Boolean)));
+  Array.from(new Set(keys.map((key) => key.trim()).filter(Boolean)))
+
+const getFetchErrorStatus = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return null
+  }
+
+  const fetchError = error as {
+    status?: number
+    statusCode?: number
+    response?: { status?: number }
+    data?: { statusCode?: number }
+  }
+
+  return (
+    fetchError.statusCode ??
+    fetchError.status ??
+    fetchError.response?.status ??
+    fetchError.data?.statusCode ??
+    null
+  )
+}
+
+const getFetchErrorMessage = (error: unknown, fallback: string) => {
+  if (!error || typeof error !== "object") {
+    return fallback
+  }
+
+  const fetchError = error as {
+    data?: { message?: string }
+    statusMessage?: string
+    message?: string
+  }
+
+  return (
+    fetchError.data?.message ||
+    fetchError.statusMessage ||
+    fetchError.message ||
+    fallback
+  )
+}
 
 export const useMarkedSongs = () => {
-  const markedSongKeys = useState<string[]>("marked-songs", () => []);
-  const hasHydrated = useState<boolean>("marked-songs-hydrated", () => false);
+  const markedSongKeys = useState<string[]>("marked-songs", () => [])
+  const isMarkedSongsLoading = useState<boolean>(
+    "marked-songs-loading",
+    () => false,
+  )
+  const hasResolvedMarkedSongsSession = useState<boolean>(
+    "marked-songs-session-resolved",
+    () => false,
+  )
+  const isMarkedSongsAuthenticated = useState<boolean>(
+    "marked-songs-authenticated",
+    () => false,
+  )
+  const markedSongsErrorMessage = useState<string | null>(
+    "marked-songs-error-message",
+    () => null,
+  )
+  const pendingSaveKeys = useState<string[] | null>(
+    "marked-songs-pending-save",
+    () => null,
+  )
+  const isPersistingMarkedSongs = useState<boolean>(
+    "marked-songs-persisting",
+    () => false,
+  )
+  const syncInitialized = useState<boolean>(
+    "marked-songs-sync-initialized",
+    () => false,
+  )
+  const { user } = useUserSession()
+  const sessionUserName = computed(() => {
+    const sessionUser = user.value as SessionUser
+    const name = sessionUser?.name
+
+    return typeof name === "string" && name.trim() ? name : null
+  })
+
+  const clearMarkedSongsSession = () => {
+    markedSongKeys.value = []
+    isMarkedSongsAuthenticated.value = false
+    hasResolvedMarkedSongsSession.value = true
+    isMarkedSongsLoading.value = false
+    markedSongsErrorMessage.value = null
+    pendingSaveKeys.value = null
+  }
+
+  const loadMarkedSongs = async () => {
+    if (!import.meta.client) {
+      return
+    }
+
+    if (!sessionUserName.value) {
+      clearMarkedSongsSession()
+      return
+    }
+
+    isMarkedSongsLoading.value = true
+    markedSongsErrorMessage.value = null
+
+    try {
+      const response = await $fetch<MarkedSongsResponse>(
+        "/api/users/session-user-marked-songs",
+      )
+
+      markedSongKeys.value = normalizeKeys(response.markedSongs ?? [])
+      isMarkedSongsAuthenticated.value = true
+      hasResolvedMarkedSongsSession.value = true
+    } catch (error) {
+      if (getFetchErrorStatus(error) === 401) {
+        clearMarkedSongsSession()
+        return
+      }
+
+      markedSongKeys.value = []
+      isMarkedSongsAuthenticated.value = true
+      hasResolvedMarkedSongsSession.value = true
+      markedSongsErrorMessage.value = getFetchErrorMessage(
+        error,
+        "Failed to load marked songs",
+      )
+    } finally {
+      isMarkedSongsLoading.value = false
+    }
+  }
+
+  const persistMarkedSongs = async () => {
+    if (!import.meta.client || !isMarkedSongsAuthenticated.value) {
+      return
+    }
+
+    pendingSaveKeys.value = [...markedSongKeys.value]
+
+    if (isPersistingMarkedSongs.value) {
+      return
+    }
+
+    isPersistingMarkedSongs.value = true
+
+    try {
+      while (pendingSaveKeys.value) {
+        const nextKeys = [...pendingSaveKeys.value]
+        pendingSaveKeys.value = null
+
+        try {
+          await $fetch("/api/users/session-user-marked-songs", {
+            method: "PATCH",
+            body: { markedSongs: nextKeys },
+          })
+        } catch (error) {
+          if (getFetchErrorStatus(error) === 401) {
+            clearMarkedSongsSession()
+            return
+          }
+
+          console.error("Failed to save marked songs", error)
+          break
+        }
+      }
+    } finally {
+      isPersistingMarkedSongs.value = false
+    }
+  }
 
   const setMarkedSongKeys = (keys: string[]) => {
-    markedSongKeys.value = normalizeKeys(keys);
-  };
+    if (!isMarkedSongsAuthenticated.value) {
+      return
+    }
 
-  const isMarkedSong = (key: string) => markedSongKeys.value.includes(key);
+    markedSongKeys.value = normalizeKeys(keys)
+    void persistMarkedSongs()
+  }
+
+  const isMarkedSong = (key: string) => markedSongKeys.value.includes(key)
 
   const toggleMarkedSong = (key: string) => {
+    if (!isMarkedSongsAuthenticated.value) {
+      return
+    }
+
     if (isMarkedSong(key)) {
       markedSongKeys.value = markedSongKeys.value.filter(
         (songKey) => songKey !== key,
-      );
-      return;
+      )
+      void persistMarkedSongs()
+      return
     }
 
-    markedSongKeys.value = normalizeKeys([...markedSongKeys.value, key]);
-  };
+    markedSongKeys.value = normalizeKeys([...markedSongKeys.value, key])
+    void persistMarkedSongs()
+  }
 
   const unmarkAllSongs = () => {
-    markedSongKeys.value = [];
-  };
-
-  onMounted(() => {
-    if (!process.client || hasHydrated.value) {
-      return;
+    if (!isMarkedSongsAuthenticated.value) {
+      return
     }
 
-    const storedKeys = localStorage.getItem(STORAGE_KEY);
-    if (storedKeys && markedSongKeys.value.length === 0) {
-      try {
-        const parsed = JSON.parse(storedKeys);
-        if (Array.isArray(parsed)) {
-          setMarkedSongKeys(parsed.map(String));
+    markedSongKeys.value = []
+    void persistMarkedSongs()
+  }
+
+  if (import.meta.client && !syncInitialized.value) {
+    syncInitialized.value = true
+
+    watch(
+      sessionUserName,
+      (nextUserName, previousUserName) => {
+        if (nextUserName === previousUserName) {
+          return
         }
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    }
 
-    hasHydrated.value = true;
-  });
+        if (!nextUserName) {
+          clearMarkedSongsSession()
+          return
+        }
 
-  watch(
-    markedSongKeys,
-    (value) => {
-      if (!process.client || !hasHydrated.value) {
-        return;
-      }
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-    },
-    { deep: true },
-  );
+        void loadMarkedSongs()
+      },
+      { immediate: true },
+    )
+  }
 
   return {
     markedSongKeys,
@@ -66,5 +237,10 @@ export const useMarkedSongs = () => {
     toggleMarkedSong,
     unmarkAllSongs,
     setMarkedSongKeys,
-  };
-};
+    loadMarkedSongs,
+    isMarkedSongsLoading,
+    hasResolvedMarkedSongsSession,
+    isMarkedSongsAuthenticated,
+    markedSongsErrorMessage,
+  }
+}

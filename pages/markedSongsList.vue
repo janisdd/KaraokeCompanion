@@ -1,69 +1,119 @@
 <script setup lang="ts">
-import { useSongs } from "~~/composables/useSongs";
-import type { SongInfo } from "~~/types/song";
+import { useSongs } from "~~/composables/useSongs"
+import type { SongInfo } from "~~/types/song"
 
 defineOptions({
   name: "MarkedSongsListPage",
-});
+})
 
 definePageMeta({
   title: "Marked Songs",
-});
+})
 
-const { songs, pending, error } = useSongs();
-const { markedSongKeys, unmarkAllSongs } = useMarkedSongs();
+const { songs, pending, error } = useSongs()
+const {
+  markedSongKeys,
+  unmarkAllSongs,
+  hasResolvedMarkedSongsSession,
+  isMarkedSongsAuthenticated,
+  isMarkedSongsLoading,
+  markedSongsErrorMessage,
+} = useMarkedSongs()
 
-const getSongKey = (song: SongInfo) => song.key;
+const getSongKey = (song: SongInfo) => song.key
 
 const markedSongs = computed(() => {
   if (!songs.value || !markedSongKeys.value.length) {
-    return [];
+    return []
   }
 
-  const markedKeySet = new Set(markedSongKeys.value);
-  return songs.value.filter((song) => markedKeySet.has(getSongKey(song)));
-});
+  const markedKeySet = new Set(markedSongKeys.value)
+  return songs.value.filter((song) => markedKeySet.has(getSongKey(song)))
+})
 
-const totalCount = computed(() => markedSongs.value.length);
+const totalCount = computed(() => markedSongs.value.length)
+const showLoginPrompt = computed(
+  () =>
+    hasResolvedMarkedSongsSession.value &&
+    !isMarkedSongsAuthenticated.value &&
+    !markedSongsErrorMessage.value,
+)
+const isPageLoading = computed(
+  () =>
+    pending.value ||
+    !hasResolvedMarkedSongsSession.value ||
+    (isMarkedSongsLoading.value && !showLoginPrompt.value),
+)
+const hasPageError = computed(
+  () => Boolean(error.value) || Boolean(markedSongsErrorMessage.value),
+)
 
 const confirmUnmarkAll = () => {
   if (!process.client) {
-    return;
+    return
   }
 
   const shouldUnmark = window.confirm(
     "Unmark all songs from the marked list?",
-  );
+  )
   if (shouldUnmark) {
-    unmarkAllSongs();
+    unmarkAllSongs()
   }
-};
+}
 
 const sendCompanionPlaylist = async () => {
   if (!markedSongs.value.length) {
-    return;
+    return
   }
 
   try {
     await $fetch("/api/companionPlaylist", {
       method: "POST",
       body: { songKeys: markedSongs.value.map((song) => song.key) },
-    });
+    })
   } catch (error) {
-    console.error("Failed to send companion playlist", error);
+    console.error("Failed to send companion playlist", error)
   }
-};
+}
 </script>
 
 <template>
+  <main
+    v-if="showLoginPrompt"
+    class="box-border h-[calc(100vh-3rem)] overflow-hidden bg-slate-50 px-3 pb-8 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
+  >
+    <div class="mx-auto flex h-full max-w-5xl flex-col gap-6">
+      <header class="space-y-2">
+        <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
+          Marked Songs
+        </h1>
+      </header>
+
+      <section
+        class="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"
+      >
+        <p class="text-sm text-slate-600 dark:text-slate-300">
+          Please log in to view and manage your marked songs.
+        </p>
+        <NuxtLink
+          to="/users/usersList"
+          class="mt-4 inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+        >
+          Go to login
+        </NuxtLink>
+      </section>
+    </div>
+  </main>
+
   <SongListView
+    v-else
     title="Marked Songs"
     :total-count="totalCount"
     :songs="markedSongs"
     state-key-prefix="marked-songs"
     audio-storage-key="marked-songs"
-    :is-loading="pending"
-    :has-error="Boolean(error)"
+    :is-loading="isPageLoading"
+    :has-error="hasPageError"
     empty-message="No marked songs yet."
   >
     <template #search-mode-actions>

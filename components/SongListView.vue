@@ -25,7 +25,8 @@ const props = defineProps<{
   emptyMessage: string;
 }>();
 
-const { isMarkedSong, toggleMarkedSong, markedSongKeys } = useMarkedSongs();
+const { isMarkedSong, toggleMarkedSong, markedSongKeys, isMarkedSongsAuthenticated } =
+  useMarkedSongs();
 
 const songSource = computed(() => props.songs ?? []);
 const isDark = useState<boolean>("isDarkMode", () => false);
@@ -118,6 +119,9 @@ const MarkCell = defineComponent({
     return () => {
       const song = props.params.data;
       if (!song) {
+        return null;
+      }
+      if (!isMarkedSongsAuthenticated.value) {
         return null;
       }
       const key = getSongKey(song);
