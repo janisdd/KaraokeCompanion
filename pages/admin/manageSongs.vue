@@ -2,6 +2,7 @@
 import AdminSongListView from "./AdminSongListView.vue"
 import VueSelect from "vue-select"
 import "vue-select/dist/vue-select.css"
+import type { AdminSessionResponse } from "~/server/api/admin/session.get"
 import type { LoadExistingAnalyzeResultsResponse } from "~/server/api/admin/loadExistingAnalyzeResults.post"
 import type { ReindexSongsResponse } from "~/server/api/admin/reindexSongs.post"
 import type { NormalLoudnessResponse } from "~/server/api/admin/normalLoudness.get"
@@ -28,15 +29,71 @@ definePageMeta({
   title: "Manage Songs",
 })
 
+const {
+  data: adminSessionResponse,
+  pending: adminSessionPending,
+  refresh: refreshAdminSession,
+} = await useFetch<AdminSessionResponse>("/api/admin/session", {
+  key: "admin-manage-session",
+})
+
+const isAdminAuthenticated = computed(
+  () => adminSessionResponse.value?.data.authenticated === true,
+)
+
 const { data: analyzerResultsResponse, refresh: refreshAnalyzerResults } =
-  await useFetch<AnalyzeResultsResponse>("/api/admin/analyzers")
-const { data: normalLoudnessResponse } =
-  await useFetch<NormalLoudnessResponse>("/api/admin/normalLoudness")
-const { songs, refresh: refreshSongs } = useSongs()
+  await useFetch<AnalyzeResultsResponse>("/api/admin/analyzers", {
+    key: "admin-manage-analyzers",
+    immediate: false,
+  })
+
+const { data: normalLoudnessResponse, refresh: refreshNormalLoudness } =
+  await useFetch<NormalLoudnessResponse>("/api/admin/normalLoudness", {
+    key: "admin-manage-normal-loudness",
+    immediate: false,
+  })
+
+const adminSongsCatalogKey = "admin-manage"
+
+const { songs, refresh: refreshSongs } = useSongs({
+  autoFetch: false,
+  stateKey: adminSongsCatalogKey,
+})
+
+watch(
+  isAdminAuthenticated,
+  (authenticated) => {
+    if (authenticated) {
+      void refreshAnalyzerResults()
+      void refreshNormalLoudness()
+      void refreshSongs()
+    }
+  },
+  { immediate: true },
+)
 
 const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
   analyzerResultsResponse.value?.data ?? [],
 )
+
+watch(
+  () => analyzerResultsResponse.value?.data,
+  (data) => {
+    if (data) {
+      analyzerResults.value = data
+    }
+  },
+  { immediate: true },
+)
+
+const adminPassword = ref("")
+const adminLoginError = ref("")
+const isAdminLoginSubmitting = ref(false)
+
+const showAdminLoginModal = computed(
+  () => adminSessionPending.value || !isAdminAuthenticated.value,
+)
+
 const activeAnalyzeRequestKey = ref<string | null>(null)
 const analyzerActionError = ref<string | null>(null)
 const isLoadExistingAnalyzeResultsRunning = ref(false)
@@ -218,6 +275,40 @@ const getFetchErrorMessage = (error: unknown) => {
     fetchError.message ||
     "Failed to run analyzer"
   )
+}
+
+const submitAdminLogin = async () => {
+  adminLoginError.value = ""
+  isAdminLoginSubmitting.value = true
+
+  try {
+    await $fetch<AdminSessionResponse>("/api/admin/login", {
+      method: "POST",
+      body: { password: adminPassword.value },
+    })
+    adminPassword.value = ""
+    await refreshAdminSession()
+  } catch (error) {
+    adminLoginError.value = getFetchErrorMessage(error)
+  } finally {
+    isAdminLoginSubmitting.value = false
+  }
+}
+
+const logoutAsAdmin = async () => {
+  try {
+    await $fetch("/api/admin/logout", { method: "POST" })
+  } catch (error) {
+    analyzerActionError.value = getFetchErrorMessage(error)
+    return
+  }
+
+  adminLoginError.value = ""
+  await clearNuxtData("admin-manage-analyzers")
+  await clearNuxtData("admin-manage-normal-loudness")
+  await clearNuxtData("admin-song-files-exist")
+  await refreshAdminSession()
+  analyzerResults.value = []
 }
 
 const upsertAnalyzerResult = (entry: AnalyzeResultsSongEntry) => {
@@ -456,6 +547,83 @@ const runMatchLoudnessTwoPassByReference = async () => {
 
 <template>
   <div>
+    <div
+      v-if="showAdminLoginModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-login-title"
+    >
+      <div
+        class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+      >
+        <h2
+          id="admin-login-title"
+          class="text-base font-semibold text-slate-900 dark:text-slate-100"
+        >
+          Admin sign-in
+        </h2>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Enter the site admin password to use this page.
+        </p>
+
+        <div
+          v-if="adminSessionPending"
+          class="mt-4 text-sm text-slate-600 dark:text-slate-300"
+        >
+          Checking session…
+        </div>
+
+        <button
+          v-if="adminSessionPending"
+          type="button"
+          class="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          @click="void navigateTo('/')"
+        >
+          Back to home
+        </button>
+
+        <form
+          v-else
+          class="mt-4 space-y-3"
+          @submit.prevent="submitAdminLogin"
+        >
+          <label class="block text-xs font-medium text-slate-600 dark:text-slate-300">
+            Password
+            <input
+              v-model="adminPassword"
+              type="password"
+              autocomplete="current-password"
+              class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-500"
+            />
+          </label>
+
+          <p
+            v-if="adminLoginError"
+            class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200"
+          >
+            {{ adminLoginError }}
+          </p>
+
+          <button
+            type="submit"
+            class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            :disabled="isAdminLoginSubmitting"
+          >
+            {{ isAdminLoginSubmitting ? "Signing in…" : "Sign in" }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            @click="void navigateTo('/')"
+          >
+            Back to home
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div
       v-if="analyzerActionError"
       class="mx-auto mt-4 max-w-5xl rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
@@ -855,6 +1023,9 @@ const runMatchLoudnessTwoPassByReference = async () => {
 
     <AdminSongListView
       :showLyricsSearch="false"
+      :songs-catalog-key="adminSongsCatalogKey"
+      :defer-song-fetch="adminSessionPending || !isAdminAuthenticated"
+      :admin-authenticated="isAdminAuthenticated"
       :analyzerResults="analyzerResults"
       :activeAnalyzeRequestKey="activeAnalyzeRequestKey"
       :loudnessWarningsBySong="loudnessWarningsBySong"
@@ -879,6 +1050,14 @@ const runMatchLoudnessTwoPassByReference = async () => {
       </template>
       <template #header-actions>
         <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-if="isAdminAuthenticated && !adminSessionPending"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            @click="logoutAsAdmin"
+          >
+            Logout as admin
+          </button>
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"

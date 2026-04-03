@@ -10,11 +10,16 @@ type SongListViewOptions = {
   songs: Ref<SongInfo[]>;
   stateKeyPrefix: string;
   audioStorageKey: string;
+  /** Align search index with `useSongs({ stateKey })` when songs come from a keyed catalog. */
+  songsCatalogKey?: string;
 };
 
 export const useSongListView = (options: SongListViewOptions) => {
-  const { songs, stateKeyPrefix, audioStorageKey } = options;
-  const { searchIndex } = useSongs();
+  const { songs, stateKeyPrefix, audioStorageKey, songsCatalogKey } = options;
+  const { searchIndex } = useSongs({
+    autoFetch: false,
+    stateKey: songsCatalogKey,
+  });
 
   const sortKey = useState<SortKey>(`${stateKeyPrefix}-sort-key`, () => "title");
   const sortDirection = useState<SortDirection>(

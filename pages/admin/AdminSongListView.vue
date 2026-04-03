@@ -57,6 +57,11 @@ const props = withDefaults(
     activeAnalyzeRequestKey?: string | null
     loudnessWarningsBySong?: Record<string, LoudnessWarning>
     showLyricsSearch?: boolean
+    adminAuthenticated?: boolean
+    /** When true, do not auto-load `/api/songs` on mount (parent should call refresh after auth). */
+    deferSongFetch?: boolean
+    /** Must match parent `useSongs({ stateKey })` so search uses the same catalog bucket. */
+    songsCatalogKey?: string
   }>(),
   {
     title: "Manage Songs",
@@ -65,10 +70,16 @@ const props = withDefaults(
     activeAnalyzeRequestKey: null,
     loudnessWarningsBySong: () => ({}),
     showLyricsSearch: true,
+    adminAuthenticated: false,
+    deferSongFetch: false,
+    songsCatalogKey: undefined,
   },
 )
 
-const { songs, pending, error } = useSongs()
+const { songs, pending, error } = useSongs({
+  autoFetch: !props.deferSongFetch,
+  stateKey: props.songsCatalogKey,
+})
 const totalCount = computed(() => songs.value?.length ?? 0)
 
 const songSource = computed(() => songs.value ?? [])
@@ -97,6 +108,7 @@ const {
   songs: songSource,
   stateKeyPrefix: "admin-songs",
   audioStorageKey: "admin-songs",
+  songsCatalogKey: props.songsCatalogKey,
 })
 
 const rowHeight = 48
@@ -155,8 +167,21 @@ const analyzerResultsBySong = computed(() => {
   )
 })
 
-const { data: songFilesExistResponse } =
-  useFetch<SongFilesExistResponse>("/api/admin/song-files-exist")
+const { data: songFilesExistResponse, refresh: refreshSongFilesExist } =
+  useFetch<SongFilesExistResponse>("/api/admin/song-files-exist", {
+    key: "admin-song-files-exist",
+    immediate: false,
+  })
+
+watch(
+  () => props.adminAuthenticated,
+  (authenticated) => {
+    if (authenticated) {
+      void refreshSongFilesExist()
+    }
+  },
+  { immediate: true },
+)
 
 const songFilesExistByKey = computed(() => {
   return songFilesExistResponse.value?.results ?? {}

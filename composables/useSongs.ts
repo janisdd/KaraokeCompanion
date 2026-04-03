@@ -33,12 +33,28 @@ const buildSearchIndex = (songs: SongInfo[]) => {
   return index;
 };
 
-export const useSongs = () => {
-  const songs = useState<SongInfo[]>("songs", () => []);
-  const pending = useState<boolean>("songs-pending", () => false);
-  const error = useState<Error | null>("songs-error", () => null);
+type UseSongsOptions = {
+  /** When false, skip the client-side initial fetch (caller should call refresh when ready). */
+  autoFetch?: boolean;
+  /** Separate catalog state (e.g. admin page should not reuse public browse cache). */
+  stateKey?: string;
+};
+
+export const useSongs = (options?: UseSongsOptions) => {
+  const autoFetch = options?.autoFetch !== false;
+  const sk = options?.stateKey;
+
+  const songs = useState<SongInfo[]>(sk ? `songs-${sk}` : "songs", () => []);
+  const pending = useState<boolean>(
+    sk ? `songs-pending-${sk}` : "songs-pending",
+    () => false,
+  );
+  const error = useState<Error | null>(
+    sk ? `songs-error-${sk}` : "songs-error",
+    () => null,
+  );
   const searchIndex = useState<Record<string, SongSearchEntry>>(
-    "songs-search-index",
+    sk ? `songs-search-index-${sk}` : "songs-search-index",
     () => ({}),
   );
 
@@ -67,7 +83,7 @@ export const useSongs = () => {
     { immediate: true },
   );
 
-  if (process.client && songs.value.length === 0 && !pending.value) {
+  if (autoFetch && process.client && songs.value.length === 0 && !pending.value) {
     void refresh();
   }
 
