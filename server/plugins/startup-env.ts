@@ -78,7 +78,7 @@ export default defineNitroPlugin(async () => {
   }
 
   // after we have info about existing and downloaded songs
-  AllOnlineSongsIndexer.setSongsExistsOrWereAlreadyDownloaded();
+  AllOnlineSongsIndexer.connectSongInfosWithExistingAndDownloadedSongs();
 
   // load users after all other startup tasks
   try {

@@ -69,6 +69,18 @@ definePageMeta({
         </NuxtLink>
 
         <NuxtLink
+          to="/users/usersList"
+          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+        >
+          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
+            Users
+          </h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Browse existing users, search them, and create new ones.
+          </p>
+        </NuxtLink>
+
+        <NuxtLink
           to="/localSongsIntersect"
           class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
         >

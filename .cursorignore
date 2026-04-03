@@ -15,3 +15,5 @@ playlistCaches/
 *.m4p
 *.m4r
 helperPrograms/old/
+users/
+download_work/

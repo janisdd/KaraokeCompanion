@@ -79,7 +79,7 @@ export class AllOnlineSongsIndexer {
   }
 
   //song can be already downloaded or inside the ultrastar song dir...
-  public static setSongsExistsOrWereAlreadyDownloaded() {
+  public static connectSongInfosWithExistingAndDownloadedSongs() {
     const hasExistingSongIdex = SongsIndexer.isIndexingFinished();
     const hasDownloadedSongIndex = UsdbAnimuxHelper.isIndexingFinished();
 
