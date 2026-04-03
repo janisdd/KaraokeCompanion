@@ -843,27 +843,26 @@ const runMatchLoudnessTwoPassByReference = async () => {
         </details>
       </template>
       <template #header-actions>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="isLoadExistingAnalyzeResultsRunning"
+          @click="loadExistingAnalyzeResults"
+        >
+          <span
+            v-if="isLoadExistingAnalyzeResultsRunning"
+            class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+            aria-hidden="true"
+          />
+          <span>
+            {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Load analyzer results" }}
+          </span>
+        </button>
+      </template>
+      <template #above-search>
         <div
           class="flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
-          <div class="flex justify-end">
-            <button
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
-              :disabled="isLoadExistingAnalyzeResultsRunning"
-              @click="loadExistingAnalyzeResults"
-            >
-              <span
-                v-if="isLoadExistingAnalyzeResultsRunning"
-                class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
-                aria-hidden="true"
-              />
-              <span>
-                {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Load existing analyzer results" }}
-              </span>
-            </button>
-          </div>
-
           <button
             type="button"
             class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
@@ -878,7 +877,11 @@ const runMatchLoudnessTwoPassByReference = async () => {
           </button>
 
           <div v-if="isLoudnessToolsExpanded" class="flex flex-col gap-2">
-            <div class="flex flex-wrap items-center justify-end gap-2">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              Compare each song’s measured loudness to the target loudness and flag songs that differ by more than this tolerance.
+              Higher tolerance shows fewer warnings.
+            </p>
+            <div class="flex flex-wrap items-center justify-start gap-2">
               <label
                 class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               >
@@ -904,7 +907,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
             </div>
             <p
               v-if="loudnessWarningCount !== null"
-              class="text-right text-xs text-slate-500 dark:text-slate-400"
+              class="text-xs text-slate-500 dark:text-slate-400"
             >
               {{ loudnessWarningCount }} songs exceed the current tolerance
             </p>

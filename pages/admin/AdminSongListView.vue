@@ -392,7 +392,7 @@ const AnalyzerActionsCell = defineComponent({
             "button",
             {
               type: "button",
-              class: `${analyzerButtonClass} text-amber-600 dark:text-amber-400`,
+              class: missingFilesButtonClass,
               "aria-label": `Show loudness warning for ${value.songLabel}`,
               title: `${value.loudnessWarning.status}\nMeasured: ${value.loudnessWarning.measuredLoudness.toFixed(2)} LUFS\nDifference: ${value.loudnessWarning.difference > 0 ? "+" : ""}${value.loudnessWarning.difference.toFixed(2)} LUFS`,
               onClick: () =>
@@ -733,6 +733,8 @@ watch(songFilesExistResponse, () => {
           </div>
         </div>
       </header>
+
+      <slot name="above-search" />
 
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex w-full flex-col gap-3 md:max-w-2xl">
