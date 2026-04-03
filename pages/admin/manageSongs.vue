@@ -2,6 +2,7 @@
 import AdminSongListView from "./AdminSongListView.vue"
 import VueSelect from "vue-select"
 import "vue-select/dist/vue-select.css"
+import type { LoadExistingAnalyzeResultsResponse } from "~/server/api/admin/loadExistingAnalyzeResults.post"
 import type { NormalLoudnessResponse } from "~/server/api/admin/normalLoudness.get"
 import type {
   AnalyzeResultKey,
@@ -26,7 +27,7 @@ definePageMeta({
   title: "Manage Songs",
 })
 
-const { data: analyzerResultsResponse } =
+const { data: analyzerResultsResponse, refresh: refreshAnalyzerResults } =
   await useFetch<AnalyzeResultsResponse>("/api/admin/analyzers")
 const { data: normalLoudnessResponse } =
   await useFetch<NormalLoudnessResponse>("/api/admin/normalLoudness")
@@ -37,6 +38,7 @@ const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
 )
 const activeAnalyzeRequestKey = ref<string | null>(null)
 const analyzerActionError = ref<string | null>(null)
+const isLoadExistingAnalyzeResultsRunning = ref(false)
 const isLoudnessToolsExpanded = ref(false)
 const loudnessTolerance = ref(5)
 const loudnessWarningsBySong = ref<Record<string, LoudnessWarning>>({})
@@ -299,6 +301,34 @@ const runAnalyzer = async (payload: {
     analyzerActionError.value = getFetchErrorMessage(error)
   } finally {
     activeAnalyzeRequestKey.value = null
+  }
+}
+
+const loadExistingAnalyzeResults = async () => {
+  if (isLoadExistingAnalyzeResultsRunning.value) {
+    return
+  }
+
+  if (!window.confirm("Load existing analyzer results from disk now?")) {
+    return
+  }
+
+  analyzerActionError.value = null
+  isLoadExistingAnalyzeResultsRunning.value = true
+
+  try {
+    await $fetch<LoadExistingAnalyzeResultsResponse>("/api/admin/loadExistingAnalyzeResults", {
+      method: "POST",
+    })
+    await refreshAnalyzerResults()
+    analyzerResults.value = analyzerResultsResponse.value?.data ?? []
+    if (loudnessWarningCount.value !== null) {
+      compareLoudnessAgainstTarget()
+    }
+  } catch (error) {
+    analyzerActionError.value = getFetchErrorMessage(error)
+  } finally {
+    isLoadExistingAnalyzeResultsRunning.value = false
   }
 }
 
@@ -816,6 +846,24 @@ const runMatchLoudnessTwoPassByReference = async () => {
         <div
           class="flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
+          <div class="flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+              :disabled="isLoadExistingAnalyzeResultsRunning"
+              @click="loadExistingAnalyzeResults"
+            >
+              <span
+                v-if="isLoadExistingAnalyzeResultsRunning"
+                class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                aria-hidden="true"
+              />
+              <span>
+                {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Load existing analyzer results" }}
+              </span>
+            </button>
+          </div>
+
           <button
             type="button"
             class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
