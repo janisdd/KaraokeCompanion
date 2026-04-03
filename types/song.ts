@@ -8,10 +8,10 @@ export type SongInfo = {
 	creator: string | null
 	genre: string | null
 	language: string | null
-	// the files are only relative to the songs directory (including the songs directory)
-	audioFile: string | null
-	videoFile: string | null
-	coverFile: string | null
+	// these are just file names, not paths!!
+	audioFileName: string | null
+	videoFileName: string | null
+	coverFileName: string | null
 	songTextAsWords: string[]
 	songText: string | ''
 }

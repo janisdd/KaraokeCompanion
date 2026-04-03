@@ -59,7 +59,7 @@ async function runAllAnalyzeHelpers(): Promise<void> {
   );
 
   for (const song of songs) {
-    if (!song.audioFile) {
+    if (!song.audioFileName) {
       Logger.debug(`${logPrefix} Skipping ${song.key} because it has no audio file`);
       continue;
     }
@@ -70,19 +70,19 @@ async function runAllAnalyzeHelpers(): Promise<void> {
       continue;
     }
 
-    // audio file already contains the songDirName and the file name with extension
-    const songDirWithInputFileWithExtension = song.audioFile;
+    const inputFileWithExtension = song.audioFileName
 
     for (const helper of knownAnalyzeHelpers) {
       analyzeTasks.push(async () => {
         if (await helper.hasRealResult(songRootDir, song.songDirName)) {
           Logger.debug(`${logPrefix} ${helper.logPrefix} loading existing results for '${song.songDirName}'`)
+          // this loads the result and because we use zod, we check if the result is valid
           await helper.loadResult(songRootDir, song.songDirName)
           return
         }
 
-        Logger.debug(`${logPrefix} ${helper.logPrefix} analyzing '${songDirWithInputFileWithExtension}'`)
-        await helper.analyze(songRootDir, songDirWithInputFileWithExtension, song.songDirName)
+        Logger.debug(`${logPrefix} ${helper.logPrefix} analyzing '${inputFileWithExtension}'`)
+        await helper.analyze(songRootDir, song.songDirName, inputFileWithExtension)
       })
     }
   }

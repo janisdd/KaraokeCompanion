@@ -41,6 +41,7 @@ const props = withDefaults(
     analyzerResults?: AnalyzeResultsSongEntry[]
     activeAnalyzeRequestKey?: string | null
     loudnessWarningsBySong?: Record<string, LoudnessWarning>
+    showLyricsSearch?: boolean
   }>(),
   {
     title: "Manage Songs",
@@ -48,6 +49,7 @@ const props = withDefaults(
     analyzerResults: () => [],
     activeAnalyzeRequestKey: null,
     loudnessWarningsBySong: () => ({}),
+    showLyricsSearch: true,
   },
 )
 
@@ -486,6 +488,16 @@ watch([searchMode, lyricsQuery], () => {
   refreshGrid()
 })
 
+watch(
+  () => props.showLyricsSearch,
+  (showLyricsSearch) => {
+    if (!showLyricsSearch) {
+      searchMode.value = "metadata"
+    }
+  },
+  { immediate: true },
+)
+
 watch(analyzerResultsBySong, () => {
   refreshGrid()
 })
@@ -526,7 +538,10 @@ watch(
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex w-full flex-col gap-3 md:max-w-2xl">
           <div class="flex flex-wrap items-center gap-3">
-            <fieldset class="m-0 flex flex-wrap items-center gap-4 border-0 p-0 text-xs text-slate-600 dark:text-slate-300">
+            <fieldset
+              v-if="showLyricsSearch"
+              class="m-0 flex flex-wrap items-center gap-4 border-0 p-0 text-xs text-slate-600 dark:text-slate-300"
+            >
               <label class="flex items-center gap-2">
                 <input v-model="searchMode" type="radio" value="metadata" />
                 Search metadata
@@ -552,7 +567,7 @@ watch(
               />
             </label>
             <label
-              v-else
+              v-else-if="showLyricsSearch"
               class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               <span class="text-slate-500 dark:text-slate-400">Text</span>

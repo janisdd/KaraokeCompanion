@@ -789,6 +789,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
     </div>
 
     <AdminSongListView
+      :showLyricsSearch="false"
       :analyzerResults="analyzerResults"
       :activeAnalyzeRequestKey="activeAnalyzeRequestKey"
       :loudnessWarningsBySong="loudnessWarningsBySong"

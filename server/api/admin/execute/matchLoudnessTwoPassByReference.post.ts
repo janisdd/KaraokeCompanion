@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<RunMatchLoudnessTwoPassByReferenceRequest>(event)
   const { song, songRootDir } = getAdminExecuteSongContext(body?.songKey)
 
-  if (!song.audioFile) {
+  if (!song.audioFileName) {
     throw createError({ statusCode: 400, message: "Song has no audio file" })
   }
 
@@ -26,8 +26,8 @@ export default defineEventHandler(async (event) => {
   try {
     await matchLoudnessTwoPassByReference.execute(
       songRootDir,
-      song.audioFile,
       song.songDirName,
+      song.audioFileName,
       {
         analysis,
         referenceAnalysis: body?.params?.referenceAnalysis,

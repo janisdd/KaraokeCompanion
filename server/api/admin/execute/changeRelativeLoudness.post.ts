@@ -10,15 +10,15 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<RunChangeRelativeLoudnessRequest>(event)
   const { song, songRootDir } = getAdminExecuteSongContext(body?.songKey)
 
-  if (!song.audioFile) {
+  if (!song.audioFileName) {
     throw createError({ statusCode: 400, message: "Song has no audio file" })
   }
 
   try {
     await changeRelativeLoudness.execute(
       songRootDir,
-      song.audioFile,
       song.songDirName,
+      song.audioFileName,
       body?.params,
     )
   } catch (error) {

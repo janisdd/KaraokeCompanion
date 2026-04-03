@@ -29,7 +29,12 @@ export const matchLoudnessTwoPassByTarget = {
     return resolveExecuteHelperScriptPath(helperDirName, currentDirPath, pythonScriptFileName)
   },
 
-  async execute(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string, params: MatchLoudnessTwoPassByTargetParams): Promise<void> {
+  async execute(
+    songsRootDir: string,
+    songDirName: string,
+    fileNameWithExtension: string,
+    params: MatchLoudnessTwoPassByTargetParams,
+  ): Promise<void> {
     const pythonScriptPath = matchLoudnessTwoPassByTarget.getScriptPath()
     const {
       analysis: targetAnalysis,
@@ -38,8 +43,8 @@ export const matchLoudnessTwoPassByTarget = {
 
     await executeWithTempFileSwap(
       songsRootDir,
-      songDirWithFileWithExtension,
       songDirName,
+      fileNameWithExtension,
       async (sourceFilePath, tempExecutionFilePath) => {
         Logger.log(
           `${matchLoudnessTwoPassByTarget.logPrefix} matching loudness to target I=${targetLufsI} LUFS for '${sourceFilePath}'`,

@@ -53,6 +53,15 @@ export class SongsIndexer {
     return buffer.toString(SongsIndexer.normalizeEncoding(encodingLabel));
   }
 
+  private static normalizeStoredFilePath(filePath: string): string {
+    return filePath.replace(/\\/g, "/")
+  }
+
+  private static normalizeStoredFileName(fileName: string): string {
+    const normalizedPath = SongsIndexer.normalizeStoredFilePath(fileName).trim()
+    return path.posix.basename(normalizedPath)
+  }
+
   /**
    * Index all files in the given directory and return a list of song infos
    * a song itself is a directory with the following files with at least one .txt file
@@ -108,7 +117,7 @@ export class SongsIndexer {
    */
   public static async indexSingleSongDir(
     songDirectoryPath: string,
-    songsRootDirPath: string,
+    _songsRootDirPath: string,
     index: number,
     total: number,
   ): Promise<SongInfo | null> {
@@ -192,9 +201,9 @@ export class SongsIndexer {
       creator: null,
       genre: null,
       language: null,
-      audioFile: null,
-      videoFile: null,
-      coverFile: null,
+      audioFileName: null,
+      videoFileName: null,
+      coverFileName: null,
       songTextAsWords: [],
       songText: "",
     };
@@ -227,18 +236,14 @@ export class SongsIndexer {
       if (lineLower.startsWith("#mp3:")) {
         const rawAudioFile = line.split(":")[1].trim();
         if (rawAudioFile) {
-          const resolvedAudioPath = path.isAbsolute(rawAudioFile)
-            ? rawAudioFile
-            : path.join(songDirectoryPath, rawAudioFile);
-          const relativeAudioPath = path.relative(
-            songsRootDirPath,
-            resolvedAudioPath,
-          );
-          songInfo.audioFile = relativeAudioPath.split(path.sep).join("/");
+          songInfo.audioFileName = SongsIndexer.normalizeStoredFileName(rawAudioFile)
         }
       }
       if (lineLower.startsWith("#video:")) {
-        songInfo.videoFile = line.split(":")[1].trim();
+        const rawVideoFile = line.split(":")[1].trim();
+        if (rawVideoFile) {
+          songInfo.videoFileName = SongsIndexer.normalizeStoredFileName(rawVideoFile)
+        }
       }
       if (lineLower.startsWith("#cover:")) {
         const rawCoverFile = line.split(":")[1].trim();
@@ -248,13 +253,10 @@ export class SongsIndexer {
             : path.join(songDirectoryPath, rawCoverFile);
           try {
             await fs.promises.access(resolvedCoverPath);
-            const relativeCoverPath = path.relative(
-              songsRootDirPath,
-              resolvedCoverPath,
-            );
-            songInfo.coverFile = relativeCoverPath.split(path.sep).join("/");
+            songInfo.coverFileName =
+              SongsIndexer.normalizeStoredFileName(rawCoverFile)
           } catch {
-            songInfo.coverFile = null;
+            songInfo.coverFileName = null;
             Logger.warn(`Cover file not found for song: ${songDirectoryPath}`);
           }
         }
@@ -308,7 +310,7 @@ export class SongsIndexer {
       return null;
     }
     SongsIndexer._songsMap.set(songInfo.key, songInfo);
-    SongsIndexer._songRootMap.set(songInfo.key, songsRootDirPath);
+    SongsIndexer._songRootMap.set(songInfo.key, _songsRootDirPath);
 
     return songInfo;
   }

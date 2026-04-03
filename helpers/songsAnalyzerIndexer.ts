@@ -21,7 +21,7 @@ export class SongsAnalyzerIndexer {
     )
 
     for (const song of songs) {
-      if (!song.audioFile) {
+      if (!song.audioFileName) {
         Logger.debug(`${logPrefix} Skipping ${song.key} because it has no audio file`)
         continue
       }

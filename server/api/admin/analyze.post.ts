@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: `Song not found: ${songKey}` })
   }
 
-  if (!song.audioFile) {
+  if (!song.audioFileName) {
     throw createError({ statusCode: 400, message: "Song has no audio file" })
   }
 
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    await helper.analyze(songRootDir, song.audioFile, song.songDirName)
+    await helper.analyze(songRootDir, song.songDirName, song.audioFileName)
   } catch (error) {
     Logger.error(
       `[AdminAnalyze] Failed to run ${analyzerKey} for ${songKey}: ${

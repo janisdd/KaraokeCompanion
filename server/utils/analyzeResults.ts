@@ -41,7 +41,7 @@ export function getAnalyzeHelperByKey(analyzerKey: AnalyzeResultKey) {
 
 export function getAnalyzeResultsForSong(songKey: string): AnalyzeResultsSongEntry | null {
   const song = SongsIndexer.getSongsMap().get(songKey)
-  if (!song?.audioFile) {
+  if (!song?.audioFileName) {
     return null
   }
 

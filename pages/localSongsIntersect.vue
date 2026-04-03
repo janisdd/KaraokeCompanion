@@ -48,9 +48,9 @@ const localSongFromMatch = (match: MatchResult): SongInfo => ({
   creator: null,
   genre: null,
   language: null,
-  audioFile: null,
-  videoFile: null,
-  coverFile: null,
+  audioFileName: null,
+  videoFileName: null,
+  coverFileName: null,
   songTextAsWords: [],
   songText: "",
 });

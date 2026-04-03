@@ -40,14 +40,14 @@ export interface AnalyzeHelper<T> {
   /**
    * 
    * @param songsRootDir - The absolute path to the song directory
-   * @param songDirWithFileWithExtension - the full path to the song directory with the file name with extension (including the song directory name and the file name with extension)
    * @param songDirName - The name of the song directory (every song has a dir with all files, this is last part of the absolute path)
+   * @param fileNameWithExtension - the audio file name inside the song directory
    * @param useOriginalFile - when true, prefer the `_original` audio file copy if it exists
    */
   analyze(
     songsRootDir: string,
-    songDirWithFileWithExtension: string,
     songDirName: string,
+    fileNameWithExtension: string,
     useOriginalFile?: boolean,
   ): Promise<void>
   // check if the results file exists

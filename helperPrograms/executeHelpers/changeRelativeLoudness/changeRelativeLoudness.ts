@@ -25,14 +25,19 @@ export const changeRelativeLoudness = {
     return resolveExecuteHelperScriptPath(helperDirName, currentDirPath, pythonScriptFileName)
   },
 
-  async execute(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string, params: ChangeRelativeLoudnessParams): Promise<void> {
+  async execute(
+    songsRootDir: string,
+    songDirName: string,
+    fileNameWithExtension: string,
+    params: ChangeRelativeLoudnessParams,
+  ): Promise<void> {
     const pythonScriptPath = changeRelativeLoudness.getScriptPath()
     const dbChange = changeRelativeLoudnessParamsSchema.parse(params).dbChange
 
     await executeWithTempFileSwap(
       songsRootDir,
-      songDirWithFileWithExtension,
       songDirName,
+      fileNameWithExtension,
       async (sourceFilePath, tempExecutionFilePath) => {
         Logger.log(
           `${changeRelativeLoudness.logPrefix} changing loudness by ${dbChange} dB for '${sourceFilePath}'`,

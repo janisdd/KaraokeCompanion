@@ -1,6 +1,7 @@
 import path from "path"
 import { fileURLToPath } from "url"
 import { Logger } from "../../../helpers/logger"
+import { SongFileHelper } from "../../../helpers/songFileHelper"
 import { resolveAnalyzeHelperScriptPath, type AnalyzeHelper } from "../analyzeInterface"
 import { executeOriginalFileNameSuffix } from "../../executeHelpers/executeInterface"
 import fs from "fs"
@@ -57,21 +58,30 @@ export const analyzeLoudness = {
 
   async analyze(
     songsRootDir: string,
-    songDirWithFileWithExtension: string,
     songDirName: string,
+    fileNameWithExtension: string,
     useOriginalFile = true,
   ): Promise<void> {
     const songDirPath = path.join(songsRootDir, songDirName)
     const resultsFilePath = path.join(songDirPath, analyzeLoudness.resultsFileName)
     const pythonScriptPath = analyzeLoudness.getScriptPath()
-    const intputFileName = path.basename(songDirWithFileWithExtension)
+    const intputFileName = path.basename(fileNameWithExtension)
     const inputFileExtension = path.extname(intputFileName)
     const inputFileBaseName = path.basename(intputFileName, inputFileExtension)
     const originalFilePath = path.join(
       songDirPath,
       `${inputFileBaseName}${executeOriginalFileNameSuffix}${inputFileExtension}`,
     )
-    const currentFilePath = path.join(songsRootDir, songDirWithFileWithExtension)
+    const currentFilePath = SongFileHelper.resolveSongFilePath(
+      songsRootDir,
+      songDirName,
+      fileNameWithExtension,
+    )
+    if (!currentFilePath) {
+      throw new Error(
+        `${analyzeLoudness.logPrefix} Invalid audio file path for '${intputFileName}'`,
+      )
+    }
     const inputFilePath = useOriginalFile && fs.existsSync(originalFilePath)
       ? originalFilePath
       : currentFilePath

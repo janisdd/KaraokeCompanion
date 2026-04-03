@@ -1,6 +1,6 @@
 import path from "path"
 import fs from "fs"
-import { Logger } from "~/helpers/logger"
+import { Logger } from "../../helpers/logger"
 
 /**
  * in contrast to analyze helpers, execute helpers are used to execute a command on a song directory
@@ -17,12 +17,12 @@ export interface ExecuteHelper {
   getScriptPath(): string
   /**
    * 
-   * @param absoluteSongDirPath - The absolute path to the song directory
+   * @param songsRootDir - The absolute path to the songs root directory
    * @param songDirName - The name of the song directory (every song has a dir with all files, this is last part of the absolute path)
-   * @param inputFile - this is the file name inside the song directory that is the input file
+   * @param fileNameWithExtension - the file name inside the song directory that is the input file
    * @param params - the parameters for the execute helper (use zod to validate the params)
    */
-  execute(songsRootDir: string, songDirWithFileWithExtension: string, songDirName: string, params: any): Promise<void>
+  execute(songsRootDir: string, songDirName: string, fileNameWithExtension: string, params: any): Promise<void>
 }
 
 export function resolveExecuteHelperScriptPath(
@@ -55,10 +55,9 @@ type ExecuteFilePaths = {
 
 export function prepareOriginalCopyAndGetExecutionFilePaths(
   songsRootDir: string,
-  songDirWithFileWithExtension: string,
   songDirName: string,
+  fileNameWithExtension: string,
 ): ExecuteFilePaths {
-  const fileNameWithExtension = path.basename(songDirWithFileWithExtension)
   const fileExtension = path.extname(fileNameWithExtension)
   const fileBaseName = path.basename(fileNameWithExtension, fileExtension)
   const originalFilePath = path.join(songsRootDir, songDirName, fileBaseName + executeOriginalFileNameSuffix + fileExtension)
@@ -92,8 +91,8 @@ export function getTempExecutionFilePath(executionFilePath: string): string {
 
 export async function executeWithTempFileSwap(
   songsRootDir: string,
-  songDirWithFileWithExtension: string,
   songDirName: string,
+  fileNameWithExtension: string,
   executeFn: (sourceFilePath: string, tempExecutionFilePath: string) => Promise<void>,
 ): Promise<string> {
   const {
@@ -101,8 +100,8 @@ export async function executeWithTempFileSwap(
     currentFilePath,
   } = prepareOriginalCopyAndGetExecutionFilePaths(
     songsRootDir,
-    songDirWithFileWithExtension,
     songDirName,
+    fileNameWithExtension,
   )
   const tempExecutionFilePath = getTempExecutionFilePath(originalFilePath)
 

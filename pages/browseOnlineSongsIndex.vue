@@ -129,7 +129,7 @@ const onlineSongs = computed<OnlineSongRow[]>(() => {
       language: existingSong?.language ?? null,
       year: existingSong?.year ?? null,
       genre: existingSong?.genre ?? null,
-      audioAvailable: Boolean(existingSong?.audioFile),
+      audioAvailable: Boolean(existingSong?.audioFileName),
     };
   });
 });

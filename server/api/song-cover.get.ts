@@ -1,7 +1,8 @@
-import fs from "fs";
-import path from "path";
-import { Logger } from "~/helpers/logger";
-import { SongsIndexer } from "~/helpers/songsIndexer";
+import fs from "fs"
+import path from "path"
+import { Logger } from "~/helpers/logger"
+import { SongFileHelper } from "~/helpers/songFileHelper"
+import { SongsIndexer } from "~/helpers/songsIndexer"
 
 const allowedExtensions = new Map<string, string>([
   [".jpg", "image/jpeg"],
@@ -9,51 +10,53 @@ const allowedExtensions = new Map<string, string>([
   [".png", "image/png"],
   [".webp", "image/webp"],
   [".gif", "image/gif"],
-]);
+])
 
 export default defineEventHandler(async (event) => {
-  const query = getQuery(event);
-  const songId = typeof query.id === "string" ? query.id.trim() : "";
+  const query = getQuery(event)
+  const songKey = typeof query.id === "string" ? query.id.trim() : ""
 
-  if (!songId) {
-    throw createError({ statusCode: 400, message: "Missing song id" });
+  if (!songKey) {
+    throw createError({ statusCode: 400, message: "Missing song id" })
   }
 
-  const song = SongsIndexer.getSongsMap().get(songId);
+  const song = SongsIndexer.getSongsMap().get(songKey)
   if (!song) {
-    throw createError({ statusCode: 404, message: "Song not found" });
+    throw createError({ statusCode: 404, message: "Song not found" })
   }
 
-  const coverPath = song.coverFile?.trim() ?? "";
+  const coverPath = song.coverFileName?.trim() ?? ""
   if (!coverPath) {
-    throw createError({ statusCode: 404, message: "Cover file not available" });
+    throw createError({ statusCode: 404, message: "Cover file not available" })
   }
 
-  const extension = path.extname(coverPath).toLowerCase();
-  const contentType = allowedExtensions.get(extension);
+  const extension = path.extname(coverPath).toLowerCase()
+  const contentType = allowedExtensions.get(extension)
   if (!contentType) {
-    throw createError({ statusCode: 400, message: "Invalid cover file" });
+    throw createError({ statusCode: 400, message: "Invalid cover file" })
   }
 
-  const songRoot = SongsIndexer.getSongRootMap().get(songId);
+  const songRoot = SongsIndexer.getSongRootMap().get(songKey)
   if (!songRoot) {
-    throw createError({ statusCode: 404, message: "Song root not found" });
+    throw createError({ statusCode: 404, message: "Song root not found" })
   }
-  const rootPath = path.resolve(songRoot);
-  const normalizedPath = coverPath.replace(/\\/g, "/");
-  const resolvedPath = path.resolve(rootPath, normalizedPath);
 
-  if (resolvedPath !== rootPath && !resolvedPath.startsWith(rootPath + path.sep)) {
-    throw createError({ statusCode: 403, message: "Invalid cover path" });
+  const resolvedPath = SongFileHelper.resolveSongFilePath(
+    songRoot,
+    song.songDirName,
+    song.coverFileName,
+  )
+  if (!resolvedPath) {
+    throw createError({ statusCode: 403, message: "Invalid cover path" })
   }
 
   try {
-    await fs.promises.access(resolvedPath);
+    await fs.promises.access(resolvedPath)
   } catch {
-    Logger.warn(`Cover file not found: ${resolvedPath}`);
-    throw createError({ statusCode: 404, message: "Cover file not found" });
+    Logger.warn(`Cover file not found: ${resolvedPath}`)
+    throw createError({ statusCode: 404, message: "Cover file not found" })
   }
 
-  setHeader(event, "Content-Type", contentType);
-  return sendStream(event, fs.createReadStream(resolvedPath));
-});
+  setHeader(event, "Content-Type", contentType)
+  return sendStream(event, fs.createReadStream(resolvedPath))
+})
