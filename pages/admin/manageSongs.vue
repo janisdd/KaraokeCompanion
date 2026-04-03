@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AdminSongListView from "./AdminSongListView.vue"
+import VueSelect from "vue-select"
+import "vue-select/dist/vue-select.css"
 import type { NormalLoudnessResponse } from "~/server/api/admin/normalLoudness.get"
 import type {
   AnalyzeResultKey,
@@ -10,9 +12,11 @@ import type {
 } from "~/types/analyzeResults"
 import type {
   RunChangeRelativeLoudnessRequest,
+  RunMatchLoudnessTwoPassByReferenceRequest,
   RunMatchLoudnessTwoPassByTargetRequest,
   RunExecuteResponse,
 } from "~/types/executeHelpers"
+import type { SongInfo } from "~/types/song"
 
 defineOptions({
   name: "ManageSongsPage",
@@ -26,6 +30,7 @@ const { data: analyzerResultsResponse } =
   await useFetch<AnalyzeResultsResponse>("/api/admin/analyzers")
 const { data: normalLoudnessResponse } =
   await useFetch<NormalLoudnessResponse>("/api/admin/normalLoudness")
+const { songs } = useSongs()
 
 const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
   analyzerResultsResponse.value?.data ?? [],
@@ -47,18 +52,24 @@ const changeRelativeLoudnessDbChange = ref(0)
 const isChangeRelativeLoudnessRunning = ref(false)
 const matchLoudnessTwoPassTargetLufsI = ref(0)
 const isMatchLoudnessTwoPassRunning = ref(false)
+const selectedReferenceSongKey = ref<string | null>(null)
+const isMatchLoudnessTwoPassByReferenceRunning = ref(false)
 const toolsActionError = ref<string | null>(null)
 
 const normalLoudness = computed(() => normalLoudnessResponse.value?.data ?? null)
 const targetLoudness = computed(() =>
   normalLoudness.value === null ? null : -normalLoudness.value,
 )
+const songsByKey = computed(() => {
+  return new Map((songs.value ?? []).map((song) => [song.key, song]))
+})
+
+const getSongAnalysis = (songKey: string) => {
+  return analyzerResults.value.find((entry) => entry.songKey === songKey)?.results.analyzeLoudness
+}
 
 const getSongLoudnessGuidance = (songKey: string) => {
-  const analyzerEntry = analyzerResults.value.find(
-    (entry) => entry.songKey === songKey,
-  )
-  const loudnessResult = analyzerEntry?.results.analyzeLoudness
+  const loudnessResult = getSongAnalysis(songKey)
   if (!loudnessResult) {
     return null
   }
@@ -83,6 +94,54 @@ const selectedSongLoudnessGuidance = computed(() => {
   return getSongLoudnessGuidance(selectedSongTools.value.songKey)
 })
 
+const selectedSongAnalysis = computed(() => {
+  if (!selectedSongTools.value) {
+    return null
+  }
+
+  return getSongAnalysis(selectedSongTools.value.songKey) ?? null
+})
+
+type ReferenceSongOption = {
+  songKey: string
+  label: string
+  analysis: NonNullable<AnalyzeResultsSongEntry["results"]["analyzeLoudness"]>
+}
+
+const referenceSongOptions = computed<ReferenceSongOption[]>(() => {
+  return analyzerResults.value.flatMap((entry) => {
+    const analysis = entry.results.analyzeLoudness
+    if (!analysis) {
+      return []
+    }
+
+    const song = songsByKey.value.get(entry.songKey)
+    const measuredLoudness = Number.parseFloat(analysis.input_i)
+    const loudnessLabel = Number.isNaN(measuredLoudness)
+      ? analysis.input_i
+      : measuredLoudness.toFixed(2)
+    const songLabel = song
+      ? `${song.title} - ${song.artist}`
+      : entry.songKey
+
+    return [{
+      songKey: entry.songKey,
+      label: `${songLabel} (${loudnessLabel} LUFS)`,
+      analysis,
+    }]
+  })
+})
+
+const selectedReferenceSongOption = computed(() => {
+  if (!selectedReferenceSongKey.value) {
+    return null
+  }
+
+  return referenceSongOptions.value.find((option) => option.songKey === selectedReferenceSongKey.value) ?? null
+})
+
+const getReferenceSongOptionKey = (option: ReferenceSongOption) => option.songKey
+
 const formatSignedNumber = (value: number, digits = 1) => {
   const roundedValue = value.toFixed(digits)
   return value > 0 ? `+${roundedValue}` : roundedValue
@@ -104,6 +163,7 @@ const showSongTools = (payload: { songKey: string; title: string }) => {
     getSongLoudnessGuidance(payload.songKey)?.recommendedDbChange.toFixed(1) ?? "0",
   )
   matchLoudnessTwoPassTargetLufsI.value = targetLoudness.value ?? 0
+  selectedReferenceSongKey.value = null
   toolsActionError.value = null
 }
 
@@ -127,6 +187,8 @@ const clearSongTools = () => {
   isChangeRelativeLoudnessRunning.value = false
   matchLoudnessTwoPassTargetLufsI.value = 0
   isMatchLoudnessTwoPassRunning.value = false
+  selectedReferenceSongKey.value = null
+  isMatchLoudnessTwoPassByReferenceRunning.value = false
   toolsActionError.value = null
 }
 
@@ -295,6 +357,38 @@ const runMatchLoudnessTwoPassByTarget = async () => {
     isMatchLoudnessTwoPassRunning.value = false
   }
 }
+
+const runMatchLoudnessTwoPassByReference = async () => {
+  if (
+    !selectedSongTools.value ||
+    !selectedSongAnalysis.value ||
+    !selectedReferenceSongOption.value ||
+    isMatchLoudnessTwoPassByReferenceRunning.value
+  ) {
+    return
+  }
+
+  toolsActionError.value = null
+  isMatchLoudnessTwoPassByReferenceRunning.value = true
+
+  try {
+    const payload: RunMatchLoudnessTwoPassByReferenceRequest = {
+      songKey: selectedSongTools.value.songKey,
+      params: {
+        referenceAnalysis: selectedReferenceSongOption.value.analysis,
+      },
+    }
+
+    await $fetch<RunExecuteResponse>("/api/admin/execute/matchLoudnessTwoPassByReference", {
+      method: "POST",
+      body: payload,
+    })
+  } catch (error) {
+    toolsActionError.value = getFetchErrorMessage(error)
+  } finally {
+    isMatchLoudnessTwoPassByReferenceRunning.value = false
+  }
+}
 </script>
 
 <template>
@@ -447,7 +541,9 @@ const runMatchLoudnessTwoPassByTarget = async () => {
       role="dialog"
       aria-modal="true"
     >
-      <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      <div
+        class="flex max-h-[calc(100vh-1rem)] w-full max-w-[calc(100vw-1rem)] flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+      >
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -560,7 +656,7 @@ const runMatchLoudnessTwoPassByTarget = async () => {
                 <span class="font-medium">
                   {{ selectedSongLoudnessGuidance.measuredLoudness.toFixed(2) }} LUFS
                 </span>
-                . The reference target is
+                . The default reference target (good loudness) is
                 <span class="font-medium">
                   {{ selectedSongLoudnessGuidance.targetLoudness.toFixed(2) }} LUFS
                 </span>
@@ -602,6 +698,83 @@ const runMatchLoudnessTwoPassByTarget = async () => {
                 />
                 <span>
                   {{ isMatchLoudnessTwoPassRunning ? "Sending" : "Send" }}
+                </span>
+              </button>
+            </div>
+
+            <p
+              v-if="toolsActionError"
+              class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
+            >
+              {{ toolsActionError }}
+            </p>
+          </section>
+
+          <section class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+            <div class="mb-3">
+              <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Match loudness by reference song
+              </h2>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Run the two-pass loudness matcher using the loudness analysis from another song as the reference.
+                Only songs with loudness analysis are available in the dropdown.
+              </p>
+              <p
+                v-if="selectedSongAnalysis"
+                class="mt-2 text-xs text-slate-600 dark:text-slate-300"
+              >
+                Measured loudness:
+                <span class="font-medium">
+                  {{ Number.parseFloat(selectedSongAnalysis.input_i).toFixed(2) }} LUFS
+                </span>
+                .
+                <template v-if="selectedReferenceSongOption">
+                  Reference:
+                  <span class="font-medium">
+                    {{ selectedReferenceSongOption.label }}
+                  </span>
+                  .
+                </template>
+              </p>
+              <p
+                v-else
+                class="mt-2 text-xs text-slate-500 dark:text-slate-400"
+              >
+                Run the loudness analyzer for this song before using this tool.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 md:flex-row md:items-end">
+              <label
+                class="flex w-full flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="text-slate-500 dark:text-slate-400">
+                  Reference song
+                </span>
+                <VueSelect
+                  v-model="selectedReferenceSongKey"
+                  :options="referenceSongOptions"
+                  :reduce="getReferenceSongOptionKey"
+                  :appendToBody="true"
+                  label="label"
+                  placeholder="Select a reference song"
+                  class="reference-song-select"
+                />
+              </label>
+
+              <button
+                type="button"
+                class="inline-flex min-w-32 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="!selectedSongAnalysis || !selectedReferenceSongOption || isMatchLoudnessTwoPassByReferenceRunning"
+                @click="runMatchLoudnessTwoPassByReference"
+              >
+                <span
+                  v-if="isMatchLoudnessTwoPassByReferenceRunning"
+                  class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                  aria-hidden="true"
+                />
+                <span>
+                  {{ isMatchLoudnessTwoPassByReferenceRunning ? "Sending" : "Send" }}
                 </span>
               </button>
             </div>
@@ -694,3 +867,113 @@ const runMatchLoudnessTwoPassByTarget = async () => {
     </AdminSongListView>
   </div>
 </template>
+
+<style>
+.reference-song-select {
+  --vs-controls-color: rgb(100 116 139);
+  --vs-border-color: transparent;
+  --vs-dropdown-bg: rgb(255 255 255);
+  --vs-dropdown-color: rgb(15 23 42);
+  --vs-dropdown-option-color: rgb(15 23 42);
+  --vs-dropdown-option-bg: rgb(248 250 252);
+  --vs-dropdown-option--active-bg: rgb(226 232 240);
+  --vs-dropdown-option--active-color: rgb(15 23 42);
+  --vs-search-input-color: rgb(15 23 42);
+  --vs-selected-color: rgb(15 23 42);
+}
+
+.reference-song-select .vs__dropdown-toggle {
+  border: none;
+  padding: 0;
+  min-height: 2rem;
+}
+
+.reference-song-select .vs__selected-options {
+  padding: 0;
+}
+
+.reference-song-select .vs__search,
+.reference-song-select .vs__selected {
+  margin: 0;
+  padding: 0;
+  color: rgb(15 23 42);
+}
+
+.reference-song-select .vs__actions {
+  padding-right: 0;
+}
+
+.reference-song-select .vs__dropdown-menu {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1);
+}
+
+/* When `appendToBody` is enabled, the dropdown list is moved to `body`,
+   so we also need global overrides (not just scoped CSS vars). */
+.vs__dropdown-menu {
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 0.5rem !important;
+  background: rgb(255 255 255) !important;
+  color: rgb(15 23 42) !important;
+  box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1) !important;
+}
+
+.vs__search {
+  color: rgb(15 23 42) !important;
+}
+
+.vs__dropdown-option {
+  background: rgb(248 250 252) !important;
+  color: rgb(15 23 42) !important;
+}
+
+.vs__dropdown-option--highlight {
+  background: rgb(226 232 240) !important;
+  color: rgb(15 23 42) !important;
+}
+
+.dark .reference-song-select {
+  --vs-controls-color: rgb(148 163 184);
+  --vs-border-color: transparent;
+  --vs-dropdown-bg: rgb(15 23 42);
+  --vs-dropdown-color: rgb(241 245 249);
+  --vs-dropdown-option-color: rgb(241 245 249);
+  --vs-dropdown-option-bg: rgb(15 23 42);
+  --vs-dropdown-option--active-bg: rgb(30 41 59);
+  --vs-dropdown-option--active-color: rgb(241 245 249);
+  --vs-search-input-color: rgb(241 245 249);
+  --vs-selected-color: rgb(241 245 249);
+}
+
+.dark .reference-song-select .vs__search,
+.dark .reference-song-select .vs__selected {
+  color: rgb(241 245 249);
+}
+
+.dark .reference-song-select .vs__dropdown-menu {
+  border-color: rgb(51 65 85);
+  box-shadow: 0 10px 15px -3px rgb(2 6 23 / 0.45);
+}
+
+.dark .vs__dropdown-menu {
+  border-color: rgb(51 65 85) !important;
+  background: rgb(15 23 42) !important;
+  color: rgb(241 245 249) !important;
+  box-shadow: 0 10px 15px -3px rgb(2 6 23 / 0.45) !important;
+}
+
+.dark .vs__search {
+  color: rgb(241 245 249) !important;
+}
+
+.dark .vs__dropdown-option {
+  background: rgb(15 23 42) !important;
+  color: rgb(241 245 249) !important;
+}
+
+.dark .vs__dropdown-option--highlight {
+  background: rgb(30 41 59) !important;
+  color: rgb(241 245 249) !important;
+}
+</style>
