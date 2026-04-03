@@ -125,18 +125,6 @@ const loggedInUserName = computed(() => {
             Match a Spotify playlist against the indexed online songs.
           </p>
         </NuxtLink>
-
-        <NuxtLink
-          to="/compareSpotifyPlaylists"
-          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-        >
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
-            Spotify Compare
-          </h2>
-          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Compare two playlists side by side. Dummy view for now.
-          </p>
-        </NuxtLink>
       </section>
     </div>
   </main>
