@@ -386,83 +386,7 @@
       </div>
     </div>
 
-    <div
-      v-if="isUserSettingsModalOpen"
-      class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 pt-20 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label="User settings"
-      @click.self="closeUserSettingsModal"
-    >
-      <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-        <div class="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Account
-            </div>
-            <div class="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              User settings
-            </div>
-          </div>
-          <button
-            type="button"
-            class="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            aria-label="Close user settings"
-            :disabled="isSettingsThemeSaving"
-            @click="closeUserSettingsModal"
-          >
-            <font-awesome-icon icon="fa-solid fa-xmark" />
-          </button>
-        </div>
-
-        <div
-          v-if="userSettingsError"
-          class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
-        >
-          {{ userSettingsError }}
-        </div>
-
-        <div
-          v-if="isUserSettingsLoading"
-          class="py-8 text-center text-slate-500 dark:text-slate-400"
-        >
-          Loading settings…
-        </div>
-
-        <div v-else-if="sessionUserProfile" class="space-y-4">
-          <div class="space-y-2">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Name</span>
-            <div
-              class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            >
-              {{ sessionUserProfile.name }}
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Marked songs</span>
-            <div
-              class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            >
-              {{ sessionUserProfile.markedSongs.length }}
-            </div>
-          </div>
-
-          <label class="block space-y-2">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Theme</span>
-            <select
-              :value="sessionUserProfile.theme"
-              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500"
-              :disabled="isSettingsThemeSaving"
-              @change="onUserSettingsThemeChange"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </label>
-        </div>
-      </div>
-    </div>
+    <UsersUserSettingsModal v-model:open="isUserSettingsModalOpen" @theme-saved="onUserSettingsThemeSaved" />
   </div>
 </template>
 
@@ -503,29 +427,6 @@ const isQrModalOpen = ref(false)
 const isUserMenuOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 const isUserSettingsModalOpen = ref(false)
-const sessionUserProfile = ref<UserWithDir | null>(null)
-const isUserSettingsLoading = ref(false)
-const isSettingsThemeSaving = ref(false)
-const userSettingsError = ref<string | null>(null)
-
-const getFetchErrorMessage = (error: unknown, fallback: string) => {
-  if (!error || typeof error !== "object") {
-    return fallback
-  }
-
-  const fetchError = error as {
-    data?: { message?: string }
-    statusMessage?: string
-    message?: string
-  }
-
-  return (
-    fetchError.data?.message ||
-    fetchError.statusMessage ||
-    fetchError.message ||
-    fallback
-  )
-}
 
 const closeUserMenu = () => {
   isUserMenuOpen.value = false
@@ -536,73 +437,14 @@ const closeMenusAfterUserNav = () => {
   isMobileMenuOpen.value = false
 }
 
-const closeUserSettingsModal = () => {
-  if (isSettingsThemeSaving.value) {
-    return
-  }
-
-  isUserSettingsModalOpen.value = false
-  userSettingsError.value = null
-}
-
-const loadUserSettings = async () => {
-  if (!import.meta.client) {
-    return
-  }
-
-  isUserSettingsLoading.value = true
-  userSettingsError.value = null
-  try {
-    sessionUserProfile.value = await $fetch<UserWithDir>("/api/users/session-user")
-  } catch (error) {
-    sessionUserProfile.value = null
-    userSettingsError.value = getFetchErrorMessage(error, "Failed to load user settings")
-  } finally {
-    isUserSettingsLoading.value = false
-  }
-}
-
-const saveUserSettingsTheme = async (theme: FrontendUiTheme) => {
-  if (!sessionUserProfile.value) {
-    return
-  }
-
-  isSettingsThemeSaving.value = true
-  userSettingsError.value = null
-  try {
-    const updated = await $fetch<UserWithDir>("/api/users/session-user-theme", {
-      method: "PATCH",
-      body: { theme },
-    })
-    sessionUserProfile.value = updated
-    setTheme(theme === "dark")
-  } catch (error) {
-    userSettingsError.value = getFetchErrorMessage(error, "Failed to update theme")
-  } finally {
-    isSettingsThemeSaving.value = false
-  }
-}
-
-const onUserSettingsThemeChange = (event: Event) => {
-  const select = event.target as HTMLSelectElement | null
-  if (!select) {
-    return
-  }
-
-  const theme = select.value
-  if (theme !== "dark" && theme !== "light") {
-    return
-  }
-
-  void saveUserSettingsTheme(theme)
+const onUserSettingsThemeSaved = (theme: FrontendUiTheme) => {
+  setTheme(theme === "dark")
 }
 
 const openUserSettings = () => {
   closeUserMenu()
   isMobileMenuOpen.value = false
-  userSettingsError.value = null
   isUserSettingsModalOpen.value = true
-  void loadUserSettings()
 }
 
 const isLoggingOut = ref(false)
@@ -835,9 +677,7 @@ watch(loggedIn, (isLogged) => {
 
 watch(() => route.fullPath, () => {
   closeUserMenu()
-  if (!isSettingsThemeSaving.value) {
-    isUserSettingsModalOpen.value = false
-  }
+  isUserSettingsModalOpen.value = false
 })
 
 onMounted(async () => {

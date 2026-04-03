@@ -855,7 +855,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
             aria-hidden="true"
           />
           <span>
-            {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Load analyzer results" }}
+            {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Reload analyzer results" }}
           </span>
         </button>
       </template>
