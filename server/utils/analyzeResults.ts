@@ -15,7 +15,7 @@ function createEmptyAnalyzeResults(): AnalyzeResultsMap {
 }
 
 function getAnalyzeHelperResult(
-  helper: AnalyzeHelper,
+  helper: AnalyzeHelper<any>,
   songKey: string,
   songDirName: string,
 ): Partial<AnalyzeResultsMap> | null {

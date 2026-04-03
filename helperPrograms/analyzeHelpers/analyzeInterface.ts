@@ -25,7 +25,7 @@ export function resolveAnalyzeHelperScriptPath(
   return path.join(currentDirPath, scriptFileName)
 }
 
-export interface AnalyzeHelper {
+export interface AnalyzeHelper<T> {
   // should be unique
   readonly analyzerKey: string
   // name for ui
@@ -35,7 +35,7 @@ export interface AnalyzeHelper {
   readonly resultsFileName: string
   // key is the full path to the song directory (songsRootDir + songDirName)
   // cache results for each song
-  resultsMap: Map<string, any>
+  resultsMap: Map<string, T>
   getScriptPath(): string
   /**
    * 
@@ -54,5 +54,6 @@ export interface AnalyzeHelper {
   hasRealResult(songsRootDir: string, songDirName: string): Promise<boolean>
   // check if the results are cached in memory
   hasResult(songsRootDir: string, songDirName: string): boolean
+  getResult(songsRootDir: string, songDirName: string): T | undefined
   loadResult(songsRootDir: string, songDirName: string): Promise<void>
 }

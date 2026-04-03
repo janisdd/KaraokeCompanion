@@ -115,6 +115,9 @@ export const analyzeLoudness = {
   hasResult: (songsRootDir: string, songDirName: string): boolean => {
     return analyzeLoudness.resultsMap.has(path.join(songsRootDir, songDirName));
   },
+  getResult: (songsRootDir: string, songDirName: string): LoudnessAnalyzeResult | undefined => {
+    return analyzeLoudness.resultsMap.get(path.join(songsRootDir, songDirName))
+  },
   loadResult: async (songsRootDir: string, songDirName: string): Promise<void> => {
     const songDirPath = path.join(songsRootDir, songDirName)
     const resultsFilePath = path.join(songDirPath, analyzeLoudness.resultsFileName)
@@ -122,4 +125,4 @@ export const analyzeLoudness = {
     const { version: _version, ...results } = storedResults
     analyzeLoudness.resultsMap.set(songDirPath, results)
   }
-} satisfies AnalyzeHelper;
+} satisfies AnalyzeHelper<LoudnessAnalyzeResult>;

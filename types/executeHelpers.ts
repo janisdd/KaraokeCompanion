@@ -5,6 +5,13 @@ export type RunChangeRelativeLoudnessRequest = {
   params: ChangeRelativeLoudnessParams
 }
 
+export type RunMatchLoudnessTwoPassByTargetRequest = {
+  songKey: string
+  params: {
+    targetLufsI: number
+  }
+}
+
 export type RunExecuteResponse = {
   success: boolean
 }

@@ -10,6 +10,7 @@ import type {
 } from "~/types/analyzeResults"
 import type {
   RunChangeRelativeLoudnessRequest,
+  RunMatchLoudnessTwoPassByTargetRequest,
   RunExecuteResponse,
 } from "~/types/executeHelpers"
 
@@ -44,6 +45,8 @@ const selectedSongTools = ref<{ songKey: string; title: string } | null>(null)
 const selectedLoudnessWarning = ref<LoudnessWarning | null>(null)
 const changeRelativeLoudnessDbChange = ref(0)
 const isChangeRelativeLoudnessRunning = ref(false)
+const matchLoudnessTwoPassTargetLufsI = ref(0)
+const isMatchLoudnessTwoPassRunning = ref(false)
 const toolsActionError = ref<string | null>(null)
 
 const normalLoudness = computed(() => normalLoudnessResponse.value?.data ?? null)
@@ -100,6 +103,7 @@ const showSongTools = (payload: { songKey: string; title: string }) => {
   changeRelativeLoudnessDbChange.value = Number(
     getSongLoudnessGuidance(payload.songKey)?.recommendedDbChange.toFixed(1) ?? "0",
   )
+  matchLoudnessTwoPassTargetLufsI.value = targetLoudness.value ?? 0
   toolsActionError.value = null
 }
 
@@ -121,6 +125,8 @@ const clearSongTools = () => {
   selectedSongTools.value = null
   changeRelativeLoudnessDbChange.value = 0
   isChangeRelativeLoudnessRunning.value = false
+  matchLoudnessTwoPassTargetLufsI.value = 0
+  isMatchLoudnessTwoPassRunning.value = false
   toolsActionError.value = null
 }
 
@@ -260,6 +266,33 @@ const runChangeRelativeLoudness = async () => {
     toolsActionError.value = getFetchErrorMessage(error)
   } finally {
     isChangeRelativeLoudnessRunning.value = false
+  }
+}
+
+const runMatchLoudnessTwoPassByTarget = async () => {
+  if (!selectedSongTools.value || isMatchLoudnessTwoPassRunning.value) {
+    return
+  }
+
+  toolsActionError.value = null
+  isMatchLoudnessTwoPassRunning.value = true
+
+  try {
+    const payload: RunMatchLoudnessTwoPassByTargetRequest = {
+      songKey: selectedSongTools.value.songKey,
+      params: {
+        targetLufsI: matchLoudnessTwoPassTargetLufsI.value,
+      },
+    }
+
+    await $fetch<RunExecuteResponse>("/api/admin/execute/matchLoudnessTwoPassByTarget", {
+      method: "POST",
+      body: payload,
+    })
+  } catch (error) {
+    toolsActionError.value = getFetchErrorMessage(error)
+  } finally {
+    isMatchLoudnessTwoPassRunning.value = false
   }
 }
 </script>
@@ -498,6 +531,77 @@ const runChangeRelativeLoudness = async () => {
                 />
                 <span>
                   {{ isChangeRelativeLoudnessRunning ? "Sending" : "Send" }}
+                </span>
+              </button>
+            </div>
+
+            <p
+              v-if="toolsActionError"
+              class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
+            >
+              {{ toolsActionError }}
+            </p>
+          </section>
+
+          <section class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+            <div class="mb-3">
+              <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Match loudness by target LUFS
+              </h2>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Run the two-pass loudness matcher with an explicit integrated loudness target.
+                This requires an existing loudness analysis for the song.
+              </p>
+              <p
+                v-if="selectedSongLoudnessGuidance"
+                class="mt-2 text-xs text-slate-600 dark:text-slate-300"
+              >
+                Measured loudness:
+                <span class="font-medium">
+                  {{ selectedSongLoudnessGuidance.measuredLoudness.toFixed(2) }} LUFS
+                </span>
+                . The reference target is
+                <span class="font-medium">
+                  {{ selectedSongLoudnessGuidance.targetLoudness.toFixed(2) }} LUFS
+                </span>
+                .
+              </p>
+              <p
+                v-else
+                class="mt-2 text-xs text-slate-500 dark:text-slate-400"
+              >
+                Run the loudness analyzer for this song before using this tool.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 md:flex-row md:items-end">
+              <label
+                class="flex w-full max-w-xs items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="whitespace-nowrap text-slate-500 dark:text-slate-400">
+                  Target LUFS
+                </span>
+                <input
+                  v-model.number="matchLoudnessTwoPassTargetLufsI"
+                  type="number"
+                  step="0.1"
+                  class="w-full border-none bg-transparent text-right text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </label>
+
+              <button
+                type="button"
+                class="inline-flex min-w-32 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="!selectedSongLoudnessGuidance || isMatchLoudnessTwoPassRunning"
+                @click="runMatchLoudnessTwoPassByTarget"
+              >
+                <span
+                  v-if="isMatchLoudnessTwoPassRunning"
+                  class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                  aria-hidden="true"
+                />
+                <span>
+                  {{ isMatchLoudnessTwoPassRunning ? "Sending" : "Send" }}
                 </span>
               </button>
             </div>
