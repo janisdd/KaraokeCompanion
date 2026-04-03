@@ -1,7 +1,6 @@
 import { config as loadEnv } from 'dotenv'
 import { Logger, LogLevels, parseLogLevel } from '~/helpers/logger'
-import { SongsAnalyzerIndexer } from '~/helpers/songsAnalyzerIndexer'
-import { SongsIndexer } from '~/helpers/songsIndexer'
+import { runLocalSongsIndexing } from '~/helpers/runLocalSongsIndexing'
 import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
@@ -63,16 +62,7 @@ export default defineNitroPlugin(async () => {
   await AllOnlineSongsIndexer.indexAllOnlineSongs();
 
   try {
-    Logger.log(`[nuxt start] Now indexing songs in ${songsDirPaths.length} dirs`);
-    for (const dirPath of songsDirPaths) {
-      Logger.log(`[nuxt start] Now indexing songs in ${dirPath}`);
-      await SongsIndexer.indexFilesInDirectory(dirPath);
-      Logger.log(`[nuxt start] Songs indexed successfully for ${dirPath}`);
-    }
-    Logger.log(`[nuxt start] All Songs indexed successfully for ${songsDirPaths.length} dirs`);
-    Logger.log(`[nuxt start] Total songs indexed: ${SongsIndexer.getSongsMap().size}`);
-    await SongsAnalyzerIndexer.loadExistingAnalyzeResults()
-    Logger.log(`[nuxt start] Existing analyze helper results loaded`);
+    await runLocalSongsIndexing({ logPrefix: "[nuxt start]" });
   } catch (error) {
     Logger.error(`[nuxt start] Error indexing songs: ${error instanceof Error ? error.message : String(error)}`);
   }

@@ -3,6 +3,7 @@ import AdminSongListView from "./AdminSongListView.vue"
 import VueSelect from "vue-select"
 import "vue-select/dist/vue-select.css"
 import type { LoadExistingAnalyzeResultsResponse } from "~/server/api/admin/loadExistingAnalyzeResults.post"
+import type { ReindexSongsResponse } from "~/server/api/admin/reindexSongs.post"
 import type { NormalLoudnessResponse } from "~/server/api/admin/normalLoudness.get"
 import type {
   AnalyzeResultKey,
@@ -31,7 +32,7 @@ const { data: analyzerResultsResponse, refresh: refreshAnalyzerResults } =
   await useFetch<AnalyzeResultsResponse>("/api/admin/analyzers")
 const { data: normalLoudnessResponse } =
   await useFetch<NormalLoudnessResponse>("/api/admin/normalLoudness")
-const { songs } = useSongs()
+const { songs, refresh: refreshSongs } = useSongs()
 
 const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
   analyzerResultsResponse.value?.data ?? [],
@@ -39,6 +40,7 @@ const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
 const activeAnalyzeRequestKey = ref<string | null>(null)
 const analyzerActionError = ref<string | null>(null)
 const isLoadExistingAnalyzeResultsRunning = ref(false)
+const isReindexSongsRunning = ref(false)
 const isLoudnessToolsExpanded = ref(false)
 const loudnessTolerance = ref(5)
 const loudnessWarningsBySong = ref<Record<string, LoudnessWarning>>({})
@@ -305,7 +307,7 @@ const runAnalyzer = async (payload: {
 }
 
 const loadExistingAnalyzeResults = async () => {
-  if (isLoadExistingAnalyzeResultsRunning.value) {
+  if (isLoadExistingAnalyzeResultsRunning.value || isReindexSongsRunning.value) {
     return
   }
 
@@ -329,6 +331,39 @@ const loadExistingAnalyzeResults = async () => {
     analyzerActionError.value = getFetchErrorMessage(error)
   } finally {
     isLoadExistingAnalyzeResultsRunning.value = false
+  }
+}
+
+const reindexAllSongs = async () => {
+  if (isReindexSongsRunning.value || isLoadExistingAnalyzeResultsRunning.value) {
+    return
+  }
+
+  if (
+    !window.confirm(
+      "Re-scan all UltraStar song folders on the server? This may take a long time. The current song list stays in use until the scan completes.",
+    )
+  ) {
+    return
+  }
+
+  analyzerActionError.value = null
+  isReindexSongsRunning.value = true
+
+  try {
+    await $fetch<ReindexSongsResponse>("/api/admin/reindexSongs", {
+      method: "POST",
+    })
+    await refreshSongs()
+    await refreshAnalyzerResults()
+    analyzerResults.value = analyzerResultsResponse.value?.data ?? []
+    if (loudnessWarningCount.value !== null) {
+      compareLoudnessAgainstTarget()
+    }
+  } catch (error) {
+    analyzerActionError.value = getFetchErrorMessage(error)
+  } finally {
+    isReindexSongsRunning.value = false
   }
 }
 
@@ -843,21 +878,38 @@ const runMatchLoudnessTwoPassByReference = async () => {
         </details>
       </template>
       <template #header-actions>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          :disabled="isLoadExistingAnalyzeResultsRunning"
-          @click="loadExistingAnalyzeResults"
-        >
-          <span
-            v-if="isLoadExistingAnalyzeResultsRunning"
-            class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
-            aria-hidden="true"
-          />
-          <span>
-            {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Reload analyzer results" }}
-          </span>
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            :disabled="isReindexSongsRunning || isLoadExistingAnalyzeResultsRunning"
+            @click="reindexAllSongs"
+          >
+            <span
+              v-if="isReindexSongsRunning"
+              class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+              aria-hidden="true"
+            />
+            <span>
+              {{ isReindexSongsRunning ? "Reindexing songs" : "Reindex all songs" }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            :disabled="isLoadExistingAnalyzeResultsRunning || isReindexSongsRunning"
+            @click="loadExistingAnalyzeResults"
+          >
+            <span
+              v-if="isLoadExistingAnalyzeResultsRunning"
+              class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+              aria-hidden="true"
+            />
+            <span>
+              {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Reload analyzer results" }}
+            </span>
+          </button>
+        </div>
       </template>
       <template #above-search>
         <div

@@ -13,8 +13,59 @@ export class SongsIndexer {
 
   private static _indexingFinished = false;
 
+  // Full reindex builds here first; live maps stay unchanged until commitStagingIndex()
+  private static _stagingMode = false;
+  private static _stagingSongsMap: Map<string, SongInfo> | null = null;
+  private static _stagingSongRootMap: Map<string, string> | null = null;
+
   public static isIndexingFinished(): boolean {
     return this._indexingFinished;
+  }
+
+  /** Start building a replacement index without touching the live maps */
+  public static beginStagingIndex(): void {
+    if (this._stagingMode) {
+      throw new Error("SongsIndexer staging index already in progress");
+    }
+    this._stagingSongsMap = new Map();
+    this._stagingSongRootMap = new Map();
+    this._stagingMode = true;
+  }
+
+  /** Atomically publish the staged index as the live index */
+  public static commitStagingIndex(): void {
+    if (
+      !this._stagingMode ||
+      !this._stagingSongsMap ||
+      !this._stagingSongRootMap
+    ) {
+      throw new Error("SongsIndexer commitStagingIndex with no active staging index");
+    }
+    this._songsMap = this._stagingSongsMap;
+    this._songRootMap = this._stagingSongRootMap;
+    this._stagingSongsMap = null;
+    this._stagingSongRootMap = null;
+    this._stagingMode = false;
+    this._indexingFinished = true;
+  }
+
+  /** Drop a partial staged index after a failed rebuild; live maps unchanged */
+  public static discardStagingIndex(): void {
+    this._stagingSongsMap = null;
+    this._stagingSongRootMap = null;
+    this._stagingMode = false;
+  }
+
+  private static activeSongsMap(): Map<string, SongInfo> {
+    return this._stagingMode && this._stagingSongsMap
+      ? this._stagingSongsMap
+      : this._songsMap;
+  }
+
+  private static activeSongRootMap(): Map<string, string> {
+    return this._stagingMode && this._stagingSongRootMap
+      ? this._stagingSongRootMap
+      : this._songRootMap;
   }
 
   private static normalizeEncoding(encoding: string | null): BufferEncoding {
@@ -86,8 +137,8 @@ export class SongsIndexer {
       songDirectories.map(async (songDirectory, index) => ({
         songDirectory,
         songInfo: await SongsIndexer.indexSingleSongDir(
-          path.join(songsDirectoryPath, songDirectory),
           songsDirectoryPath,
+          path.join(songsDirectoryPath, songDirectory),
           index,
           songDirectories.length,
         ),
@@ -95,7 +146,9 @@ export class SongsIndexer {
     );
 
     console.timeEnd(timerName);
-    this._indexingFinished = true;
+    if (!this._stagingMode) {
+      this._indexingFinished = true;
+    }
   }
 
   static getSongsMap(): Map<string, SongInfo> {
@@ -112,12 +165,12 @@ export class SongsIndexer {
 
   /**
    * Index a single song and return the song info
-   * @param songDirectoryPath the directory with the song
+   * @param songDirectoryPath the directory with the song (this includes the songs root directory path)
    * @returns the song info or null if the song is not found
    */
   public static async indexSingleSongDir(
+    songsRootDirPath: string,
     songDirectoryPath: string,
-    _songsRootDirPath: string,
     index: number,
     total: number,
   ): Promise<SongInfo | null> {
@@ -303,14 +356,16 @@ export class SongsIndexer {
     songInfo.key = SongKeyHelper.getKey(songInfo.artist, songInfo.title);
 
     // add this here so we can call the function for a single song and everything works
-    if (SongsIndexer._songsMap.has(songInfo.key)) {
+    const songsMap = SongsIndexer.activeSongsMap();
+    const songRootMap = SongsIndexer.activeSongRootMap();
+    if (songsMap.has(songInfo.key)) {
       Logger.warn(
         `Duplicate song id "${songInfo.key}" skipping song directory: ${songDirectoryPath}`,
       );
       return null;
     }
-    SongsIndexer._songsMap.set(songInfo.key, songInfo);
-    SongsIndexer._songRootMap.set(songInfo.key, _songsRootDirPath);
+    songsMap.set(songInfo.key, songInfo);
+    songRootMap.set(songInfo.key, songsRootDirPath);
 
     return songInfo;
   }
