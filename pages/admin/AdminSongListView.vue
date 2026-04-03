@@ -9,7 +9,7 @@ import {
   type ValueGetterParams,
 } from "ag-grid-community"
 import type { PropType } from "vue"
-import { defineComponent, h, resolveComponent, shallowRef } from "vue"
+import { defineComponent, h, onMounted, onUnmounted, resolveComponent, shallowRef } from "vue"
 import { scrollToGridSong } from "~~/composables/useSongListAudioPlayback"
 import { useSongListView } from "~~/composables/useSongListView"
 import { useSongs } from "~~/composables/useSongs"
@@ -25,6 +25,21 @@ import type { SongInfo } from "~~/types/song"
 defineOptions({
   name: "AdminSongListView",
 })
+
+type SongFilesExistResult = {
+  songKey: string
+  songFound: boolean
+  audioFile: boolean
+  videoFile: boolean
+  coverFile: boolean
+}
+
+type SongFilesExistResponse = {
+  success: boolean
+  indexingFinished: boolean
+  count: number
+  results: Record<string, SongFilesExistResult>
+}
 
 const emit = defineEmits<{
   (event: "show-analyzer-result", payload: { title: string; content: string }): void
@@ -87,6 +102,33 @@ const {
 const rowHeight = 48
 const gridApi = shallowRef<GridApi | null>(null)
 
+const selectedMissingFilesTitle = ref("")
+const selectedMissingFilesContent = ref<string | null>(null)
+
+const clearMissingFiles = () => {
+  selectedMissingFilesTitle.value = ""
+  selectedMissingFilesContent.value = null
+}
+
+const onKeyDown = (event: KeyboardEvent) => {
+  if (event.key !== "Escape") {
+    return
+  }
+
+  if (selectedMissingFilesContent.value) {
+    event.preventDefault()
+    clearMissingFiles()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", onKeyDown)
+})
+
 const onGridReady = (event: GridReadyEvent) => {
   gridApi.value = event.api
 }
@@ -111,6 +153,13 @@ const analyzerResultsBySong = computed(() => {
       entry,
     ]),
   )
+})
+
+const { data: songFilesExistResponse } =
+  useFetch<SongFilesExistResponse>("/api/admin/song-files-exist")
+
+const songFilesExistByKey = computed(() => {
+  return songFilesExistResponse.value?.results ?? {}
 })
 
 const AudioCell = defineComponent({
@@ -147,6 +196,97 @@ const AudioCell = defineComponent({
             icon: isActive ? "fa-solid fa-pause" : "fa-solid fa-play",
           }),
         ],
+      )
+    }
+  },
+})
+
+const missingFilesButtonClass =
+  "inline-flex h-7 w-7 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/70"
+
+const getMissingFilesLabels = (value: SongFilesExistResult | null) => {
+  if (!value || !value.songFound) {
+    return ["missing audio", "missing video", "missing cover"]
+  }
+  const missing: string[] = []
+  if (!value.audioFile) missing.push("missing audio")
+  if (!value.videoFile) missing.push("missing video")
+  if (!value.coverFile) missing.push("missing cover")
+  return missing
+}
+
+const buildMissingFilesDetails = (
+  song: SongInfo,
+  presence: SongFilesExistResult | null,
+) => {
+  const lines: string[] = []
+
+  const joinSongDir = (filePath: string | null) => {
+    const trimmed = filePath?.trim() ?? ""
+    if (!trimmed) return `${song.songDirName}/(not set)`
+    return `${song.songDirName}/${trimmed.replace(/^\/+/, "")}`
+  }
+
+  if (!presence || !presence.songFound) {
+    lines.push(`audio missing: ${joinSongDir(song.audioFileName)}`)
+    lines.push(`video missing: ${joinSongDir(song.videoFileName)}`)
+    lines.push(`cover missing: ${joinSongDir(song.coverFileName)}`)
+    return lines.join("\n")
+  }
+
+  if (!presence.audioFile) {
+    lines.push(`audio missing: ${joinSongDir(song.audioFileName)}`)
+  }
+  if (!presence.videoFile) {
+    lines.push(`video missing: ${joinSongDir(song.videoFileName)}`)
+  }
+  if (!presence.coverFile) {
+    lines.push(`cover missing: ${joinSongDir(song.coverFileName)}`)
+  }
+
+  return lines.join("\n")
+}
+
+const FilesCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
+    return () => {
+      const song = props.params.data
+      if (!song) {
+        return null
+      }
+
+      const presence = songFilesExistByKey.value[song.key] ?? null
+      const missing = getMissingFilesLabels(presence)
+      if (missing.length === 0) {
+        return null
+      }
+
+      const tooltip = missing.join("\n")
+      const content = buildMissingFilesDetails(song, presence)
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class: missingFilesButtonClass,
+          "aria-label": `Show missing files for ${song.artist} - ${song.title}`,
+          title: tooltip,
+          onClick: () => {
+            selectedMissingFilesTitle.value = `${song.artist} - ${song.title}`
+            selectedMissingFilesContent.value = content
+          },
+        },
+        h(FontAwesomeIcon as any, {
+          icon: "fa-solid fa-triangle-exclamation",
+        }),
       )
     }
   },
@@ -394,6 +534,27 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     cellRenderer: AudioCell,
   },
   {
+    headerName: "Files",
+    colId: "files",
+    width: 70,
+    sortable: false,
+    resizable: true,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    valueGetter: (params) => {
+      const song = params.data
+      if (!song) {
+        return 0
+      }
+      const presence = songFilesExistByKey.value[song.key]
+      if (!presence) {
+        return 1
+      }
+      return presence.audioFile && presence.videoFile && presence.coverFile ? 0 : 1
+    },
+    cellRenderer: FilesCell,
+  },
+  {
     headerName: "Info",
     colId: "info",
     width: 60,
@@ -516,9 +677,47 @@ watch(
     refreshGrid()
   },
 )
+
+watch(songFilesExistResponse, () => {
+  refreshGrid()
+})
 </script>
 
 <template>
+  <div
+    v-if="selectedMissingFilesContent"
+    class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/50 p-4 pt-20 backdrop-blur-sm"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      <div class="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Missing files
+          </div>
+          <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {{ selectedMissingFilesTitle }}
+          </div>
+        </div>
+        <button
+          type="button"
+          class="inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          aria-label="Close missing files"
+          @click="clearMissingFiles"
+        >
+          <font-awesome-icon icon="fa-solid fa-xmark" />
+        </button>
+      </div>
+
+      <textarea
+        :value="selectedMissingFilesContent"
+        readonly
+        class="min-h-[10rem] w-full rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+      />
+    </div>
+  </div>
+
   <main
     class="box-border h-[calc(100vh-3rem)] overflow-hidden bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
     :class="activeSong ? 'pb-28' : 'pb-8'"
