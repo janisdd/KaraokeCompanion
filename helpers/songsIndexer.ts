@@ -68,6 +68,52 @@ export class SongsIndexer {
       : this._songRootMap;
   }
 
+  /** Removes any index entries for this song folder under the given songs root (e.g. before re-scanning). */
+  private static removeSongDirectoryFromIndex(
+    songsRootDirPath: string,
+    songDirName: string,
+  ): void {
+    const songsMap = this.activeSongsMap();
+    const songRootMap = this.activeSongRootMap();
+    const keysToRemove: string[] = [];
+    for (const [key, info] of songsMap) {
+      if (
+        info.songDirName === songDirName &&
+        songRootMap.get(key) === songsRootDirPath
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    for (const key of keysToRemove) {
+      songsMap.delete(key);
+      songRootMap.delete(key);
+    }
+  }
+
+  /**
+   * Re-reads one song directory from disk and updates the in-memory index.
+   * Removes the previous entry for that folder first so artist/title (song key) changes apply.
+   */
+  public static async reindexSingleSongDir(
+    songsRootDirPath: string,
+    songDirName: string,
+  ): Promise<SongInfo | null> {
+    this.removeSongDirectoryFromIndex(songsRootDirPath, songDirName);
+    const songDirectoryPath = path.join(songsRootDirPath, songDirName);
+    try {
+      await fs.promises.access(songDirectoryPath);
+    } catch {
+      Logger.warn(`Song directory not found: ${songDirectoryPath}`);
+      return null;
+    }
+    return this.indexSingleSongDir(
+      songsRootDirPath,
+      songDirectoryPath,
+      0,
+      1,
+    );
+  }
+
   private static normalizeEncoding(encoding: string | null): BufferEncoding {
     if (!encoding) return "utf8";
     const normalized = encoding.toLowerCase();

@@ -5,6 +5,7 @@ import fs from "fs";
 import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
 import { UsersIndexer } from "~/helpers/usersIndexer"
+import { SongRedownloadHelper } from '~/helpers/songRedownloadHelper';
 
 
 export default defineNitroPlugin(async () => {
@@ -69,6 +70,9 @@ export default defineNitroPlugin(async () => {
 
   // after we have info about existing and downloaded songs
   AllOnlineSongsIndexer.connectSongInfosWithExistingAndDownloadedSongs();
+
+  // ensure the redownload songs trash dir exists
+  SongRedownloadHelper.ensureRedownloadSongsTrashDirExists();
 
   // load users after all other startup tasks
   try {

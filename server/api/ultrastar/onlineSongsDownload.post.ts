@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  console.log("Received online songs:", songs);
   const response: OnlineSongsDownloadResponse = {
     ok: true,
     count: songs.length,

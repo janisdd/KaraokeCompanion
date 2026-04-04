@@ -20,6 +20,7 @@ const PlaylistCacheDirPath = process.env.PLAYLIST_CACHE_DIR_PATH || "";
 const USDB_ANIMUX_ID = process.env.USDB_ANIMUX_ID || "";
 const USDB_ANIMUX_PW = process.env.USDB_ANIMUX_PW || "";
 const USERS_DIR = process.env.USERS_DIR || "";
+const REDOWNLOAD_SONGS_TRASH_DIR = process.env.REDOWNLOAD_SONGS_TRASH_DIR || "";
 const DOWNLOAD_SONGS_DIR = process.env.DOWNLOAD_SONGS_DIR || "";
 let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD || defaultRequiredWaitTimeForSongDownload;
 let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
@@ -37,6 +38,10 @@ if (!USERS_DIR) {
 
 if (!PlaylistCacheDirPath) {
   throw new Error("Playlist cache directory not set")
+}
+
+if (!REDOWNLOAD_SONGS_TRASH_DIR) {
+  throw new Error("Trash directory not set")
 }
 
 if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
@@ -92,6 +97,10 @@ export class ConfigHelper {
   static getUsersDir() {
     return USERS_DIR;
   }
+
+  static getRedownloadSongsTrashDir() {
+    return REDOWNLOAD_SONGS_TRASH_DIR;
+  } 
 
   static getUsdbAnimuxId() {
     return USDB_ANIMUX_ID;

@@ -195,8 +195,12 @@ export class UsdbAnimuxHelper {
     if (!fs.existsSync(downloadSingleSongDirPath)) {
       await fs.promises.mkdir(downloadSingleSongDirPath);
     } else {
-      // song dir already exists --> remove old files
-      await fs.promises.rmdir(downloadSingleSongDirPath);
+      // song dir already exists --> remove old files (dir is non-empty in normal cases)
+      await fs.promises.rm(downloadSingleSongDirPath, {
+        recursive: true,
+        force: true,
+      });
+      await fs.promises.mkdir(downloadSingleSongDirPath);
       Logger.warn(
         `Download songs directory already exists: ${downloadSingleSongDirPath} --> removed old files`,
       );

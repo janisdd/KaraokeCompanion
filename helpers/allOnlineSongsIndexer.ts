@@ -2,24 +2,46 @@ import { ConfigHelper } from "./configHelper";
 import * as htmlParser from "node-html-parser";
 import { Logger } from "./logger";
 import fs from "fs";
+import { z } from "zod";
 import { UsdbAnimuxHelper } from "./songsDownloader/UsdbAnimuxHelper";
 import { SongKeyHelper } from "./songKeyHelper";
 import { SongsIndexer } from "./songsIndexer";
 
 const ONLINE_SONGS_INDEX_JSON_FILE_NAME = "online_songs_index.json";
 
-export type OnlineSongInfoPlain = {
-  /**
-   * this is just artist-songname (to make it unique and never change)
-   */
-  key: string;
-  /**
-   * we can create the href from the id: ?link=detail&id=<songId>
-   */
-  songId: string;
-  songName: string;
-  artist: string;
-};
+/**
+ * key: this is just artist-songname (to make it unique and never change)
+ * songId: we can create the href from the id: ?link=detail&id=<songId>
+ */
+export const onlineSongInfoPlainSchema = z.object({
+  key: z.string(),
+  songId: z.string(),
+  songName: z.string(),
+  artist: z.string(),
+});
+
+export type OnlineSongInfoPlain = z.infer<typeof onlineSongInfoPlainSchema>;
+
+/** Request bodies may omit `key` (derived from artist + songName). */
+export const onlineSongInfoPlainPartialKeySchema =
+  onlineSongInfoPlainSchema.partial({ key: true });
+
+const cachedOnlineSongInfoSchema = onlineSongInfoPlainSchema.omit({ key: true });
+
+type CachedOnlineSongInfo = z.infer<typeof cachedOnlineSongInfoSchema>;
+
+/** On-disk index rows omit `key`; legacy files may still include it. */
+const onlineSongIndexFileEntrySchema = cachedOnlineSongInfoSchema.extend({
+  key: z.string().optional(),
+});
+
+// we need the version in case we need to change the structure of the index object
+const onlineSongInfoIndexObjSchema = z.object({
+  version: z.literal("1.0.0"),
+  index: z.array(onlineSongIndexFileEntrySchema),
+});
+
+type OnlineSongInfoIndexObj = z.infer<typeof onlineSongInfoIndexObjSchema>;
 
 export type OnlineSongInfo = OnlineSongInfoPlain & {
   // true: when we created the lock file and we are to download the song
@@ -30,17 +52,9 @@ export type OnlineSongInfo = OnlineSongInfoPlain & {
   indexed: boolean;
 };
 
-type CachedOnlineSongInfo = Omit<OnlineSongInfoPlain, "key">;
-
 type ArtistLetterToIndexPage = {
   text: string;
   href: string;
-};
-
-// we need the version in case we need to change the structure of the index object
-type OnlineSongInfoIndexObj = {
-  version: string;
-  index: CachedOnlineSongInfo[];
 };
 
 export class AllOnlineSongsIndexer {
@@ -62,6 +76,16 @@ export class AllOnlineSongsIndexer {
       return null;
     }
     return Array.from(this._allOnlineSongInfos.values());
+  }
+
+  public static hasPlainOnlineSongInfo(key: string): boolean {
+    return this._allOnlineSongInfosPlain.has(key);
+  }
+
+  public static getPlainOnlineSongInfo(
+    key: string,
+  ): OnlineSongInfoPlain | undefined {
+    return this._allOnlineSongInfosPlain.get(key);
   }
 
   // after downloading we want to add the song info to the index
@@ -143,18 +167,18 @@ export class AllOnlineSongsIndexer {
       ONLINE_SONGS_INDEX_JSON_FILE_NAME,
       "utf8",
     );
-    const indexObj = JSON.parse(indexJson) as OnlineSongInfoIndexObj;
-    if (indexObj.version !== "1.0.0") {
-      throw new Error(`Invalid index version: ${indexObj.version}`);
+    const parsed = onlineSongInfoIndexObjSchema.safeParse(JSON.parse(indexJson));
+    if (!parsed.success) {
+      throw new Error(
+        `Invalid online songs index file: ${parsed.error.message}`,
+      );
     }
-    const index = indexObj.index;
+    const index = parsed.data.index;
     for (const songInfo of index) {
       const songInfoWithKey: OnlineSongInfoPlain = {
         ...songInfo,
         key:
-          "key" in songInfo && typeof songInfo.key === "string"
-            ? songInfo.key
-            : SongKeyHelper.getKey(songInfo.artist, songInfo.songName),
+          songInfo.key ?? SongKeyHelper.getKey(songInfo.artist, songInfo.songName),
       };
       this._allOnlineSongInfosPlain.set(songInfoWithKey.key, songInfoWithKey);
     }

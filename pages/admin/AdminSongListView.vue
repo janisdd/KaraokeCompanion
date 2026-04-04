@@ -20,7 +20,11 @@ import type {
   LoudnessWarning,
 } from "~/types/analyzeResults"
 import { analyzeResultColumns } from "~/types/analyzeResults"
-import type { OnlineSongsIndexResponse } from "~/types/onlineSongs"
+import type {
+  OnlineSongsDownloadResponse,
+  OnlineSongsIndexResponse,
+} from "~/types/onlineSongs"
+import type { ReindexSingleSongResponse } from "~/server/api/admin/reindexSingleSong.post"
 import type { SongInfo } from "~~/types/song"
 
 defineOptions({
@@ -75,7 +79,7 @@ const props = withDefaults(
   },
 )
 
-const { songs, pending, error } = useSongs({
+const { songs, pending, error, refresh: refreshSongs } = useSongs({
   autoFetch: !props.deferSongFetch,
   stateKey: props.songsCatalogKey,
 })
@@ -199,6 +203,27 @@ const onlineSongKeysSet = computed(() => {
   return new Set(data.map((entry) => entry.key))
 })
 
+const onlineSongPlainByKey = computed(() => {
+  const data = onlineSongsIndexResponse.value?.data
+  if (!data) {
+    return new Map<
+      string,
+      { key: string; songId: string; songName: string; artist: string }
+    >()
+  }
+  return new Map(
+    data.map((entry) => [
+      entry.key,
+      {
+        key: entry.key,
+        songId: entry.songId,
+        songName: entry.songName,
+        artist: entry.artist,
+      },
+    ]),
+  )
+})
+
 const reDownloadButtonClass =
   "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
 
@@ -266,6 +291,68 @@ const sendSongToBackend = async (song: SongInfo) => {
       return
     }
     console.error("Failed to send song", error)
+  }
+}
+
+const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
+  const plain = onlineSongPlainByKey.value.get(song.key)
+  if (!plain) {
+    console.error("Missing online catalog entry for song", song.key)
+    return
+  }
+  try {
+    const result = await $fetch<OnlineSongsDownloadResponse>(
+      "/api/admin/redownloadSong",
+      {
+        method: "POST",
+        body: { song: plain },
+      },
+    )
+    void refreshSongs()
+    void refreshSongFilesExist()
+    void refreshOnlineSongsIndex()
+    if (result.reindexError) {
+      window.alert(
+        `Redownload finished but companion reindex failed:\n\n${result.reindexError}`,
+      )
+    }
+  } catch (error) {
+    const message = getSendSongErrorMessage(error)
+    if (message) {
+      console.error(`Failed to redownload song: ${message}`, error)
+      return
+    }
+    console.error("Failed to redownload song", error)
+  }
+}
+
+const reindexingSongKeys = ref(new Set<string>())
+
+const reindexSingleSong = async (song: SongInfo) => {
+  if (reindexingSongKeys.value.has(song.key)) {
+    return
+  }
+  reindexingSongKeys.value = new Set([...reindexingSongKeys.value, song.key])
+  refreshGrid()
+  try {
+    await $fetch<ReindexSingleSongResponse>("/api/admin/reindexSingleSong", {
+      method: "POST",
+      body: { songKey: song.key },
+    })
+    void refreshSongs()
+    void refreshSongFilesExist()
+  } catch (error) {
+    const message = getSendSongErrorMessage(error)
+    if (message) {
+      window.alert(`Reindex failed:\n\n${message}`)
+      return
+    }
+    console.error("Failed to reindex song", error)
+  } finally {
+    const next = new Set(reindexingSongKeys.value)
+    next.delete(song.key)
+    reindexingSongKeys.value = next
+    refreshGrid()
   }
 }
 
@@ -426,7 +513,7 @@ const ReDownloadCell = defineComponent({
             ) {
               return
             }
-            // Download will be wired here later
+            void redownloadSongFromOnlineCatalog(song)
           },
         },
         h(FontAwesomeIcon as any, {
@@ -595,6 +682,58 @@ const SongInfoCell = defineComponent({
   },
 })
 
+const ReindexCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
+    return () => {
+      const song = props.params.data
+      if (!song) {
+        return null
+      }
+
+      const busy = reindexingSongKeys.value.has(song.key)
+      const label = `${song.artist} - ${song.title}`
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class: analyzerButtonClass,
+          disabled: busy,
+          "aria-label": busy ? `Reindexing ${label}` : `Reindex ${label} on companion`,
+          title: busy ? `Reindexing ${label}…` : `Reindex ${label} on companion`,
+          onClick: () => {
+            if (
+              !window.confirm(
+                `Re-index this song on the companion?\n\n${label}`,
+              )
+            ) {
+              return
+            }
+            void reindexSingleSong(song)
+          },
+        },
+        busy
+          ? h("span", {
+              class:
+                "h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300",
+              "aria-hidden": "true",
+            })
+          : h(FontAwesomeIcon as any, {
+              icon: "fa-solid fa-rotate",
+            }),
+      )
+    }
+  },
+})
+
 const SongToolsCell = defineComponent({
   props: {
     params: {
@@ -735,6 +874,16 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     suppressMovable: true,
     cellStyle: centerCellStyle,
     cellRenderer: SongInfoCell,
+  },
+  {
+    headerName: "Reindex",
+    colId: "reindex",
+    width: 70,
+    sortable: false,
+    resizable: true,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    cellRenderer: ReindexCell,
   },
   {
     headerName: "Tools",
