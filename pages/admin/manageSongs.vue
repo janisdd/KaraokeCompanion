@@ -349,7 +349,7 @@ const startSelectedUltraStarSong = async () => {
   ultraStarControlsError.value = null
   isStartSelectedUltraStarSongRunning.value = true
   try {
-    await $fetch("/api/ultrastar/startSelectedSong", {
+    await $fetch("/api/admin/ultrastar/startSelectedSong", {
       method: "POST",
     })
   } catch (error: unknown) {
@@ -363,7 +363,7 @@ const closeUltraStarScoreScreen = async () => {
   ultraStarControlsError.value = null
   isCloseUltraStarScoreScreenRunning.value = true
   try {
-    await $fetch("/api/ultrastar/closeScoreScreen", {
+    await $fetch("/api/admin/ultrastar/closeScoreScreen", {
       method: "POST",
     })
   } catch (error: unknown) {
@@ -377,7 +377,7 @@ const cancelUltraStarCurrentSong = async () => {
   ultraStarControlsError.value = null
   isCancelUltraStarCurrentSongRunning.value = true
   try {
-    await $fetch("/api/ultrastar/cancelCurrentSong", {
+    await $fetch("/api/admin/ultrastar/cancelCurrentSong", {
       method: "POST",
     })
   } catch (error: unknown) {
@@ -391,7 +391,7 @@ const togglePauseUltraStarCurrentSong = async () => {
   ultraStarControlsError.value = null
   isTogglePauseUltraStarCurrentSongRunning.value = true
   try {
-    await $fetch("/api/ultrastar/togglePauseCurrentSong", {
+    await $fetch("/api/admin/ultrastar/togglePauseCurrentSong", {
       method: "POST",
     })
   } catch (error: unknown) {
@@ -1297,7 +1297,13 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 >
                   <span
                     v-if="isStartSelectedUltraStarSongRunning"
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <font-awesome-icon
+                    v-else
+                    icon="fa-solid fa-play"
+                    class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300"
                     aria-hidden="true"
                   />
                   <span>{{ isStartSelectedUltraStarSongRunning ? "Starting…" : "Start selected song" }}</span>
@@ -1317,9 +1323,13 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 >
                   <span
                     v-if="isCloseUltraStarScoreScreenRunning"
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
                     aria-hidden="true"
                   />
+                  <font-awesome-layers>
+                    <font-awesome-icon icon="fa-solid fa-chart-simple" class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" aria-hidden="true" />
+                    <font-awesome-icon icon="fa-solid fa-slash" class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" aria-hidden="true" />
+                  </font-awesome-layers>
                   <span>{{ isCloseUltraStarScoreScreenRunning ? "Closing…" : "Close score screen" }}</span>
                 </button>
                 <button
@@ -1337,7 +1347,13 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 >
                   <span
                     v-if="isTogglePauseUltraStarCurrentSongRunning"
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <font-awesome-icon
+                    v-else
+                    icon="fa-solid fa-pause"
+                    class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300"
                     aria-hidden="true"
                   />
                   <span>{{ isTogglePauseUltraStarCurrentSongRunning ? "Toggling pause…" : "Toggle pause current song" }}</span>
@@ -1357,7 +1373,13 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 >
                   <span
                     v-if="isCancelUltraStarCurrentSongRunning"
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <font-awesome-icon
+                    v-else
+                    icon="fa-solid fa-ban"
+                    class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300"
                     aria-hidden="true"
                   />
                   <span>{{ isCancelUltraStarCurrentSongRunning ? "Cancelling…" : "Cancel current song" }}</span>
