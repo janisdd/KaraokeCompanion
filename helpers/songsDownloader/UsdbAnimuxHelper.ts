@@ -149,8 +149,13 @@ export class UsdbAnimuxHelper {
       Logger.debug("Browser closed");
       browser = null;
 
+      downloadedSongDirName = path.basename(downloadSingleSongDirPath);
+
       // when all is done, we can index the new directory
-      await SongsIndexer.indexSingleSongDir(baseDir, downloadSingleSongDirPath, 0, 1);
+      const reindexedSong = await SongsIndexer.reindexSingleSongDir(baseDir, downloadedSongDirName);
+      if (!reindexedSong) {
+        throw new Error("Failed to reindex single song directory");
+      }
       // Recompute the online song flags now that the local song index contains the download.
       AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
         key: song.key,
@@ -159,7 +164,7 @@ export class UsdbAnimuxHelper {
         artist: song.artist,
       } satisfies OnlineSongInfoPlain);
 
-      downloadedSongDirName = path.basename(downloadSingleSongDirPath);
+      
     } catch (error) {
       Logger.error(
         `Error downloading song: ${error instanceof Error ? error.message : String(error)}`,
