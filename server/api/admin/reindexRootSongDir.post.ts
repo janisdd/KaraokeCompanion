@@ -19,13 +19,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const resolvedRoot = path.resolve(parsed.data.rootSongDir.trim())
-  if (!SongsIndexer.isSongsRootDirPath(resolvedRoot)) {
+  const resolvedRootPath = path.resolve(parsed.data.rootSongDir.trim())
+  if (!SongsIndexer.isSongsRootDirPath(resolvedRootPath)) {
     throw createError({
       statusCode: 400,
       message: "Not a known songs root directory",
     })
   }
 
-  return requestCompanionReindexRootDir(resolvedRoot, { logPrefix })
+  const songsRootDirName = path.basename(resolvedRootPath)
+  return requestCompanionReindexRootDir(songsRootDirName, { logPrefix })
 })

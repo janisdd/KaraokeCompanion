@@ -36,7 +36,7 @@ export type ReindexSingleSongDirResponse = z.infer<
 >
 
 export type ReindexRootDirPayload = {
-  songsDirName: string
+  songsRootDirName: string
 }
 
 export type ReindexRootDirResponse = ReindexSingleSongDirResponse
@@ -64,7 +64,7 @@ function parseCompanionReindexResponse(
  * Asks Ultra Star Companion to queue a full reindex for one songs root directory.
  */
 export async function requestCompanionReindexRootDir(
-  songsDirName: string,
+  songsRootDirName: string,
   options: { logPrefix?: string } = {},
 ): Promise<ReindexRootDirResponse> {
   const logPrefix = options.logPrefix ?? defaultRootLogPrefix
@@ -77,7 +77,7 @@ export async function requestCompanionReindexRootDir(
   }
 
   const payload: ReindexRootDirPayload = {
-    songsDirName,
+    songsRootDirName,
   }
 
   let fetchResponse: Response
