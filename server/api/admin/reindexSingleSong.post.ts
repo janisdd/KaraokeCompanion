@@ -2,16 +2,12 @@ import { AllOnlineSongsIndexer } from "~/helpers/allOnlineSongsIndexer"
 import { Logger } from "~/helpers/logger"
 import { SongsIndexer } from "~/helpers/songsIndexer"
 import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleSongDir"
+import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs"
 import { z } from "zod"
 
 const bodySchema = z.object({
   songKey: z.string().min(1),
 })
-
-export type ReindexSingleSongResponse = {
-  success: boolean
-  singleSongDirName: string
-}
 
 const logPrefix = "[AdminReindexSingleSong]"
 
@@ -50,25 +46,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  await requestCompanionReindexSingleSongDir(song.songDirName, {
-    logPrefix,
-  })
-
-  const updated = await SongsIndexer.reindexSingleSongDir(
-    songsRootDirPath,
-    song.songDirName,
-  )
-  if (!updated) {
-    Logger.error(
-      `${logPrefix} Local reindex failed for dir ${song.songDirName} under ${songsRootDirPath}`,
-    )
-    throw createError({
-      statusCode: 500,
-      message:
-        "Companion reindex succeeded but updating the local song index failed (missing .txt, duplicate key, or unreadable folder)",
-    })
-  }
-
   // after file reindex, song data might have changed (e.g. song name)
   // song key must stay the same after reindex
   const reindexedSong = SongsIndexer.getSongsMap().get(songKey)
@@ -82,6 +59,21 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const updated = await SongsIndexer.reindexSingleSongDir(
+    songsRootDirPath,
+    song.songDirName,
+  )
+  if (!updated) {
+    Logger.error(
+      `${logPrefix} Local reindex failed for dir ${song.songDirName} under ${songsRootDirPath}`,
+    )
+    throw createError({
+      statusCode: 500,
+      message:
+        "Local song index update failed (missing .txt, duplicate key, or unreadable folder)",
+    })
+  }
+
   // update the online songs index with the new song info (single song reindex is enough)
   AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
     key: songKey,
@@ -90,9 +82,25 @@ export default defineEventHandler(async (event) => {
     artist: reindexedSong.artist
   })
 
-  const response: ReindexSingleSongResponse = {
-    success: true,
-    singleSongDirName: song.songDirName,
+  const response: OnlineSongsDownloadResponse = {
+    ok: true,
+    count: 1,
+    reindexRequested: true,
+    reindexError: null,
+  }
+
+  try {
+    await requestCompanionReindexSingleSongDir(song.songDirName, {
+      logPrefix,
+    })
+  } catch (error) {
+    const reindexErrorMessage =
+      error instanceof Error ? error.message : String(error)
+    Logger.error(
+      `${logPrefix} Failed to reindex single song in companion: ${reindexErrorMessage}`,
+    )
+    response.reindexRequested = false
+    response.reindexError = reindexErrorMessage
   }
 
   return response

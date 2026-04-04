@@ -166,7 +166,25 @@ export const useSongListView = (options: SongListViewOptions) => {
     audioStorageKey,
     getSongKey,
     getSongRowId,
-  });
+  })
+
+  watch(
+    songs,
+    (list) => {
+      if (!process.client) {
+        return
+      }
+      const key = activeAudioKey.value
+      if (!key) {
+        return
+      }
+      const found = list.find((s) => s.key === key)
+      if (found) {
+        activeSong.value = found
+      }
+    },
+    { deep: true },
+  )
 
   return {
     activeAudioKey,

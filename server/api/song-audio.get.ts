@@ -1,10 +1,13 @@
 import fs from "fs"
+import { Logger } from "~/helpers/logger"
 import { SongFileHelper } from "~/helpers/songFileHelper"
 import { SongsIndexer } from "~/helpers/songsIndexer"
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const songKey = typeof query.songKey === "string" ? query.songKey.trim() : ""
+
+  Logger.debug(`[SongAudio] Getting audio for songKey: ${songKey}`)
 
   if (!songKey) {
     throw createError({ statusCode: 400, message: "Missing songKey" })
@@ -22,6 +25,8 @@ export default defineEventHandler(async (event) => {
   if (!audioPath.toLowerCase().endsWith(".mp3")) {
     throw createError({ statusCode: 400, message: "Invalid audio file" })
   }
+
+  Logger.debug(`[SongAudio] Audio file: ${audioPath}`)
 
   const songRoot = SongsIndexer.getSongRootMap().get(songKey)
   if (!songRoot) {
@@ -49,6 +54,7 @@ export default defineEventHandler(async (event) => {
 
   setHeader(event, "Content-Type", "audio/mpeg")
   setHeader(event, "Accept-Ranges", "bytes")
+  setHeader(event, "Cache-Control", "private, no-store")
 
   if (!rangeHeader || typeof rangeHeader !== "string") {
     setHeader(event, "Content-Length", fileSize)

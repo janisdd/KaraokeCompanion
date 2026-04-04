@@ -24,7 +24,6 @@ import type {
   OnlineSongsDownloadResponse,
   OnlineSongsIndexResponse,
 } from "~/types/onlineSongs"
-import type { ReindexSingleSongResponse } from "~/server/api/admin/reindexSingleSong.post"
 import type { SongInfo } from "~~/types/song"
 
 defineOptions({
@@ -121,6 +120,22 @@ const selectedMissingFilesContent = ref<string | null>(null)
 const clearMissingFiles = () => {
   selectedMissingFilesTitle.value = ""
   selectedMissingFilesContent.value = null
+}
+
+type SongActionNotice = {
+  variant: "error" | "warning"
+  title: string
+  message: string
+}
+
+const songActionNotice = ref<SongActionNotice | null>(null)
+
+const showSongActionNotice = (payload: SongActionNotice) => {
+  songActionNotice.value = payload
+}
+
+const clearSongActionNotice = () => {
+  songActionNotice.value = null
 }
 
 const onKeyDown = (event: KeyboardEvent) => {
@@ -297,6 +312,12 @@ const sendSongToBackend = async (song: SongInfo) => {
 const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
   const plain = onlineSongPlainByKey.value.get(song.key)
   if (!plain) {
+    const message = `Missing online catalog entry for song key "${song.key}".`
+    showSongActionNotice({
+      variant: "error",
+      title: "Redownload",
+      message,
+    })
     console.error("Missing online catalog entry for song", song.key)
     return
   }
@@ -312,16 +333,30 @@ const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
     void refreshSongFilesExist()
     void refreshOnlineSongsIndex()
     if (result.reindexError) {
-      window.alert(
-        `Redownload finished but companion reindex failed:\n\n${result.reindexError}`,
-      )
+      showSongActionNotice({
+        variant: "warning",
+        title: "Redownload finished",
+        message: `Companion reindex failed:\n\n${result.reindexError}`,
+      })
     }
   } catch (error) {
     const message = getSendSongErrorMessage(error)
     if (message) {
+      showSongActionNotice({
+        variant: "error",
+        title: "Redownload failed",
+        message,
+      })
       console.error(`Failed to redownload song: ${message}`, error)
       return
     }
+    const fallback =
+      error instanceof Error ? error.message : "Something went wrong."
+    showSongActionNotice({
+      variant: "error",
+      title: "Redownload failed",
+      message: fallback,
+    })
     console.error("Failed to redownload song", error)
   }
 }
@@ -335,18 +370,44 @@ const reindexSingleSong = async (song: SongInfo) => {
   reindexingSongKeys.value = new Set([...reindexingSongKeys.value, song.key])
   refreshGrid()
   try {
-    await $fetch<ReindexSingleSongResponse>("/api/admin/reindexSingleSong", {
-      method: "POST",
-      body: { songKey: song.key },
-    })
+    const result = await $fetch<OnlineSongsDownloadResponse>(
+      "/api/admin/reindexSingleSong",
+      {
+        method: "POST",
+        body: { songKey: song.key },
+      },
+    )
     void refreshSongs()
     void refreshSongFilesExist()
+    void refreshOnlineSongsIndex()
+    if (result.reindexError) {
+      showSongActionNotice({
+        variant: "warning",
+        title: "Reindex finished",
+        message: `Companion reindex failed:\n\n${result.reindexError}`,
+      })
+    }
+    if (activeAudioKey.value === song.key) {
+      stopActiveAudio()
+    }
   } catch (error) {
     const message = getSendSongErrorMessage(error)
     if (message) {
-      window.alert(`Reindex failed:\n\n${message}`)
+      showSongActionNotice({
+        variant: "error",
+        title: "Reindex failed",
+        message,
+      })
+      console.error(`Failed to reindex song: ${message}`, error)
       return
     }
+    const fallback =
+      error instanceof Error ? error.message : "Something went wrong."
+    showSongActionNotice({
+      variant: "error",
+      title: "Reindex failed",
+      message: fallback,
+    })
     console.error("Failed to reindex song", error)
   } finally {
     const next = new Set(reindexingSongKeys.value)
@@ -878,7 +939,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
   {
     headerName: "Reindex",
     colId: "reindex",
-    width: 70,
+    width: 90,
     sortable: false,
     resizable: true,
     suppressMovable: true,
@@ -1053,6 +1114,35 @@ watch(onlineSongsIndexResponse, () => {
 
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex w-full flex-col gap-3 md:max-w-2xl">
+          <div
+            v-if="songActionNotice"
+            :class="[
+              'rounded-lg border p-3 shadow-sm',
+              songActionNotice.variant === 'error'
+                ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200'
+                : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100',
+            ]"
+            role="alert"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="text-sm font-semibold">
+                  {{ songActionNotice.title }}
+                </div>
+                <div class="whitespace-pre-wrap text-sm">
+                  {{ songActionNotice.message }}
+                </div>
+              </div>
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-current opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                aria-label="Dismiss notice"
+                @click="clearSongActionNotice"
+              >
+                <font-awesome-icon icon="fa-solid fa-xmark" />
+              </button>
+            </div>
+          </div>
           <div class="flex flex-wrap items-center gap-3">
             <slot name="search-mode-actions" />
           </div>

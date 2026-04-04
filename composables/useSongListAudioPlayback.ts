@@ -51,7 +51,11 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
     if (!songKey) {
       return null
     }
-    return `/api/song-audio?songKey=${encodeURIComponent(songKey)}`
+    // `v` ties the URL to the indexed file name so the media element refetches when
+    // the server resolves a different file for the same songKey (reindex / redownload).
+    const file = song.audioFileName?.trim() ?? ""
+    const v = encodeURIComponent(file)
+    return `/api/song-audio?songKey=${encodeURIComponent(songKey)}&v=${v}`
   }
 
   const getCoverFile = (song: SongInfo) => {
