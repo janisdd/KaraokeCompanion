@@ -2,12 +2,11 @@ import { ConfigHelper } from "./configHelper";
 import * as htmlParser from "node-html-parser";
 import { Logger } from "./logger";
 import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { UsdbAnimuxHelper } from "./songsDownloader/UsdbAnimuxHelper";
 import { SongKeyHelper } from "./songKeyHelper";
 import { SongsIndexer } from "./songsIndexer";
-
-const ONLINE_SONGS_INDEX_JSON_FILE_NAME = "online_songs_index.json";
 
 /**
  * key: this is just artist-songname (to make it unique and never change)
@@ -159,12 +158,14 @@ export class AllOnlineSongsIndexer {
       index: plainIndex,
     };
     const indexJson = JSON.stringify(indexObj, null, 2);
-    fs.writeFileSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME, indexJson);
+    const indexPath = ConfigHelper.getOnlineSongsIndexPath();
+    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+    fs.writeFileSync(indexPath, indexJson);
   }
 
   public static loadIndexFromFile() {
     const indexJson = fs.readFileSync(
-      ONLINE_SONGS_INDEX_JSON_FILE_NAME,
+      ConfigHelper.getOnlineSongsIndexPath(),
       "utf8",
     );
     const parsed = onlineSongInfoIndexObjSchema.safeParse(JSON.parse(indexJson));
@@ -185,13 +186,13 @@ export class AllOnlineSongsIndexer {
   }
 
   public static checkIfIndexExists() {
-    return fs.existsSync(ONLINE_SONGS_INDEX_JSON_FILE_NAME);
+    return fs.existsSync(ConfigHelper.getOnlineSongsIndexPath());
   }
 
   public static async indexAllOnlineSongs() {
     if (this.checkIfIndexExists()) {
       Logger.log(
-        `[AllOnlineSongsIndexer] Online Songs Index already exists, loading from file ${ONLINE_SONGS_INDEX_JSON_FILE_NAME}`,
+        `[AllOnlineSongsIndexer] Online Songs Index already exists, loading from file ${ConfigHelper.getOnlineSongsIndexPath()}`,
       );
       this.loadIndexFromFile();
       return;

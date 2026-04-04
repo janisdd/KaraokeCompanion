@@ -24,9 +24,7 @@ logs
 .env.*
 !.env.example
 
-/users/
-/trash/
-/download_work/
-/playlistCaches/
+# App data (default ALL_FILES_PREFIX_DIR); keep root-level patterns for ALL_FILES_PREFIX_DIR=.
+storage_dir/
 
 online_songs_index.json

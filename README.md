@@ -18,23 +18,27 @@ yarn install
 
 you have to copy the `.env_example` to `.env` and set all values
 
+- `ALL_FILES_PREFIX_DIR` is the root directory for app data. `USERS_DIR`, `REDOWNLOAD_SONGS_TRASH_DIR`, `DOWNLOAD_SONGS_DIR`, `PLAYLIST_CACHE_DIR_PATH`, and `ONLINE_SONGS_INDEX_NAME` must each be a **relative** path under that root (no absolute paths; `..` is not allowed to escape the storage root).
 - `ULTRA_START_SONGS_DIR_PATH1` is the path to the ultrastar songs dir (no nesting)
 	- you can use `ULTRA_START_SONGS_DIR_PATH2`, `ULTRA_START_SONGS_DIR_PATH3`, ... to use multiple dirs
 - `PLAYLIST_CACHE_DIR_PATH` the path for caching playlists (only required when using spotify features)
-	- gets automatically created (recursively)
+	- relative values are resolved under `ALL_FILES_PREFIX_DIR`; gets automatically created (recursively)
 - `IS_DEFAULT_PAGE_THEME_MODE_DARK` `true` or `false`, the page has a dark mode, if `true`, the dark mode is initially used (on first load)
 
 if you want to use the download feature, you also need to set `ULTRA_START_SONGS_DIR_PATH2` (or `3`, ...) to the path where the downloaded songs will be stored (of course you need to add the directory to the UltraStar config too!)
 
-the path for the downloaded songs is set with `DOWNLOAD_SONGS_DIR`, specify the full path in `ULTRA_START_SONGS_DIR_PATH2`
+the path for the downloaded songs is set with `DOWNLOAD_SONGS_DIR` (relative paths are under `ALL_FILES_PREFIX_DIR`). `ULTRA_START_SONGS_DIR_PATH2` must point at that same folder on disk.
 
 example:
 
 ```bash
 ULTRA_START_SONGS_DIR_PATH1=/path/to/songs/dir1
-ULTRA_START_SONGS_DIR_PATH2=/path/to/download_work/
-DOWNLOAD_SONGS_DIR=download_work/
+ULTRA_START_SONGS_DIR_PATH2=storage_dir/download_work
+ALL_FILES_PREFIX_DIR=storage_dir
+DOWNLOAD_SONGS_DIR=download_work
 ```
+
+With defaults, downloads live at `storage_dir/download_work` relative to the project root.
 
 Because the download dir will be reindexed after some donwloads, you should copy the songs from this dir to some other UltraStar songs dir. *because reindexing is not optimally implemented yet (it does a fill reindexing and not check if the song already exists)*
 

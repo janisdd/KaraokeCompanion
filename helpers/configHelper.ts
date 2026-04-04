@@ -1,5 +1,6 @@
 import dotenv, {config as loadEnv} from 'dotenv'
 import fs from "fs";
+import path from "path"
 import { Logger } from './logger';
 
 //NOTE: startup-env must be run before this, else the process.env variables are not set
@@ -16,12 +17,62 @@ const USDB_ANIMUX_URL = "https://usdb.animux.de";
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const ULTRA_STAR_COMPANION_PORT = process.env.ULTRA_STAR_COMPANION_PORT || "";
-const PlaylistCacheDirPath = process.env.PLAYLIST_CACHE_DIR_PATH || "";
+const STORAGE_ROOT = (process.env.ALL_FILES_PREFIX_DIR || "storage_dir").trim()
+
+function isResolvedPathInsideDir(dirAbs: string, candidateAbs: string): boolean {
+  const rel = path.relative(dirAbs, candidateAbs)
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))
+}
+
+/** Relative segment only; joined under ALL_FILES_PREFIX_DIR (no absolute paths, no .. escape). */
+function resolveUnderStorage(
+  envValue: string | undefined,
+  defaultRelative: string,
+  envKeyForErrors: string,
+): string {
+  const segment = envValue?.trim() || defaultRelative
+  if (!segment) {
+    throw new Error(`${envKeyForErrors} cannot be empty`)
+  }
+  if (path.isAbsolute(segment)) {
+    throw new Error(
+      `${envKeyForErrors} must be a relative path under ALL_FILES_PREFIX_DIR, not an absolute path`,
+    )
+  }
+  const storageAbs = path.resolve(STORAGE_ROOT)
+  const joined = path.normalize(path.join(STORAGE_ROOT, segment))
+  const joinedAbs = path.resolve(joined)
+  if (!isResolvedPathInsideDir(storageAbs, joinedAbs)) {
+    throw new Error(
+      `${envKeyForErrors} must resolve inside ALL_FILES_PREFIX_DIR (got "${segment}")`,
+    )
+  }
+  return joined
+}
+
+const PlaylistCacheDirPath = resolveUnderStorage(
+  process.env.PLAYLIST_CACHE_DIR_PATH,
+  "playlistCaches",
+  "PLAYLIST_CACHE_DIR_PATH",
+)
 const USDB_ANIMUX_ID = process.env.USDB_ANIMUX_ID || "";
 const USDB_ANIMUX_PW = process.env.USDB_ANIMUX_PW || "";
-const USERS_DIR = process.env.USERS_DIR || "";
-const REDOWNLOAD_SONGS_TRASH_DIR = process.env.REDOWNLOAD_SONGS_TRASH_DIR || "";
-const DOWNLOAD_SONGS_DIR = process.env.DOWNLOAD_SONGS_DIR || "";
+const USERS_DIR = resolveUnderStorage(process.env.USERS_DIR, "users", "USERS_DIR")
+const REDOWNLOAD_SONGS_TRASH_DIR = resolveUnderStorage(
+  process.env.REDOWNLOAD_SONGS_TRASH_DIR,
+  "trash",
+  "REDOWNLOAD_SONGS_TRASH_DIR",
+)
+const DOWNLOAD_SONGS_DIR = resolveUnderStorage(
+  process.env.DOWNLOAD_SONGS_DIR,
+  "download_work",
+  "DOWNLOAD_SONGS_DIR",
+)
+const OnlineSongsIndexFilePath = resolveUnderStorage(
+  process.env.ONLINE_SONGS_INDEX_NAME,
+  "online_songs_index.json",
+  "ONLINE_SONGS_INDEX_NAME",
+)
 let REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD = process.env.REQUIRED_WAIT_TIME_FOR_SONG_DOWNLOAD || defaultRequiredWaitTimeForSongDownload;
 let DOWNLOAD_PREFERRED_VIDEO_HEIGHT = process.env.DOWNLOAD_PREFERRED_VIDEO_HEIGHT || defaultDownloadPreferredVideoHeight;
 let DOWNLOAD_PREFERRED_VIDEO_FORMAT = process.env.DOWNLOAD_PREFERRED_VIDEO_FORMAT || "mp4";
@@ -51,6 +102,14 @@ if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
 export class ConfigHelper {
   static getUsdbAnimuxUrl() {
     return USDB_ANIMUX_URL;
+  }
+
+  static getAllFilesPrefixDir() {
+    return STORAGE_ROOT
+  }
+
+  static getOnlineSongsIndexPath() {
+    return OnlineSongsIndexFilePath
   }
 
   static getUltraStarSongsDirPaths() {
