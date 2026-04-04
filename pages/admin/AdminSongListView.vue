@@ -20,6 +20,7 @@ import type {
   LoudnessWarning,
 } from "~/types/analyzeResults"
 import { analyzeResultColumns } from "~/types/analyzeResults"
+import type { OnlineSongsIndexResponse } from "~/types/onlineSongs"
 import type { SongInfo } from "~~/types/song"
 
 defineOptions({
@@ -169,11 +170,18 @@ const { data: songFilesExistResponse, refresh: refreshSongFilesExist } =
     immediate: false,
   })
 
+const { data: onlineSongsIndexResponse, refresh: refreshOnlineSongsIndex } =
+  useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex", {
+    key: "admin-online-songs-index",
+    immediate: false,
+  })
+
 watch(
   () => props.adminAuthenticated,
   (authenticated) => {
     if (authenticated) {
       void refreshSongFilesExist()
+      void refreshOnlineSongsIndex()
     }
   },
   { immediate: true },
@@ -182,6 +190,17 @@ watch(
 const songFilesExistByKey = computed(() => {
   return songFilesExistResponse.value?.results ?? {}
 })
+
+const onlineSongKeysSet = computed(() => {
+  const data = onlineSongsIndexResponse.value?.data
+  if (!data) {
+    return new Set<string>()
+  }
+  return new Set(data.map((entry) => entry.key))
+})
+
+const reDownloadButtonClass =
+  "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
 
 const AudioCell = defineComponent({
   props: {
@@ -368,6 +387,50 @@ const FilesCell = defineComponent({
         },
         h(FontAwesomeIcon as any, {
           icon: "fa-solid fa-triangle-exclamation",
+        }),
+      )
+    }
+  },
+})
+
+const ReDownloadCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+
+    return () => {
+      const song = props.params.data
+      if (!song || !onlineSongKeysSet.value.has(song.key)) {
+        return null
+      }
+
+      const label = `${song.artist} - ${song.title}`
+
+      return h(
+        "button",
+        {
+          type: "button",
+          class: reDownloadButtonClass,
+          "aria-label": `Re-download ${label} from online catalog`,
+          title: `Re-download ${label} from online catalog`,
+          onClick: () => {
+            if (
+              !window.confirm(
+                `Re-download this song from the online catalog?\n\n${label}`,
+              )
+            ) {
+              return
+            }
+            // Download will be wired here later
+          },
+        },
+        h(FontAwesomeIcon as any, {
+          icon: "fa-solid fa-cloud-arrow-down",
         }),
       )
     }
@@ -647,6 +710,23 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     cellRenderer: FilesCell,
   },
   {
+    headerName: "Download",
+    colId: "download",
+    width: 100,
+    sortable: false,
+    resizable: true,
+    suppressMovable: true,
+    cellStyle: centerCellStyle,
+    valueGetter: (params) => {
+      const song = params.data
+      if (!song) {
+        return 0
+      }
+      return onlineSongKeysSet.value.has(song.key) ? 1 : 0
+    },
+    cellRenderer: ReDownloadCell,
+  },
+  {
     headerName: "Info",
     colId: "info",
     width: 60,
@@ -761,6 +841,10 @@ watch(
 )
 
 watch(songFilesExistResponse, () => {
+  refreshGrid()
+})
+
+watch(onlineSongsIndexResponse, () => {
   refreshGrid()
 })
 </script>
