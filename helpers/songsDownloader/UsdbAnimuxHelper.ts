@@ -134,7 +134,7 @@ export class UsdbAnimuxHelper {
       await this._ensureUsdbSession(page);
 
       //now we are logged in
-      const { downloadSingleSongDirPath } = await this._downloadSingleSong(
+      const { downloadSingleSongDirPath } = await this._downloadSingleSongFast(
         page,
         songUrl,
         baseDir,
@@ -189,19 +189,23 @@ export class UsdbAnimuxHelper {
     return downloadedSongDirName;
   }
 
-  // if forceDownload is true, then the song will be downloaded even if it already exists
   // songDirNameOverride: when set (original library location), use this folder name instead of the USDB page title
-  private static async _downloadSingleSong(
+  private static async _prepareSongDownloadFromUsdbDetailPage(
     page: Page,
     url: string,
     baseDir: string,
-    songId: string,
     songDirNameOverride: string | null,
-  ) {
-    
+  ): Promise<{
+    songTitleSanitized: string
+    downloadSingleSongDirPath: string
+    coverImageName: string
+    youtubeVideoId: string
+    preferredVideoHeight: number
+    preferredVideoFormat: string
+    convertAudioFormat: string
+  }> {
     Logger.log(`Downloading song from URL: ${url}`);
 
-    // go to the page and wait for the page to load
     await this._gotoUsdbPage(page, url);
     Logger.debug(`Page loaded: ${url}`);
 
@@ -210,7 +214,6 @@ export class UsdbAnimuxHelper {
       throw new Error("Page title not found");
     }
 
-    // we get the song title (artist - title) from document.querySelector("#tablebg .syntaxcomment b")
     const songTitle = await page
       .locator("#tablebg .syntaxcomment b")
       .first()
@@ -229,7 +232,6 @@ export class UsdbAnimuxHelper {
     if (!fs.existsSync(downloadSingleSongDirPath)) {
       await fs.promises.mkdir(downloadSingleSongDirPath);
     } else {
-      // song dir already exists --> remove old files (dir is non-empty in normal cases)
       await fs.promises.rm(downloadSingleSongDirPath, {
         recursive: true,
         force: true,
@@ -240,14 +242,11 @@ export class UsdbAnimuxHelper {
       );
     }
 
-    // the cover image is identified by document.querySelector("#tablebg img")
     const coverImage = await page.locator("#tablebg img").first();
-    // e.g. /data/cover/4978.jpg
     const coverImageUrlPart = await coverImage.getAttribute("src");
     if (!coverImageUrlPart) {
       throw new Error("Cover image URL not found");
     }
-    // e.g. https://usdb.animux.de/data/cover/4978.jpg
     const coverImageUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/${coverImageUrlPart}`;
     const coverImageExtension = path.extname(coverImageUrlPart).toLowerCase();
     if (!coverImageExtension) {
@@ -271,10 +270,6 @@ export class UsdbAnimuxHelper {
       Logger.log(`Cover image downloaded and saved to: ${coverImagePath}`);
     }
 
-    // we also need to get the youtube video id
-    // it often can be found in the commentso n the page
-    // there could be multiple youtube video ids, we need to get the first one
-    // document.querySelector("table iframe")
     const youtubeVideoIframe = await page.locator("table iframe").first();
     const youtubeVideoIframeUrl = await youtubeVideoIframe.getAttribute("src");
     if (!youtubeVideoIframeUrl) {
@@ -286,39 +281,95 @@ export class UsdbAnimuxHelper {
     }
     Logger.log(`Youtube video ID found: ${youtubeVideoId}`);
 
-    const { audioName, videoName } = await this._downloadYoutubeVideoAndSplit(
-      youtubeVideoId,
-      downloadSingleSongDirPath,
+    return {
       songTitleSanitized,
+      downloadSingleSongDirPath,
+      coverImageName,
+      youtubeVideoId,
       preferredVideoHeight,
       preferredVideoFormat,
       convertAudioFormat,
-    );
+    };
+  }
 
-    // the last step is to get the actual txt file with the notes
-    // the correct url is https://usdb.animux.de/index.php?link=gettxt&id=<songId>
+  private static _songDownloadAbortedError(): DOMException {
+    return new DOMException("Song download aborted", "AbortError");
+  }
+
+  private static _abortWhen(signal: AbortSignal): Promise<never> {
+    if (signal.aborted) {
+      return Promise.reject(this._songDownloadAbortedError());
+    }
+    return new Promise((_, reject) => {
+      signal.addEventListener(
+        "abort",
+        () => reject(this._songDownloadAbortedError()),
+        { once: true },
+      );
+    });
+  }
+
+  private static async _sleepAbortable(
+    ms: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!signal) {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      return;
+    }
+    if (signal.aborted) {
+      throw this._songDownloadAbortedError();
+    }
+    await Promise.race([
+      new Promise<void>((resolve) => setTimeout(resolve, ms)),
+      this._abortWhen(signal),
+    ]);
+  }
+
+  /** Navigates to gettxt, waits, and reads textarea text (runs in parallel with video download in _downloadSingleSongFast). */
+  private static async _navigateWaitAndReadTxtFromGetTxtPage(
+    page: Page,
+    songId: string,
+    songTitleSanitized: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    if (signal?.aborted) {
+      throw this._songDownloadAbortedError();
+    }
 
     const txtUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=gettxt&id=${songId}`;
-    Logger.log(`Getting txt file from URL: ${txtUrl}`);
-    await this._gotoUsdbPage(page, txtUrl);
+    Logger.log(`Getting txt file from URL: ${txtUrl} (parallel with video)`);
+
+    if (signal) {
+      await Promise.race([
+        this._gotoUsdbPage(page, txtUrl),
+        this._abortWhen(signal),
+      ]);
+    } else {
+      await this._gotoUsdbPage(page, txtUrl);
+    }
     Logger.debug(`page ${txtUrl} loaded`);
 
-    // we need to wait for the txt file to be available
-    // +1 to be sure
+    if (signal?.aborted) {
+      throw this._songDownloadAbortedError();
+    }
+
     const requiredWaitTimeForSongDownload =
       ConfigHelper.getRequiredWaitTimeForSongDownload() + 1;
     Logger.log(
-      `Waiting for ${requiredWaitTimeForSongDownload} seconds for txt file to be available`,
+      `Waiting for ${requiredWaitTimeForSongDownload} seconds for txt file to be available (overlaps with video download)`,
     );
 
-    // wait and log ever 5 seconds (not perfectly accurate, but good enough)
     for (let i = 0; i < requiredWaitTimeForSongDownload; i += 5) {
       Logger.log(`Waiting for ${i} seconds for txt file to be available (song name: ${songTitleSanitized})...`);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await this._sleepAbortable(5000, signal);
     }
     Logger.log(`Txt file is available (song name: ${songTitleSanitized})`);
 
-    // to check if the txt file is available, we need to check for document.querySelector("#tablebg textarea")
+    if (signal?.aborted) {
+      throw this._songDownloadAbortedError();
+    }
+
     const txtArea = await page.locator("#tablebg textarea").first();
 
     if (!txtArea.isVisible()) {
@@ -331,8 +382,69 @@ export class UsdbAnimuxHelper {
     }
     Logger.debug(`Txt area text found: ${txtAreaText}`);
 
-    // do not trim the lines, because ultrastar will concatenate the lines without spaces!
-    // so the spaces need to be preserved!
+    return txtAreaText;
+  }
+
+  // if forceDownload is true, then the song will be downloaded even if it already exists
+  // songDirNameOverride: when set (original library location), use this folder name instead of the USDB page title
+  private static async _downloadSingleSongFast(
+    page: Page,
+    url: string,
+    baseDir: string,
+    songId: string,
+    songDirNameOverride: string | null,
+  ) {
+    const {
+      songTitleSanitized,
+      downloadSingleSongDirPath,
+      coverImageName,
+      youtubeVideoId,
+      preferredVideoHeight,
+      preferredVideoFormat,
+      convertAudioFormat,
+    } = await this._prepareSongDownloadFromUsdbDetailPage(
+      page,
+      url,
+      baseDir,
+      songDirNameOverride,
+    );
+
+    const abortTxtWhenVideoFails = new AbortController();
+
+    const txtPromise = this._navigateWaitAndReadTxtFromGetTxtPage(
+      page,
+      songId,
+      songTitleSanitized,
+      abortTxtWhenVideoFails.signal,
+    );
+
+    const videoPromise = this._downloadYoutubeVideoAndSplit(
+      youtubeVideoId,
+      downloadSingleSongDirPath,
+      songTitleSanitized,
+      preferredVideoHeight,
+      preferredVideoFormat,
+      convertAudioFormat,
+    ).catch((err: unknown) => {
+      abortTxtWhenVideoFails.abort();
+      throw err;
+    });
+
+    const [txtSettled, videoSettled] = await Promise.allSettled([
+      txtPromise,
+      videoPromise,
+    ]);
+
+    if (videoSettled.status === "rejected") {
+      throw videoSettled.reason;
+    }
+    if (txtSettled.status === "rejected") {
+      throw txtSettled.reason;
+    }
+
+    const txtAreaText = txtSettled.value;
+    const { audioName, videoName } = videoSettled.value;
+
     const songNotes = txtAreaText.split("\n");
     const songNoteLines = this._ensureSongNoteMetaEntries(
       songNotes,
@@ -341,7 +453,6 @@ export class UsdbAnimuxHelper {
       videoName,
     );
 
-    // write to file
     const txtFilePath = path.resolve(
       downloadSingleSongDirPath,
       `${songTitleSanitized}.txt`,
@@ -352,8 +463,8 @@ export class UsdbAnimuxHelper {
     Logger.log(`Song downloaded successfully`);
 
     return {
-      downloadSingleSongDirPath
-    }
+      downloadSingleSongDirPath,
+    };
   }
 
   private static async _ensureUsdbSession(page: Page): Promise<void> {
