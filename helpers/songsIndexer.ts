@@ -2,6 +2,7 @@ import type { SongInfo } from "~~/types/song";
 import fs from "fs";
 import path from "path";
 import * as chardet from "chardet";
+import { ConfigHelper } from "./configHelper";
 import { Logger } from "./logger";
 import { SongKeyHelper } from "./songKeyHelper";
 
@@ -203,6 +204,23 @@ export class SongsIndexer {
 
   static getSongRootMap(): Map<string, string> {
     return SongsIndexer._songRootMap;
+  }
+
+  /**
+   * True if the path is a songs root (parent of song folders): configured
+   * ULTRA_START_SONGS_DIR_PATH*
+   */
+  static isSongsRootDirPath(candidatePath: string): boolean {
+    const normalized = path.resolve(candidatePath.trim());
+    const known = new Set<string>();
+    // for (const root of this.getSongRootMap().values()) {
+    //   known.add(path.resolve(root));
+    // }
+    for (const p of ConfigHelper.getUltraStarSongsDirPaths()) {
+      known.add(path.resolve(p));
+    }
+    known.add(path.resolve(ConfigHelper.getDownloadSongsDir()));
+    return known.has(normalized);
   }
 
   static hasSong(songKey: string): boolean {

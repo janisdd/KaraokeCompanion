@@ -4,7 +4,7 @@ import VueSelect from "vue-select"
 import "vue-select/dist/vue-select.css"
 import type { AdminSessionResponse } from "~/server/api/admin/session.get"
 import type { LoadExistingAnalyzeResultsResponse } from "~/server/api/admin/loadExistingAnalyzeResults.post"
-import type { ReindexSongsResponse } from "~/server/api/admin/reindexSongs.post"
+import type { ReindexLocalSongsResponse } from "~/server/api/admin/reindexLocalSongs.post"
 import type { NormalLoudnessResponse } from "~/server/api/admin/normalLoudness.get"
 import type {
   AnalyzeResultKey,
@@ -566,9 +566,12 @@ const reindexAllSongs = async () => {
   isReindexSongsRunning.value = true
 
   try {
-    await $fetch<ReindexSongsResponse>("/api/admin/reindexSongs", {
+    const response = await $fetch<ReindexLocalSongsResponse>("/api/admin/reindexLocalSongs", {
       method: "POST",
     })
+    if (!response.success) {
+      throw new Error( "Failed to reindex local songs")
+    }
     await refreshSongs()
     await refreshAnalyzerResults()
     analyzerResults.value = analyzerResultsResponse.value?.data ?? []

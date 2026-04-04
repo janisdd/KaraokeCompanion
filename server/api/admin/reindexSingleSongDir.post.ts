@@ -1,7 +1,7 @@
 import { AllOnlineSongsIndexer } from "~/helpers/allOnlineSongsIndexer"
 import { Logger } from "~/helpers/logger"
 import { SongsIndexer } from "~/helpers/songsIndexer"
-import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleSongDir"
+import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleOrRootSongDir"
 import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs"
 import { z } from "zod"
 
@@ -9,7 +9,7 @@ const bodySchema = z.object({
   songKey: z.string().min(1),
 })
 
-const logPrefix = "[AdminReindexSingleSong]"
+const logPrefix = "[AdminReindexSingleSongDir]"
 
 export default defineEventHandler(async (event) => {
   const rawBody = await readBody<unknown>(event)

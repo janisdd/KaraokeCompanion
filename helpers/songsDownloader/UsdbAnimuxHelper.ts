@@ -60,7 +60,7 @@ export class UsdbAnimuxHelper {
     song: OnlineSongInfo,
     forceDownload: boolean = false,
     useDownloadDir: boolean = true,
-  ): Promise<void> {
+  ): Promise<string | null> {
     let baseDir: string;
     let songDirNameOverride: string | null = null;
 
@@ -98,7 +98,7 @@ export class UsdbAnimuxHelper {
     const songIsDownloading = this._downloadingOrDownloadedSongIds.has(songId);
     if (songIsDownloading && !forceDownload) {
       Logger.log(`Song already downloading: ${songId}`);
-      return;
+      return null;
     }
 
     Logger.log(`Downloading song ${song.songName} (id: ${song.songId})`);
@@ -122,6 +122,7 @@ export class UsdbAnimuxHelper {
     Logger.debug(`Download use headless mode: ${downloadUseHeadlessMode}`);
 
     let browser: Browser | null = null;
+    let downloadedSongDirName: string | null = null;
 
     try {
       browser = await chromium.launch({
@@ -158,6 +159,7 @@ export class UsdbAnimuxHelper {
         artist: song.artist,
       } satisfies OnlineSongInfoPlain);
 
+      downloadedSongDirName = path.basename(downloadSingleSongDirPath);
     } catch (error) {
       Logger.error(
         `Error downloading song: ${error instanceof Error ? error.message : String(error)}`,
@@ -178,6 +180,8 @@ export class UsdbAnimuxHelper {
         artist: song.artist,
       } satisfies OnlineSongInfoPlain);
     }
+
+    return downloadedSongDirName;
   }
 
   // if forceDownload is true, then the song will be downloaded even if it already exists

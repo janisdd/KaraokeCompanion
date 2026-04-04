@@ -8,7 +8,7 @@ import { SongKeyHelper } from "~/helpers/songKeyHelper"
 import { SongRedownloadHelper } from "~/helpers/songRedownloadHelper"
 import { UsdbAnimuxHelper } from "~/helpers/songsDownloader/UsdbAnimuxHelper"
 import { SongsIndexer } from "~/helpers/songsIndexer"
-import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleSongDir"
+import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleOrRootSongDir"
 import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs"
 import { z } from "zod"
 

@@ -383,7 +383,7 @@ const reindexSingleSong = async (song: SongInfo) => {
   refreshGrid()
   try {
     const result = await $fetch<OnlineSongsDownloadResponse>(
-      "/api/admin/reindexSingleSong",
+      "/api/admin/reindexSingleSongDir",
       {
         method: "POST",
         body: { songKey: song.key },

@@ -3,32 +3,32 @@ import { Logger } from "~/helpers/logger"
 import { runLocalSongsIndexing } from "~/helpers/runLocalSongsIndexing"
 import { SongsIndexer } from "~/helpers/songsIndexer"
 
-export type ReindexSongsResponse = {
+export type ReindexLocalSongsResponse = {
   success: boolean
   songCount: number
 }
 
-const logPrefix = "[AdminReindexSongs]"
+const logPrefix = "[AdminReindexLocalSongs]"
 
 export default defineEventHandler(async () => {
   try {
     await runLocalSongsIndexing({ logPrefix, resetBeforeIndex: true })
   } catch (error) {
     Logger.error(
-      `${logPrefix} Failed to reindex songs: ${
+      `${logPrefix} Failed to reindex local songs: ${
         error instanceof Error ? error.message : String(error)
       }`,
     )
 
     throw createError({
       statusCode: 500,
-      message: error instanceof Error ? error.message : "Failed to reindex songs",
+      message: error instanceof Error ? error.message : "Failed to reindex local songs",
     })
   }
 
   AllOnlineSongsIndexer.connectSongInfosWithExistingAndDownloadedSongs()
 
-  const response: ReindexSongsResponse = {
+  const response: ReindexLocalSongsResponse = {
     success: true,
     songCount: SongsIndexer.getSongsMap().size,
   }

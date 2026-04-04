@@ -1,16 +1,12 @@
-import { ConfigHelper } from "~/helpers/configHelper";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { Logger } from "~/helpers/logger";
 import { UsdbAnimuxHelper } from "~/helpers/songsDownloader/UsdbAnimuxHelper";
+import { requestCompanionReindexSingleSongDir } from "~/server/utils/requestCompanionReindexSingleOrRootSongDir";
 import type { OnlineSongsDownloadResponse } from "~/types/onlineSongs";
 
 type OnlineSongsDownloadRequest = {
   songs: OnlineSongInfo[];
   overwriteExisting?: boolean;
-};
-
-type ReindexDirRequest = {
-  songsDirName: string;
 };
 
 const onlySimulateDownload = false;
@@ -37,6 +33,8 @@ export default defineEventHandler(async (event) => {
     reindexError: null,
   };
 
+  const companionReindexSongDirNames: string[] = [];
+
   try {
     if (onlySimulateDownload) {
       //wait 5s to simulate the download
@@ -47,7 +45,13 @@ export default defineEventHandler(async (event) => {
       //download the songs
       for (const song of songs) {
         try {
-          await UsdbAnimuxHelper.downloadSong(song, overwriteExisting);
+          const songDirName = await UsdbAnimuxHelper.downloadSong(
+            song,
+            overwriteExisting,
+          );
+          if (songDirName) {
+            companionReindexSongDirNames.push(songDirName);
+          }
         } catch (error) {
           Logger.error(
             `Error downloading song: ${error instanceof Error ? error.message : String(error)}`,
@@ -57,14 +61,14 @@ export default defineEventHandler(async (event) => {
       }
     }
   } finally {
-    // this is in finally to ensure that the reindex is always requested, even if an error occurs (some songs might be downloaded)
+    // this is in finally to ensure that companion reindex runs for any song dirs that finished, even if a later download fails
     try {
-      await requestSongsReindex();
+      await requestCompanionReindexDownloadedSongDirs(companionReindexSongDirNames);
     } catch (error) {
       const reindexErrorMessage =
         error instanceof Error ? error.message : String(error);
       Logger.error(
-        `Failed to reindex songs directory after download: ${reindexErrorMessage}`,
+        `Failed to reindex downloaded song dirs in companion: ${reindexErrorMessage}`,
       );
       response.reindexRequested = false;
       response.reindexError = reindexErrorMessage;
@@ -74,31 +78,13 @@ export default defineEventHandler(async (event) => {
   return response;
 });
 
-async function requestSongsReindex() {
-  const port = ConfigHelper.getUltraStarCompanionPort();
-  if (!port) {
-    throw createError({
-      statusCode: 500,
-      message: "Ultra Star Companion port not set",
-    });
-  }
-
-  const payload: ReindexDirRequest = {
-    songsDirName: ConfigHelper.getDownloadSongsDir(),
-  };
-
-  const response = await fetch(`http://localhost:${port}/reindexRootDir`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw createError({
-      statusCode: 502,
-      message: `Failed to reindex songs directory: ${response.status} ${response.statusText}`,
+async function requestCompanionReindexDownloadedSongDirs(
+  songDirNames: string[],
+) {
+  const unique = [...new Set(songDirNames)];
+  for (const singleSongDirName of unique) {
+    await requestCompanionReindexSingleSongDir(singleSongDirName, {
+      logPrefix: "[OnlineSongsDownload]",
     });
   }
 }
