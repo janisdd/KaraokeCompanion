@@ -222,6 +222,67 @@ const AudioCell = defineComponent({
   },
 })
 
+const getSendSongErrorMessage = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return undefined
+  }
+  const fetchError = error as {
+    data?: { message?: string }
+    statusMessage?: string
+    message?: string
+  }
+  return fetchError.data?.message || fetchError.statusMessage || fetchError.message
+}
+
+const sendSongToBackend = async (song: SongInfo) => {
+  try {
+    await $fetch("/api/ultrastar/sendSong", {
+      method: "POST",
+      body: { songKey: song.key },
+    })
+  } catch (error) {
+    const message = getSendSongErrorMessage(error)
+    if (message) {
+      console.error(`Failed to send song: ${message}`, error)
+      return
+    }
+    console.error("Failed to send song", error)
+  }
+}
+
+const SendCell = defineComponent({
+  props: {
+    params: {
+      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
+    return () => {
+      const song = props.params.data
+      if (!song) {
+        return null
+      }
+      return h(
+        "button",
+        {
+          type: "button",
+          class:
+            "inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          "aria-label": "Send song",
+          onClick: () => sendSongToBackend(song),
+        },
+        [
+          h(FontAwesomeIcon as any, {
+            icon: "fa-solid fa-paper-plane",
+          }),
+        ],
+      )
+    }
+  },
+})
+
 const missingFilesButtonClass =
   "inline-flex h-7 w-7 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/70"
 
@@ -553,6 +614,16 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     cellStyle: centerCellStyle,
     valueGetter: (params) => (params.data && getAudioFile(params.data) ? 1 : 0),
     cellRenderer: AudioCell,
+  },
+  {
+    headerName: "Send",
+    colId: "send",
+    width: 70,
+    sortable: false,
+    cellStyle: centerCellStyle,
+    headerTooltip: "Select song in Ultra Star", // this onl works if the song is in the current list of songs
+    valueGetter: (params) => (params.data ? 1 : 0),
+    cellRenderer: SendCell,
   },
   {
     headerName: "Files",
