@@ -338,6 +338,69 @@ onUnmounted(() => {
   }
 })
 
+const isUltraStarControlsExpanded = ref(false)
+const ultraStarControlsError = ref<string | null>(null)
+const isStartSelectedUltraStarSongRunning = ref(false)
+const isCloseUltraStarScoreScreenRunning = ref(false)
+const isCancelUltraStarCurrentSongRunning = ref(false)
+const isTogglePauseUltraStarCurrentSongRunning = ref(false)
+
+const startSelectedUltraStarSong = async () => {
+  ultraStarControlsError.value = null
+  isStartSelectedUltraStarSongRunning.value = true
+  try {
+    await $fetch("/api/ultrastar/startSelectedSong", {
+      method: "POST",
+    })
+  } catch (error: unknown) {
+    ultraStarControlsError.value = getFetchErrorMessage(error, "Could not start selected song")
+  } finally {
+    isStartSelectedUltraStarSongRunning.value = false
+  }
+}
+
+const closeUltraStarScoreScreen = async () => {
+  ultraStarControlsError.value = null
+  isCloseUltraStarScoreScreenRunning.value = true
+  try {
+    await $fetch("/api/ultrastar/closeScoreScreen", {
+      method: "POST",
+    })
+  } catch (error: unknown) {
+    ultraStarControlsError.value = getFetchErrorMessage(error, "Could not close score screen")
+  } finally {
+    isCloseUltraStarScoreScreenRunning.value = false
+  }
+}
+
+const cancelUltraStarCurrentSong = async () => {
+  ultraStarControlsError.value = null
+  isCancelUltraStarCurrentSongRunning.value = true
+  try {
+    await $fetch("/api/ultrastar/cancelCurrentSong", {
+      method: "POST",
+    })
+  } catch (error: unknown) {
+    ultraStarControlsError.value = getFetchErrorMessage(error, "Could not cancel current song")
+  } finally {
+    isCancelUltraStarCurrentSongRunning.value = false
+  }
+}
+
+const togglePauseUltraStarCurrentSong = async () => {
+  ultraStarControlsError.value = null
+  isTogglePauseUltraStarCurrentSongRunning.value = true
+  try {
+    await $fetch("/api/ultrastar/togglePauseCurrentSong", {
+      method: "POST",
+    })
+  } catch (error: unknown) {
+    ultraStarControlsError.value = getFetchErrorMessage(error, "Could not toggle pause current song")
+  } finally {
+    isTogglePauseUltraStarCurrentSongRunning.value = false
+  }
+}
+
 const submitAdminLogin = async () => {
   adminLoginError.value = ""
   isAdminLoginSubmitting.value = true
@@ -1199,6 +1262,117 @@ const runMatchLoudnessTwoPassByReference = async () => {
               </p>
             </div>
           </div>
+
+          <div class="flex flex-col gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+            <button
+              type="button"
+              class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+              :aria-expanded="isUltraStarControlsExpanded"
+              @click="isUltraStarControlsExpanded = !isUltraStarControlsExpanded"
+            >
+              <span>Controls</span>
+              <font-awesome-icon
+                :icon="isUltraStarControlsExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
+                class="text-slate-400 dark:text-slate-500"
+              />
+            </button>
+
+            <div v-if="isUltraStarControlsExpanded" class="flex flex-col gap-2">
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Song selection for start happens in UltraStar. These actions call the companion app on the server.
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="
+                    adminSessionPending
+                    || !isAdminAuthenticated
+                    || isStartSelectedUltraStarSongRunning
+                    || isCloseUltraStarScoreScreenRunning
+                    || isCancelUltraStarCurrentSongRunning
+                    || isTogglePauseUltraStarCurrentSongRunning
+                  "
+                  @click="startSelectedUltraStarSong"
+                >
+                  <span
+                    v-if="isStartSelectedUltraStarSongRunning"
+                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <span>{{ isStartSelectedUltraStarSongRunning ? "Starting…" : "Start selected song" }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="
+                    adminSessionPending
+                    || !isAdminAuthenticated
+                    || isStartSelectedUltraStarSongRunning
+                    || isCloseUltraStarScoreScreenRunning
+                    || isCancelUltraStarCurrentSongRunning
+                    || isTogglePauseUltraStarCurrentSongRunning
+                  "
+                  @click="closeUltraStarScoreScreen"
+                >
+                  <span
+                    v-if="isCloseUltraStarScoreScreenRunning"
+                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <span>{{ isCloseUltraStarScoreScreenRunning ? "Closing…" : "Close score screen" }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="
+                    adminSessionPending
+                    || !isAdminAuthenticated
+                    || isStartSelectedUltraStarSongRunning
+                    || isCloseUltraStarScoreScreenRunning
+                    || isCancelUltraStarCurrentSongRunning
+                    || isTogglePauseUltraStarCurrentSongRunning
+                  "
+                  @click="togglePauseUltraStarCurrentSong"
+                >
+                  <span
+                    v-if="isTogglePauseUltraStarCurrentSongRunning"
+                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <span>{{ isTogglePauseUltraStarCurrentSongRunning ? "Toggling pause…" : "Toggle pause current song" }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="
+                    adminSessionPending
+                    || !isAdminAuthenticated
+                    || isStartSelectedUltraStarSongRunning
+                    || isCloseUltraStarScoreScreenRunning
+                    || isCancelUltraStarCurrentSongRunning
+                    || isTogglePauseUltraStarCurrentSongRunning
+                  "
+                  @click="cancelUltraStarCurrentSong"
+                >
+                  <span
+                    v-if="isCancelUltraStarCurrentSongRunning"
+                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <span>{{ isCancelUltraStarCurrentSongRunning ? "Cancelling…" : "Cancel current song" }}</span>
+                </button>
+
+              </div>
+              <p
+                v-if="ultraStarControlsError"
+                class="text-xs text-red-600 dark:text-red-400"
+              >
+                {{ ultraStarControlsError }}
+              </p>
+            </div>
+          </div>
+
           <button
             type="button"
             class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
