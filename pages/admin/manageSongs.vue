@@ -258,7 +258,7 @@ const clearLoudnessWarning = () => {
 const getAnalyzeRequestKey = (songKey: string, analyzerKey: AnalyzeResultKey) =>
   `${songKey}::${analyzerKey}`
 
-const getFetchErrorMessage = (error: unknown, fallback = "Failed to run analyzer") => {
+const getFetchErrorMessage = (error: unknown, fallback = "Failed to fetch data") => {
   if (!error || typeof error !== "object") {
     return fallback
   }
