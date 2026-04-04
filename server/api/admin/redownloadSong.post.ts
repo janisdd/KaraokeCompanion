@@ -46,12 +46,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const indexedLocally = SongsIndexer.hasSong(key)
+
   const onlineSong: OnlineSongInfo = {
     ...plainFromIndex,
     downloading: UsdbAnimuxHelper.isSongDownloadingOrDownloaded(
       plainFromIndex.songId,
     ),
-    indexed: SongsIndexer.hasSong(key),
+    indexed: indexedLocally,
   }
 
   const response: OnlineSongsDownloadResponse = {
@@ -64,7 +66,8 @@ export default defineEventHandler(async (event) => {
   let downloadSucceeded = false
   try {
     await SongRedownloadHelper.copyIndexedSongDirToTrash(key)
-    await UsdbAnimuxHelper.downloadSong(onlineSong, true)
+    // keep new files in the indexed library folder when the song exists locally; otherwise use download dir
+    await UsdbAnimuxHelper.downloadSong(onlineSong, true, !indexedLocally)
     downloadSucceeded = true
   } catch (error) {
     Logger.error(

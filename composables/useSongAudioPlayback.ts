@@ -6,14 +6,14 @@ type AudioPlaybackOptions = {
   getAudioFile: (song: SongInfo) => string | null
 }
 
-const audioFingerprint = (song: SongInfo, getSongKey: (s: SongInfo) => string) => {
-  const file = song.audioFileName?.trim() ?? ""
-  return `${getSongKey(song)}\0${file}`
-}
+const audioFingerprint = (songKey: string, audioFileName: string, rev: string) =>
+  `${songKey}\0${audioFileName}\0${rev}`
 
 export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
   const activeAudio = ref<HTMLAudioElement | null>(null)
   const lastLoadedAudioFingerprint = ref<string | null>(null)
+  let playbackGeneration = 0
+
   const activeAudioKey = useState<string | null>(
     `${options.storageKey}-active-audio-key`,
     () => null,
@@ -70,7 +70,8 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
     activeAudioHandlers.value = null
   }
 
-  const stopActiveAudio = () => {
+  /** Clears element and playback state without bumping generation (used after a rev fetch). */
+  const disposeActiveAudio = () => {
     if (activeAudio.value) {
       removeActiveAudioHandlers()
       activeAudio.value.pause()
@@ -86,43 +87,81 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
     lastLoadedAudioFingerprint.value = null
   }
 
-  const toggleAudioPlayback = (song: SongInfo) => {
-    const audioFile = options.getAudioFile(song)
-    if (!audioFile) {
+  const stopActiveAudio = () => {
+    playbackGeneration += 1
+    disposeActiveAudio()
+  }
+
+  const toggleAudioPlayback = async (song: SongInfo) => {
+    if (!import.meta.client) {
+      return
+    }
+
+    const baseAudioUrl = options.getAudioFile(song)
+    if (!baseAudioUrl) {
       return
     }
 
     const key = options.getSongKey(song)
-    const fp = audioFingerprint(song, options.getSongKey)
+    const file = song.audioFileName?.trim() ?? ""
     const el = activeAudio.value
-    let canReuseSameKeyElement =
+
+    if (
       activeAudioKey.value === key &&
       el != null &&
       el.error == null &&
-      el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE &&
-      lastLoadedAudioFingerprint.value === fp
-
-    if (canReuseSameKeyElement && import.meta.client && el) {
-      const expectedHref = new URL(audioFile, window.location.href).href
-      if (el.currentSrc !== expectedHref) {
-        canReuseSameKeyElement = false
-      }
+      !el.paused
+    ) {
+      el.pause()
+      isActiveAudioPlaying.value = false
+      return
     }
 
-    if (canReuseSameKeyElement && el != null) {
-      if (el.paused) {
-        void el.play().catch(() => {
-          isActiveAudioPlaying.value = false
-        })
-        isActiveAudioPlaying.value = true
-      } else {
-        el.pause()
-        isActiveAudioPlaying.value = false
+    const myGen = ++playbackGeneration
+
+    let rev: string
+    try {
+      const data = await $fetch<{ rev: string }>(
+        `/api/song-audio-rev?songKey=${encodeURIComponent(key)}`,
+      )
+      if (playbackGeneration !== myGen) {
+        return
+      }
+      rev = data.rev
+    } catch {
+      if (playbackGeneration !== myGen) {
+        return
       }
       return
     }
 
-    stopActiveAudio()
+    const audioFile = `${baseAudioUrl}&rev=${encodeURIComponent(rev)}`
+    const fp = audioFingerprint(key, file, rev)
+
+    const canReuseSameKeyElement =
+      activeAudioKey.value === key &&
+      el != null &&
+      el.error == null &&
+      el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE &&
+      lastLoadedAudioFingerprint.value === fp &&
+      el.paused
+
+    if (canReuseSameKeyElement && el) {
+      const expectedHref = new URL(audioFile, window.location.href).href
+      if (el.currentSrc === expectedHref) {
+        void el.play().catch(() => {
+          isActiveAudioPlaying.value = false
+        })
+        isActiveAudioPlaying.value = true
+        return
+      }
+    }
+
+    if (playbackGeneration !== myGen) {
+      return
+    }
+
+    disposeActiveAudio()
 
     const audio = new Audio()
     audio.preload = "auto"

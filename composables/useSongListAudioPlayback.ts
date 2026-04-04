@@ -51,8 +51,8 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
     if (!songKey) {
       return null
     }
-    // `v` ties the URL to the indexed file name so the media element refetches when
-    // the server resolves a different file for the same songKey (reindex / redownload).
+    // `v` ties the URL to the indexed file name when the server resolves a different file
+    // for the same songKey. Live `rev` is appended in useSongAudioPlayback via /api/song-audio-rev.
     const file = song.audioFileName?.trim() ?? ""
     const v = encodeURIComponent(file)
     return `/api/song-audio?songKey=${encodeURIComponent(songKey)}&v=${v}`

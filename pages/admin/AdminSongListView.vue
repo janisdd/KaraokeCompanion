@@ -240,7 +240,7 @@ const onlineSongPlainByKey = computed(() => {
 })
 
 const reDownloadButtonClass =
-  "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+  "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
 
 const AudioCell = defineComponent({
   props: {
@@ -309,6 +309,8 @@ const sendSongToBackend = async (song: SongInfo) => {
   }
 }
 
+const redownloadingSongKeys = ref(new Set<string>())
+
 const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
   const plain = onlineSongPlainByKey.value.get(song.key)
   if (!plain) {
@@ -321,6 +323,11 @@ const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
     console.error("Missing online catalog entry for song", song.key)
     return
   }
+  if (redownloadingSongKeys.value.has(song.key)) {
+    return
+  }
+  redownloadingSongKeys.value = new Set([...redownloadingSongKeys.value, song.key])
+  refreshGrid()
   try {
     const result = await $fetch<OnlineSongsDownloadResponse>(
       "/api/admin/redownloadSong",
@@ -358,6 +365,11 @@ const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
       message: fallback,
     })
     console.error("Failed to redownload song", error)
+  } finally {
+    const next = new Set(redownloadingSongKeys.value)
+    next.delete(song.key)
+    redownloadingSongKeys.value = next
+    refreshGrid()
   }
 }
 
@@ -558,14 +570,20 @@ const ReDownloadCell = defineComponent({
       }
 
       const label = `${song.artist} - ${song.title}`
+      const busy = redownloadingSongKeys.value.has(song.key)
 
       return h(
         "button",
         {
           type: "button",
           class: reDownloadButtonClass,
-          "aria-label": `Re-download ${label} from online catalog`,
-          title: `Re-download ${label} from online catalog`,
+          disabled: busy,
+          "aria-label": busy
+            ? `Re-downloading ${label} from online catalog`
+            : `Re-download ${label} from online catalog`,
+          title: busy
+            ? `Re-downloading ${label}…`
+            : `Re-download ${label} from online catalog`,
           onClick: () => {
             if (
               !window.confirm(
@@ -577,9 +595,15 @@ const ReDownloadCell = defineComponent({
             void redownloadSongFromOnlineCatalog(song)
           },
         },
-        h(FontAwesomeIcon as any, {
-          icon: "fa-solid fa-cloud-arrow-down",
-        }),
+        busy
+          ? h("span", {
+              class:
+                "h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300",
+              "aria-hidden": "true",
+            })
+          : h(FontAwesomeIcon as any, {
+              icon: "fa-solid fa-cloud-arrow-down",
+            }),
       )
     }
   },

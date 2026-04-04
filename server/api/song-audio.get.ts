@@ -1,7 +1,6 @@
 import fs from "fs"
 import { Logger } from "~/helpers/logger"
-import { SongFileHelper } from "~/helpers/songFileHelper"
-import { SongsIndexer } from "~/helpers/songsIndexer"
+import { resolveSongAudioFromKey } from "~/server/utils/resolveSongAudioFromKey"
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -9,52 +8,18 @@ export default defineEventHandler(async (event) => {
 
   Logger.debug(`[SongAudio] Getting audio for songKey: ${songKey}`)
 
-  if (!songKey) {
-    throw createError({ statusCode: 400, message: "Missing songKey" })
-  }
+  const { resolvedPath, mtimeMs, size: fileSize } =
+    await resolveSongAudioFromKey(songKey)
 
-  const song = SongsIndexer.getSongsMap().get(songKey)
-  if (!song) {
-    throw createError({ statusCode: 404, message: "Song not found" })
-  }
+  Logger.debug(`[SongAudio] Audio file: ${resolvedPath}`)
 
-  const audioPath = song.audioFileName?.trim() ?? ""
-  if (!audioPath) {
-    throw createError({ statusCode: 404, message: "Audio file not available" })
-  }
-  if (!audioPath.toLowerCase().endsWith(".mp3")) {
-    throw createError({ statusCode: 400, message: "Invalid audio file" })
-  }
-
-  Logger.debug(`[SongAudio] Audio file: ${audioPath}`)
-
-  const songRoot = SongsIndexer.getSongRootMap().get(songKey)
-  if (!songRoot) {
-    throw createError({ statusCode: 404, message: "Song root not found" })
-  }
-
-  const resolvedPath = SongFileHelper.resolveSongFilePath(
-    songRoot,
-    song.songDirName,
-    song.audioFileName,
-  )
-  if (!resolvedPath) {
-    throw createError({ statusCode: 403, message: "Invalid audio path" })
-  }
-
-  try {
-    await fs.promises.access(resolvedPath)
-  } catch {
-    throw createError({ statusCode: 404, message: "Audio file not found" })
-  }
-
-  const stat = await fs.promises.stat(resolvedPath)
-  const fileSize = stat.size
   const rangeHeader = getHeader(event, "range")
+  const etag = `W/"${fileSize}-${mtimeMs}"`
 
   setHeader(event, "Content-Type", "audio/mpeg")
   setHeader(event, "Accept-Ranges", "bytes")
   setHeader(event, "Cache-Control", "private, no-store")
+  setHeader(event, "ETag", etag)
 
   if (!rangeHeader || typeof rangeHeader !== "string") {
     setHeader(event, "Content-Length", fileSize)

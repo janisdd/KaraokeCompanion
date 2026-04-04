@@ -56,11 +56,30 @@ export class UsdbAnimuxHelper {
     return this._downloadingOrDownloadedSongIds.has(songId);
   }
 
-  public static async downloadSong(song: OnlineSongInfo, forceDownload: boolean = false): Promise<void> {
-    const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
+  public static async downloadSong(
+    song: OnlineSongInfo,
+    forceDownload: boolean = false,
+    useDownloadDir: boolean = true,
+  ): Promise<void> {
+    let baseDir: string;
+    let songDirNameOverride: string | null = null;
 
-    if (!downloadSongsDir) {
-      throw new Error("Download songs directory not set");
+    if (useDownloadDir) {
+      const downloadSongsDir = ConfigHelper.getDownloadSongsDir();
+      if (!downloadSongsDir) {
+        throw new Error("Download songs directory not set");
+      }
+      baseDir = downloadSongsDir;
+    } else {
+      const songsRoot = SongsIndexer.getSongRootMap().get(song.key);
+      const songInfo = SongsIndexer.getSongsMap().get(song.key);
+      if (!songsRoot || !songInfo) {
+        throw new Error(
+          "Cannot place song in original location: not found in local songs index",
+        );
+      }
+      baseDir = songsRoot;
+      songDirNameOverride = songInfo.songDirName;
     }
 
     // const songUrl = `${ConfigHelper.getUsdbAnimuxUrl()}/index.php?link=detail&id=4978`;
@@ -114,7 +133,13 @@ export class UsdbAnimuxHelper {
       await this._ensureUsdbSession(page);
 
       //now we are logged in
-      const { downloadSingleSongDirPath } = await this._downloadSingleSong(page, songUrl, downloadSongsDir, songId);
+      const { downloadSingleSongDirPath } = await this._downloadSingleSong(
+        page,
+        songUrl,
+        baseDir,
+        songId,
+        songDirNameOverride,
+      );
 
       // wait for 1s to finish
       await new Promise((resolve) => setTimeout(resolve, 1_000));
@@ -124,7 +149,7 @@ export class UsdbAnimuxHelper {
       browser = null;
 
       // when all is done, we can index the new directory
-      await SongsIndexer.indexSingleSongDir(downloadSingleSongDirPath, downloadSongsDir, 0, 1);
+      await SongsIndexer.indexSingleSongDir(baseDir, downloadSingleSongDirPath, 0, 1);
       // Recompute the online song flags now that the local song index contains the download.
       AllOnlineSongsIndexer.addSingOnlineSongInfoToIndex({
         key: song.key,
@@ -156,11 +181,13 @@ export class UsdbAnimuxHelper {
   }
 
   // if forceDownload is true, then the song will be downloaded even if it already exists
+  // songDirNameOverride: when set (original library location), use this folder name instead of the USDB page title
   private static async _downloadSingleSong(
     page: Page,
     url: string,
-    downloadSongsDir: string,
+    baseDir: string,
     songId: string,
+    songDirNameOverride: string | null,
   ) {
     
     Logger.log(`Downloading song from URL: ${url}`);
@@ -188,10 +215,8 @@ export class UsdbAnimuxHelper {
     const convertAudioFormat = ConfigHelper.getDownloadConvertAudioFormat();
 
     const songTitleSanitized = songTitle.replace(INVALID_SONG_TITLE_CHARS_REGEX, "_");
-    const downloadSingleSongDirPath = path.resolve(
-      downloadSongsDir,
-      songTitleSanitized,
-    );
+    const songDirName = songDirNameOverride ?? songTitleSanitized;
+    const downloadSingleSongDirPath = path.resolve(baseDir, songDirName);
     if (!fs.existsSync(downloadSingleSongDirPath)) {
       await fs.promises.mkdir(downloadSingleSongDirPath);
     } else {
