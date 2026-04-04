@@ -224,7 +224,7 @@ export const useOnlineSongDownloads = <
 
     try {
       const response = await $fetch<OnlineSongsDownloadResponse>(
-        "/api/onlineSongsDownload",
+        "/api/ultrastar/onlineSongsDownload",
         {
           method: "POST",
           body: {

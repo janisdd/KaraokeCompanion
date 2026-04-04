@@ -258,9 +258,9 @@ const clearLoudnessWarning = () => {
 const getAnalyzeRequestKey = (songKey: string, analyzerKey: AnalyzeResultKey) =>
   `${songKey}::${analyzerKey}`
 
-const getFetchErrorMessage = (error: unknown) => {
+const getFetchErrorMessage = (error: unknown, fallback = "Failed to run analyzer") => {
   if (!error || typeof error !== "object") {
-    return "Failed to run analyzer"
+    return fallback
   }
 
   const fetchError = error as {
@@ -273,9 +273,70 @@ const getFetchErrorMessage = (error: unknown) => {
     fetchError.data?.message ||
     fetchError.statusMessage ||
     fetchError.message ||
-    "Failed to run analyzer"
+    fallback
   )
 }
+
+const CURRENT_SONG_POLL_INTERVAL_MS = 5000
+
+type UltraStarCurrentSongResponse = {
+  playing: boolean
+  song: SongInfo | null
+}
+
+const isUltraStarCurrentSongExpanded = ref(false)
+const ultraStarCurrentSongPending = ref(false)
+const ultraStarCurrentSongTitle = ref<string | null>(null)
+const ultraStarCurrentSongArtist = ref<string | null>(null)
+const ultraStarCurrentSongError = ref<string | null>(null)
+
+let ultraStarCurrentSongIntervalId: ReturnType<typeof setInterval> | null = null
+
+const refreshUltraStarCurrentSong = async () => {
+  if (!isUltraStarCurrentSongExpanded.value) {
+    return
+  }
+
+  ultraStarCurrentSongPending.value = true
+  ultraStarCurrentSongError.value = null
+  try {
+    const data = await $fetch<UltraStarCurrentSongResponse>("/api/ultrastar/getCurrentSong")
+    ultraStarCurrentSongTitle.value = data.song?.title ?? null
+    ultraStarCurrentSongArtist.value = data.song?.artist ?? null
+  } catch (error: unknown) {
+    ultraStarCurrentSongTitle.value = null
+    ultraStarCurrentSongArtist.value = null
+    ultraStarCurrentSongError.value = getFetchErrorMessage(error, "Could not load current song")
+  } finally {
+    ultraStarCurrentSongPending.value = false
+  }
+}
+
+watch(isUltraStarCurrentSongExpanded, (expanded) => {
+  if (ultraStarCurrentSongIntervalId !== null) {
+    clearInterval(ultraStarCurrentSongIntervalId)
+    ultraStarCurrentSongIntervalId = null
+  }
+
+  if (!expanded) {
+    ultraStarCurrentSongPending.value = false
+    ultraStarCurrentSongTitle.value = null
+    ultraStarCurrentSongArtist.value = null
+    ultraStarCurrentSongError.value = null
+    return
+  }
+
+  void refreshUltraStarCurrentSong()
+  ultraStarCurrentSongIntervalId = setInterval(() => {
+    void refreshUltraStarCurrentSong()
+  }, CURRENT_SONG_POLL_INTERVAL_MS)
+}, { immediate: true })
+
+onUnmounted(() => {
+  if (ultraStarCurrentSongIntervalId !== null) {
+    clearInterval(ultraStarCurrentSongIntervalId)
+  }
+})
 
 const submitAdminLogin = async () => {
   adminLoginError.value = ""
@@ -1093,6 +1154,51 @@ const runMatchLoudnessTwoPassByReference = async () => {
         <div
           class="flex w-full flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
+          <div class="flex flex-col gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+            <button
+              type="button"
+              class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+              :aria-expanded="isUltraStarCurrentSongExpanded"
+              @click="isUltraStarCurrentSongExpanded = !isUltraStarCurrentSongExpanded"
+            >
+              <span>Current UltraStar song</span>
+              <font-awesome-icon
+                :icon="isUltraStarCurrentSongExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
+                class="text-slate-400 dark:text-slate-500"
+              />
+            </button>
+
+            <div v-if="isUltraStarCurrentSongExpanded" class="flex flex-col gap-2">
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Updates every {{ CURRENT_SONG_POLL_INTERVAL_MS / 1000 }} seconds while this section is open.
+              </p>
+              <p
+                v-if="ultraStarCurrentSongPending"
+                class="text-xs text-slate-500 dark:text-slate-400"
+              >
+                Loading…
+              </p>
+              <p
+                v-else-if="ultraStarCurrentSongError"
+                class="text-xs text-red-600 dark:text-red-400"
+              >
+                {{ ultraStarCurrentSongError }}
+              </p>
+              <p
+                v-else-if="ultraStarCurrentSongTitle && ultraStarCurrentSongArtist"
+                class="text-sm text-slate-800 dark:text-slate-100"
+              >
+                <span class="font-medium">{{ ultraStarCurrentSongTitle }}</span>
+                <span class="text-slate-500 dark:text-slate-400"> · {{ ultraStarCurrentSongArtist }}</span>
+              </p>
+              <p
+                v-else
+                class="text-xs text-slate-500 dark:text-slate-400"
+              >
+                Nothing playing
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             class="inline-flex items-center justify-between gap-3 rounded-lg px-1 py-1 text-left font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"

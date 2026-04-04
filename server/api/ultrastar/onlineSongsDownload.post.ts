@@ -88,7 +88,7 @@ async function requestSongsReindex() {
     songsDirName: ConfigHelper.getDownloadSongsDir(),
   };
 
-  const response = await fetch(`http://localhost:${port}/reindexDir`, {
+  const response = await fetch(`http://localhost:${port}/reindexRootDir`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

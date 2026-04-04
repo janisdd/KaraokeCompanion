@@ -67,7 +67,7 @@ const sendCompanionPlaylist = async () => {
   }
 
   try {
-    await $fetch("/api/companionPlaylist", {
+    await $fetch("/api/ultrastar/companionPlaylist", {
       method: "POST",
       body: { songKeys: markedSongs.value.map((song) => song.key) },
     })

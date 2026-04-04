@@ -91,7 +91,7 @@ const getSendSongErrorMessage = (error: unknown) => {
 
 const sendSongToBackend = async (song: SongInfo) => {
   try {
-    await $fetch("/api/sendSong", {
+    await $fetch("/api/ultrastar/sendSong", {
       method: "POST",
       body: { songKey: song.key },
     });
