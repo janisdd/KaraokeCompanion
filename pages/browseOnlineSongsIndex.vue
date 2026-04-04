@@ -3,6 +3,7 @@ import { AgGridVue } from "ag-grid-vue3";
 import {
   themeQuartz,
   type ColDef,
+  type GetRowIdParams,
   type GridApi,
   type GridReadyEvent,
   type ICellRendererParams,
@@ -51,6 +52,13 @@ const {
   error,
   refresh: refreshOnlineSongsIndex,
 } = await useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex");
+
+const showOnlineSongsGrid = computed(
+  () => Boolean(response.value) && !error.value,
+);
+
+const getOnlineSongRowId = (params: GetRowIdParams<OnlineSongRow>) =>
+  params.data?.key ?? "";
 
 const {
   songs: existingSongs,
@@ -405,7 +413,8 @@ const defaultColDef: ColDef<OnlineSongRow> = {
         <div
           class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400"
         >
-          <span v-if="pending">Loading online songs...</span>
+          <span v-if="pending && !response">Loading online songs...</span>
+          <span v-else-if="pending">Refreshing online songs...</span>
           <span v-else-if="existingSongsPending">Loading existing songs...</span>
           <span v-else-if="error">Failed to load online songs.</span>
           <span v-else-if="existingSongsError">Failed to load existing songs.</span>
@@ -477,7 +486,7 @@ const defaultColDef: ColDef<OnlineSongRow> = {
         </div>
 
         <div
-          v-if="!pending && !error"
+          v-if="showOnlineSongsGrid"
           class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
         >
           <AgGridVue
@@ -486,6 +495,7 @@ const defaultColDef: ColDef<OnlineSongRow> = {
             :data-ag-theme-mode="agThemeMode"
             :columnDefs="columnDefs"
             :defaultColDef="defaultColDef"
+            :getRowId="getOnlineSongRowId"
             :rowData="filteredSongs"
             @grid-ready="onGridReady"
           />

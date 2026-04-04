@@ -3,6 +3,7 @@ import { AgGridVue } from "ag-grid-vue3"
 import {
   themeQuartz,
   type ColDef,
+  type GetRowIdParams,
   type GridApi,
   type GridReadyEvent,
   type ICellRendererParams,
@@ -82,6 +83,22 @@ const { songs, pending, error, refresh: refreshSongs } = useSongs({
   autoFetch: !props.deferSongFetch,
   stateKey: props.songsCatalogKey,
 })
+
+const songsCatalogFetchCompletedOnce = ref(false)
+
+watch(pending, (isPending, wasPending) => {
+  if (wasPending && !isPending) {
+    songsCatalogFetchCompletedOnce.value = true
+  }
+})
+
+const showInitialSongsLoading = computed(
+  () => pending.value && !songsCatalogFetchCompletedOnce.value,
+)
+
+const getAdminSongRowId = (params: GetRowIdParams<SongInfo>) =>
+  params.data?.key ?? ""
+
 const totalCount = computed(() => songs.value?.length ?? 0)
 
 const songSource = computed(() => songs.value ?? [])
@@ -1186,7 +1203,10 @@ watch(onlineSongsIndexResponse, () => {
         </div>
         <div class="flex items-center gap-2 md:flex-col md:items-end md:gap-1">
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            Showing {{ sortedSongs.length }} of {{ totalCount }}
+            Showing {{ sortedSongs.length }} of {{ totalCount }}<span
+              v-if="pending && songsCatalogFetchCompletedOnce"
+            >
+              · Refreshing…</span>
           </p>
           <slot name="header-actions" />
         </div>
@@ -1194,7 +1214,7 @@ watch(onlineSongsIndexResponse, () => {
 
       <div class="flex min-h-0 flex-1 flex-col">
         <div
-          v-if="pending"
+          v-if="showInitialSongsLoading"
           class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
           Loading songs…
@@ -1216,6 +1236,7 @@ watch(onlineSongsIndexResponse, () => {
               :theme="themeQuartz"
               :data-ag-theme-mode="agThemeMode"
               :defaultColDef="defaultColDef"
+              :getRowId="getAdminSongRowId"
               :rowData="sortedSongs"
               :rowHeight="rowHeight"
               @grid-ready="onGridReady"

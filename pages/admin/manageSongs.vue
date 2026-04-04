@@ -97,7 +97,7 @@ const showAdminLoginModal = computed(
 const activeAnalyzeRequestKey = ref<string | null>(null)
 const analyzerActionError = ref<string | null>(null)
 const isLoadExistingAnalyzeResultsRunning = ref(false)
-const isReindexSongsRunning = ref(false)
+const isReindexLocalSongsRunning = ref(false)
 const isLoudnessToolsExpanded = ref(false)
 const loudnessTolerance = ref(5)
 const loudnessWarningsBySong = ref<Record<string, LoudnessWarning>>({})
@@ -522,7 +522,7 @@ const runAnalyzer = async (payload: {
 }
 
 const loadExistingAnalyzeResults = async () => {
-  if (isLoadExistingAnalyzeResultsRunning.value || isReindexSongsRunning.value) {
+  if (isLoadExistingAnalyzeResultsRunning.value || isReindexLocalSongsRunning.value) {
     return
   }
 
@@ -549,8 +549,8 @@ const loadExistingAnalyzeResults = async () => {
   }
 }
 
-const reindexAllSongs = async () => {
-  if (isReindexSongsRunning.value || isLoadExistingAnalyzeResultsRunning.value) {
+const reindexAllLocalSongs = async () => {
+  if (isReindexLocalSongsRunning.value || isLoadExistingAnalyzeResultsRunning.value) {
     return
   }
 
@@ -563,7 +563,7 @@ const reindexAllSongs = async () => {
   }
 
   analyzerActionError.value = null
-  isReindexSongsRunning.value = true
+  isReindexLocalSongsRunning.value = true
 
   try {
     const response = await $fetch<ReindexLocalSongsResponse>("/api/admin/reindexLocalSongs", {
@@ -581,7 +581,7 @@ const reindexAllSongs = async () => {
   } catch (error) {
     analyzerActionError.value = getFetchErrorMessage(error)
   } finally {
-    isReindexSongsRunning.value = false
+    isReindexLocalSongsRunning.value = false
   }
 }
 
@@ -1177,32 +1177,24 @@ const runMatchLoudnessTwoPassByReference = async () => {
       <template #header-actions>
         <div class="flex flex-wrap items-center gap-2">
           <button
-            v-if="isAdminAuthenticated && !adminSessionPending"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            @click="logoutAsAdmin"
-          >
-            Logout as admin
-          </button>
-          <button
             type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            :disabled="isReindexSongsRunning || isLoadExistingAnalyzeResultsRunning"
-            @click="reindexAllSongs"
+            :disabled="isReindexLocalSongsRunning || isLoadExistingAnalyzeResultsRunning"
+            @click="reindexAllLocalSongs"
           >
             <span
-              v-if="isReindexSongsRunning"
+              v-if="isReindexLocalSongsRunning"
               class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
               aria-hidden="true"
             />
             <span>
-              {{ isReindexSongsRunning ? "Reindexing songs" : "Reindex all songs" }}
+              {{ isReindexLocalSongsRunning ? "Reindexing local songs" : "Reindex all local songs (not in usdx)" }}
             </span>
           </button>
           <button
             type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            :disabled="isLoadExistingAnalyzeResultsRunning || isReindexSongsRunning"
+            :disabled="isLoadExistingAnalyzeResultsRunning || isReindexLocalSongsRunning"
             @click="loadExistingAnalyzeResults"
           >
             <span
@@ -1213,6 +1205,14 @@ const runMatchLoudnessTwoPassByReference = async () => {
             <span>
               {{ isLoadExistingAnalyzeResultsRunning ? "Loading analyzer results" : "Reload analyzer results" }}
             </span>
+          </button>
+          <button
+            v-if="isAdminAuthenticated && !adminSessionPending"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            @click="logoutAsAdmin"
+          >
+            Logout as admin
           </button>
         </div>
       </template>
