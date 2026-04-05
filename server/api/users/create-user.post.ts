@@ -3,7 +3,7 @@ import { UsersIndexer, frontendUiThemeSchema, userNameSchema } from "~/helpers/u
 
 const createUserBodySchema = z.object({
   name: userNameSchema,
-  theme: frontendUiThemeSchema.default("dark"),
+  theme: frontendUiThemeSchema.default("auto"),
   markedSongs: z.array(z.string()).optional(),
 })
 

@@ -69,6 +69,7 @@
               :disabled="isSettingsThemeSaving"
               @change="onThemeChange"
             >
+              <option value="auto">System</option>
               <option value="dark">Dark</option>
               <option value="light">Light</option>
             </select>
@@ -256,7 +257,7 @@ const onThemeChange = (event: Event) => {
   }
 
   const theme = select.value
-  if (theme !== "dark" && theme !== "light") {
+  if (theme !== "dark" && theme !== "light" && theme !== "auto") {
     return
   }
 

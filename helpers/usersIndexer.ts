@@ -14,7 +14,7 @@ export const userNameSchema = z
   .min(1)
   .regex(/^[a-zA-Z0-9_-]+$/, "User name may only contain a-z, A-Z, 0-9, _ and -")
 
-export const frontendUiThemeSchema = z.enum(["light", "dark"])
+export const frontendUiThemeSchema = z.enum(["light", "dark", "auto"])
 
 export const userSchema = z.object({
   version: z.string().min(1),

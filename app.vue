@@ -440,10 +440,23 @@ const pageTitle = computed(() => {
   }
   return 'Karaoke Companion'
 })
-const isDark = useState(
-  'isDarkMode',
-  () => themeCookie.value === 'dark' || (themeCookie.value == null && defaultThemeDark)
+type UiThemeMode = 'dark' | 'light' | 'auto'
+const themeMode = useState<UiThemeMode>('uiThemeMode', () => {
+  const cookieValue = themeCookie.value
+  if (cookieValue === 'auto' || cookieValue === 'dark' || cookieValue === 'light') {
+    return cookieValue
+  }
+  return defaultThemeDark ? 'dark' : 'light'
+})
+const systemPrefersDark = ref(false)
+const isDark = computed(() =>
+  themeMode.value === 'auto' ? systemPrefersDark.value : themeMode.value === 'dark'
 )
+
+const isDarkModeShared = useState<boolean>('isDarkMode', () => false)
+watch(isDark, (dark) => {
+  isDarkModeShared.value = dark
+}, { immediate: true })
 const isQrModalOpen = ref(false)
 const isUserMenuOpen = ref(false)
 const isMobileMenuOpen = ref(false)
@@ -459,7 +472,11 @@ const closeMenusAfterUserNav = () => {
 }
 
 const onUserSettingsThemeSaved = (theme: FrontendUiTheme) => {
-  setTheme(theme === "dark")
+  if (theme === 'auto') {
+    setThemeAuto()
+  } else {
+    setThemeExplicit(theme === 'dark')
+  }
 }
 
 const openUserSettings = () => {
@@ -555,27 +572,85 @@ const applyDarkClass = (value: boolean) => {
   document.documentElement.classList.toggle('dark', value)
 }
 
-const setTheme = (value: boolean) => {
-  isDark.value = value
-  themeCookie.value = value ? 'dark' : 'light'
-  if (process.client) {
-    localStorage.setItem('theme', value ? 'dark' : 'light')
+let systemThemeMql: MediaQueryList | null = null
+const onSystemThemeMediaChange = () => {
+  if (themeMode.value !== 'auto') {
+    return
   }
-  applyDarkClass(value)
+  systemPrefersDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
+const stopListeningSystemTheme = () => {
+  if (systemThemeMql) {
+    systemThemeMql.removeEventListener('change', onSystemThemeMediaChange)
+    systemThemeMql = null
+  }
+}
+
+const startListeningSystemTheme = () => {
+  stopListeningSystemTheme()
+  if (!import.meta.client) {
+    return
+  }
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  systemPrefersDark.value = mq.matches
+  mq.addEventListener('change', onSystemThemeMediaChange)
+  systemThemeMql = mq
+}
+
+const setThemeExplicit = (dark: boolean) => {
+  themeMode.value = dark ? 'dark' : 'light'
+  themeCookie.value = dark ? 'dark' : 'light'
+  if (import.meta.client) {
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }
+  stopListeningSystemTheme()
+}
+
+const setThemeAuto = () => {
+  themeMode.value = 'auto'
+  themeCookie.value = 'auto'
+  if (import.meta.client) {
+    localStorage.setItem('theme', 'auto')
+    startListeningSystemTheme()
+  }
+}
+
+watch(isDark, (dark) => {
+  applyDarkClass(dark)
+}, { immediate: true })
+
+watch(
+  () => themeMode.value,
+  (mode) => {
+    if (!import.meta.client) {
+      return
+    }
+    if (mode === 'auto') {
+      startListeningSystemTheme()
+    } else {
+      stopListeningSystemTheme()
+    }
+  },
+  { immediate: true }
+)
+
 const initTheme = () => {
-  if (!process.client) return
+  if (!import.meta.client) {
+    return
+  }
   const storedTheme = localStorage.getItem('theme')
   if (storedTheme === 'dark' || storedTheme === 'light') {
-    setTheme(storedTheme === 'dark')
+    setThemeExplicit(storedTheme === 'dark')
+  } else if (storedTheme === 'auto') {
+    setThemeAuto()
   } else {
-    setTheme(defaultThemeDark)
+    setThemeExplicit(defaultThemeDark)
   }
 }
 
 const applyThemeForLoggedInUser = async (): Promise<boolean> => {
-  if (!process.client || !loggedIn.value) {
+  if (!import.meta.client || !loggedIn.value) {
     return false
   }
 
@@ -583,14 +658,22 @@ const applyThemeForLoggedInUser = async (): Promise<boolean> => {
   if (sessionUser && typeof sessionUser === "object") {
     const theme = (sessionUser as { theme?: unknown }).theme
     if (theme === "dark" || theme === "light") {
-      setTheme(theme === "dark")
+      setThemeExplicit(theme === "dark")
+      return true
+    }
+    if (theme === "auto") {
+      setThemeAuto()
       return true
     }
   }
 
   try {
     const profile = await $fetch<UserWithDir>("/api/users/session-user")
-    setTheme(profile.theme === "dark")
+    if (profile.theme === "auto") {
+      setThemeAuto()
+    } else {
+      setThemeExplicit(profile.theme === "dark")
+    }
     return true
   } catch {
     return false
@@ -599,7 +682,7 @@ const applyThemeForLoggedInUser = async (): Promise<boolean> => {
 
 const toggleDarkMode = () => {
   closeUserMenu()
-  setTheme(!isDark.value)
+  setThemeExplicit(!isDark.value)
 }
 
 const loadQrCode = async () => {
@@ -715,6 +798,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  stopListeningSystemTheme()
   document.removeEventListener('pointerdown', onDocumentPointerDownCloseUserMenu)
 })
 
