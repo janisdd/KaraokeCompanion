@@ -251,9 +251,17 @@ const logout = async () => {
           >
             <div class="space-y-3">
               <div class="flex flex-wrap items-center justify-between gap-2">
-                <h2 class="min-w-0 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {{ user.name }}
-                </h2>
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <h2 class="min-w-0 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {{ user.name }}
+                  </h2>
+                  <span
+                    v-if="loggedInUserName === user.name"
+                    class="inline-flex shrink-0 items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400"
+                  >
+                    Active
+                  </span>
+                </div>
                 <button
                   v-if="loggedInUserName !== user.name"
                   type="button"
