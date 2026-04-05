@@ -225,3 +225,4 @@ Also the table views try to display the hit in context in the preview column if 
 
 - muatex for download songs
 - download if no mp4  are available?
+- cookie is never updated and expires after 6 hours
