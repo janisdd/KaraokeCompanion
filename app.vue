@@ -122,7 +122,7 @@
                   role="menuitem"
                   @click="closeMenusAfterUserNav"
                 >
-                  Users
+                  Users list
                 </NuxtLink>
                 <button
                   type="button"

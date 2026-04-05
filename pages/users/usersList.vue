@@ -22,7 +22,7 @@ const defaultCreateForm = () => ({
 const { data: usersResponse, pending, error, refresh } =
   await useFetch<UserWithDir[]>("/api/users/users")
 
-const { user: sessionUserRef } = useUserSession()
+const { user: sessionUserRef, fetch: refetchUserSession } = useUserSession()
 const loggedInUserName = computed(() => {
   const sessionUser = sessionUserRef.value
   if (!sessionUser || typeof sessionUser !== "object" || !("name" in sessionUser)) {
@@ -129,10 +129,16 @@ const createUser = async () => {
       body: payload,
     })
 
-    await refresh()
-    successMessage.value = `User '${createdUser.name}' created`
     isCreateModalOpen.value = false
     createForm.value = defaultCreateForm()
+
+    if (import.meta.client) {
+      loginAsUser(createdUser.name)
+      return
+    }
+
+    await refresh()
+    successMessage.value = `User '${createdUser.name}' created`
   } catch (error) {
     createUserErrorMessage.value = getFetchErrorMessage(error, "Failed to create user")
   } finally {
@@ -147,6 +153,22 @@ const loginAsUser = (name: string) => {
 
   const url = `/api/users/login?name=${encodeURIComponent(name)}`
   window.location.assign(url)
+}
+
+const isLoggingOut = ref(false)
+
+const logout = async () => {
+  if (isLoggingOut.value) {
+    return
+  }
+
+  isLoggingOut.value = true
+  try {
+    await $fetch("/api/users/logout", { method: "POST" })
+    await refetchUserSession()
+  } finally {
+    isLoggingOut.value = false
+  }
 }
 </script>
 
@@ -240,12 +262,15 @@ const loginAsUser = (name: string) => {
                 >
                   Login
                 </button>
-                <span
+                <button
                   v-else
-                  class="inline-flex shrink-0 items-center rounded-lg px-3 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400"
+                  type="button"
+                  class="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="isLoggingOut"
+                  @click="logout"
                 >
-                  Active
-                </span>
+                  {{ isLoggingOut ? "Logging out…" : "Logout" }}
+                </button>
               </div>
 
               <dl class="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
