@@ -89,6 +89,16 @@ export function getTempExecutionFilePath(executionFilePath: string): string {
   )
 }
 
+// POSIX rename replaces an existing destination; on Windows rename/move onto an existing file fails (EPERM / access denied).
+function replaceFileWithTempOutput(tempPath: string, finalPath: string) {
+  if (process.platform === "win32") {
+    fs.copyFileSync(tempPath, finalPath)
+    fs.unlinkSync(tempPath)
+    return
+  }
+  fs.renameSync(tempPath, finalPath)
+}
+
 export async function executeWithTempFileSwap(
   songsRootDir: string,
   songDirName: string,
@@ -107,7 +117,7 @@ export async function executeWithTempFileSwap(
 
   try {
     await executeFn(originalFilePath, tempExecutionFilePath)
-    fs.renameSync(tempExecutionFilePath, currentFilePath)
+    replaceFileWithTempOutput(tempExecutionFilePath, currentFilePath)
     return currentFilePath
   } catch (error) {
     if (fs.existsSync(tempExecutionFilePath)) {
