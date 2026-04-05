@@ -1,6 +1,75 @@
 import path from "path"
 import fs from "fs"
+import type { SongInfo } from "../../types/song"
+import { ConfigHelper } from "../../helpers/configHelper"
 import { Logger } from "../../helpers/logger"
+import { SongsIndexer } from "../../helpers/songsIndexer"
+
+// this is only required on windows but to make the behavior consistent we always do it
+const STOP_AND_RESUME_SONG_PREVIEW_FOR_EXECUTE_HELPERS = true
+
+/** POST /stopSongPreview and POST /startSongPreview */
+export type CompanionSongPreviewRequest = {
+  title: string
+  artist: string
+}
+
+export type CompanionOkResponse = {
+  ok: true
+}
+
+export type CompanionErrorResponse = {
+  ok: false
+  error: string
+}
+
+export type CompanionSongPreviewResponse = CompanionOkResponse | CompanionErrorResponse
+
+function findSongInfoBySongDirName(songDirName: string): SongInfo | null {
+  for (const info of SongsIndexer.getSongsMap().values()) {
+    if (info.songDirName === songDirName) {
+      return info
+    }
+  }
+  return null
+}
+
+async function postCompanionSongPreview(
+  endpointPath: "/stopSongPreview" | "/startSongPreview",
+  song: Pick<SongInfo, "title" | "artist">,
+): Promise<CompanionSongPreviewResponse | null> {
+  const url = ConfigHelper.getUltraStarCompanionRequestUrl(endpointPath)
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: song.title,
+        artist: song.artist,
+      } satisfies CompanionSongPreviewRequest),
+    })
+    const data = (await response.json()) as CompanionSongPreviewResponse
+    if (!response.ok) {
+      Logger.error(
+        `[ExecuteHelperInterface] ${endpointPath} HTTP ${response.status}: ${JSON.stringify(data)}`,
+      )
+      return data
+    }
+    if (!data || typeof data !== "object" || !("ok" in data)) {
+      Logger.error(`[ExecuteHelperInterface] ${endpointPath} invalid JSON body`)
+      return null
+    }
+    if (data.ok === false) {
+      Logger.error(`[ExecuteHelperInterface] ${endpointPath}: ${data.error}`)
+    }
+    return data
+  } catch (err) {
+    Logger.error(`[ExecuteHelperInterface] ${endpointPath} request failed: ${err}`)
+    return null
+  }
+}
 
 /**
  * in contrast to analyze helpers, execute helpers are used to execute a command on a song directory
@@ -115,8 +184,20 @@ export async function executeWithTempFileSwap(
   )
   const tempExecutionFilePath = getTempExecutionFilePath(originalFilePath)
 
+  const previewSong =
+    STOP_AND_RESUME_SONG_PREVIEW_FOR_EXECUTE_HELPERS
+      ? findSongInfoBySongDirName(songDirName)
+      : null
+
+  // executeFn only writes the temp path; the file preview may use stays untouched until replace
+  let shouldRestartSongPreviewAfterReplace = false
+
   try {
     await executeFn(originalFilePath, tempExecutionFilePath)
+    if (previewSong) {
+      await postCompanionSongPreview("/stopSongPreview", previewSong)
+      shouldRestartSongPreviewAfterReplace = true
+    }
     replaceFileWithTempOutput(tempExecutionFilePath, currentFilePath)
     return currentFilePath
   } catch (error) {
@@ -125,5 +206,9 @@ export async function executeWithTempFileSwap(
     }
 
     throw error
+  } finally {
+    if (previewSong && shouldRestartSongPreviewAfterReplace) {
+      await postCompanionSongPreview("/startSongPreview", previewSong)
+    }
   }
 }
