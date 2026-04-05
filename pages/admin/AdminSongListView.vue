@@ -1202,17 +1202,21 @@ watch(onlineSongsIndexResponse, () => {
           </div>
         </div>
         <div class="flex items-center gap-2 md:flex-col md:items-end md:gap-1">
+          <slot name="header-actions" />
+        </div>
+      </div>
+
+      <div class="flex min-h-0 flex-1 flex-col gap-1">
+        <div class="flex shrink-0 justify-end">
           <p class="text-xs text-slate-500 dark:text-slate-400">
             Showing {{ sortedSongs.length }} of {{ totalCount }}<span
               v-if="pending && songsCatalogFetchCompletedOnce"
             >
               · Refreshing…</span>
           </p>
-          <slot name="header-actions" />
         </div>
-      </div>
 
-      <div class="flex min-h-0 flex-1 flex-col">
+        <div class="flex min-h-0 flex-1 flex-col">
         <div
           v-if="showInitialSongsLoading"
           class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -1249,6 +1253,7 @@ watch(onlineSongsIndexResponse, () => {
           >
             {{ emptyMessage }}
           </div>
+        </div>
         </div>
       </div>
     </div>

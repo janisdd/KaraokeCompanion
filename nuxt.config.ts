@@ -39,6 +39,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // h3 session defaults to secure cookies; those work on http://localhost but not on http://<LAN_IP>
     session: {
+      maxAge: 60 * 60 * 6, // 6 hour
       cookie: {
         secure: false,
       },

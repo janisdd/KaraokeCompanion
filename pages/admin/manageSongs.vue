@@ -1197,7 +1197,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
               aria-hidden="true"
             />
             <span>
-              {{ isReindexLocalSongsRunning ? "Reindexing local songs" : "Reindex all local songs (not in usdx)" }}
+              {{ isReindexLocalSongsRunning ? "Reindexing local songs" : "Reindex all local songs (not in usdx) and analyzer results" }}
             </span>
           </button>
           <button
