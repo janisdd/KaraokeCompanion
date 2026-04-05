@@ -153,6 +153,21 @@ const selectedSongLoudnessGuidance = computed(() => {
   return getSongLoudnessGuidance(selectedSongTools.value.songKey)
 })
 
+/** vs configured default reference LUFS; null when about on target. */
+const selectedSongTooLoudOrQuietVersusDefault = computed(() => {
+  const guidance = selectedSongLoudnessGuidance.value
+  if (!guidance) {
+    return null
+  }
+
+  const delta = guidance.measuredLoudness - guidance.targetLoudness
+  if (Math.abs(delta) < 0.005) {
+    return null
+  }
+
+  return delta > 0 ? "too loud" : "too quiet"
+})
+
 const selectedSongAnalysis = computed(() => {
   if (!selectedSongTools.value) {
     return null
@@ -1022,6 +1037,12 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 Measured loudness:
                 <span class="font-medium">
                   {{ selectedSongLoudnessGuidance.measuredLoudness.toFixed(2) }} LUFS
+                </span>
+                <span
+                  v-if="selectedSongTooLoudOrQuietVersusDefault"
+                  class="font-semibold text-slate-700 dark:text-slate-200"
+                >
+                  · {{ selectedSongTooLoudOrQuietVersusDefault }}
                 </span>
                 . The default reference target (good loudness) is
                 <span class="font-medium">
