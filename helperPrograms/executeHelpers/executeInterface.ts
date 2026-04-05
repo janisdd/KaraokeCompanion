@@ -198,6 +198,10 @@ export async function executeWithTempFileSwap(
       await postCompanionSongPreview("/stopSongPreview", previewSong)
       shouldRestartSongPreviewAfterReplace = true
     }
+    const waitMs = ConfigHelper.getWaitToReplaceFileForExecuteHelpersInMs()
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs))
+    }
     replaceFileWithTempOutput(tempExecutionFilePath, currentFilePath)
     return currentFilePath
   } catch (error) {
