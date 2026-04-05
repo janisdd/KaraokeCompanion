@@ -29,15 +29,10 @@ const cachedOnlineSongInfoSchema = onlineSongInfoPlainSchema.omit({ key: true })
 
 type CachedOnlineSongInfo = z.infer<typeof cachedOnlineSongInfoSchema>;
 
-/** On-disk index rows omit `key`; legacy files may still include it. */
-const onlineSongIndexFileEntrySchema = cachedOnlineSongInfoSchema.extend({
-  key: z.string().optional(),
-});
-
 // we need the version in case we need to change the structure of the index object
 const onlineSongInfoIndexObjSchema = z.object({
   version: z.literal("1.0.0"),
-  index: z.array(onlineSongIndexFileEntrySchema),
+  index: z.array(cachedOnlineSongInfoSchema),
 });
 
 type OnlineSongInfoIndexObj = z.infer<typeof onlineSongInfoIndexObjSchema>;
@@ -173,11 +168,30 @@ export class AllOnlineSongsIndexer {
   }
 
   public static loadIndexFromFile() {
-    const indexJson = fs.readFileSync(
-      ConfigHelper.getOnlineSongsIndexPath(),
-      "utf8",
-    );
-    const parsed = onlineSongInfoIndexObjSchema.safeParse(JSON.parse(indexJson));
+    const indexPath = ConfigHelper.getOnlineSongsIndexPath();
+    const indexJson = fs.readFileSync(indexPath, "utf8");
+    const raw: unknown = JSON.parse(indexJson);
+    if (
+      raw !== null &&
+      typeof raw === "object" &&
+      "index" in raw &&
+      Array.isArray((raw as { index: unknown }).index)
+    ) {
+      const rows = (raw as { index: unknown[] }).index;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (
+          row !== null &&
+          typeof row === "object" &&
+          Object.prototype.hasOwnProperty.call(row, "key")
+        ) {
+          throw new Error(
+            `Legacy online songs index: at least one entry (index ${i}) still has a stored "key" field. Delete the index file and run a full online songs re-index to recreate it. Path: ${indexPath}`,
+          );
+        }
+      }
+    }
+    const parsed = onlineSongInfoIndexObjSchema.safeParse(raw);
     if (!parsed.success) {
       throw new Error(
         `Invalid online songs index file: ${parsed.error.message}`,
@@ -187,13 +201,12 @@ export class AllOnlineSongsIndexer {
     for (const songInfo of index) {
       const songInfoWithKey: OnlineSongInfoPlain = {
         ...songInfo,
-        key:
-          songInfo.key ?? SongKeyHelper.getKey(songInfo.artist, songInfo.songName),
+        key: SongKeyHelper.getKey(songInfo.artist, songInfo.songName),
       };
       this._allOnlineSongInfosPlain.set(songInfoWithKey.key, songInfoWithKey);
     }
 
-    Logger.log(`[AllOnlineSongsIndexer] Loaded ${this._allOnlineSongInfosPlain.size} online song infos from file ${ConfigHelper.getOnlineSongsIndexPath()}`);
+    Logger.log(`[AllOnlineSongsIndexer] Loaded ${this._allOnlineSongInfosPlain.size} online song infos from file ${indexPath}`);
     this._onlineSongsIndexingFinished = true;
   }
 

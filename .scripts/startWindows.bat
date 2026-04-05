@@ -1,0 +1,1 @@
+node -r ./.scripts/windowsProdStart.mjs .output/server/index.mjs
