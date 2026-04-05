@@ -110,12 +110,12 @@ export class AllOnlineSongsIndexer {
 
     if (!hasDownloadedSongIndex) {
       Logger.warn(
-        `[AllOnlineSongsIndexer] UsdbAnimuxHelper is not indexed, skipping setting songs were already downloaded`,
+        `[AllOnlineSongsIndexer] UsdbAnimuxHelper was not finished indexing, cannot connect song infos with existing and downloaded songs`,
       );
     }
     if (!hasExistingSongIdex) {
       Logger.warn(
-        `[AllOnlineSongsIndexer] SongsIndexer is not indexed, skipping setting songs exists`,
+        `[AllOnlineSongsIndexer] SongsIndexer was not finished indexing, cannot connect song infos with existing and downloaded songs`,
       );
     }
 
@@ -183,6 +183,8 @@ export class AllOnlineSongsIndexer {
       };
       this._allOnlineSongInfosPlain.set(songInfoWithKey.key, songInfoWithKey);
     }
+
+    Logger.debug(`[AllOnlineSongsIndexer] Loaded ${this._allOnlineSongInfosPlain.size} online song infos from file ${ConfigHelper.getOnlineSongsIndexPath()}`);
   }
 
   public static checkIfIndexExists() {

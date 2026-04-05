@@ -38,14 +38,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const plainFromIndex = AllOnlineSongsIndexer.getPlainOnlineSongInfo(songKey)
-  if (!plainFromIndex) {
-    throw createError({
-      statusCode: 500,
-      message: `Song not found in online songs index: ${songKey}`,
-    })
-  }
-
   // after file reindex, song data might have changed (e.g. song name)
   // song key must stay the same after reindex
   const reindexedSong = SongsIndexer.getSongsMap().get(songKey)
@@ -71,6 +63,14 @@ export default defineEventHandler(async (event) => {
       statusCode: 500,
       message:
         "Local song index update failed (missing .txt, duplicate key, or unreadable folder)",
+    })
+  }
+
+  const plainFromIndex = AllOnlineSongsIndexer.getPlainOnlineSongInfo(songKey)
+  if (!plainFromIndex) {
+    throw createError({
+      statusCode: 500,
+      message: `Song not found in online songs index: ${songKey}`,
     })
   }
 

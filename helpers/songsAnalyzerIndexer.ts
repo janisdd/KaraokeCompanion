@@ -64,7 +64,7 @@ export class SongsAnalyzerIndexer {
         const currentTaskIndex = taskIndex
         taskIndex += 1
 
-        Logger.log(`${logPrefix} Analyze load progress ${currentTaskIndex + 1}/${loadTasks.length} started`)
+        Logger.debug(`${logPrefix} Analyze load progress ${currentTaskIndex + 1}/${loadTasks.length} started`)
         await loadTasks[currentTaskIndex]()
       }
     }
