@@ -260,7 +260,7 @@ export class AllOnlineSongsIndexer {
       `[AllOnlineSongsIndexer] Found ${artistLetterToIndexPages.length} artist letter to index pages`,
     );
     for (const artistLetterToIndexPage of artistLetterToIndexPages) {
-      Logger.debug(
+      Logger.log(
         `[AllOnlineSongsIndexer] Artist letter to index page: ${artistLetterToIndexPage.text} - ${artistLetterToIndexPage.href}`,
       );
       const onlineSongInfos = await this.indexArtistLetter(
