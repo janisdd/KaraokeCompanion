@@ -21,11 +21,6 @@ export default defineEventHandler(async (event) => {
     .map((songKey) => SongsIndexer.getSongsMap().get(songKey))
     .filter((song): song is SongInfo => Boolean(song))
 
-  const port = ConfigHelper.getUltraStarCompanionPort()
-  if (!port) {
-    throw createError({ statusCode: 500, message: "Ultra Star Companion port not set" })
-  }
-
   const payload: UltraStarCompanionPlaylistPayload = {
     songs: songs.map((song) => ({
       title: song.title,
@@ -35,13 +30,16 @@ export default defineEventHandler(async (event) => {
 
   // console.log("Companion playlist songs", payload.songs)
 
-  const response = await fetch(`http://localhost:${port}/setCompanionPlaylist`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    ConfigHelper.getUltraStarCompanionRequestUrl("/setCompanionPlaylist"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  })
+  )
 
   if (!response.ok) {
     throw createError({

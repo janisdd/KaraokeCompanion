@@ -23,24 +23,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: "Song not found" })
   }
 
-  const port = ConfigHelper.getUltraStarCompanionPort()
-  if (!port) {
-    Logger.error("Ultra Star Companion port not set")
-    throw createError({ statusCode: 500, message: "Ultra Star Companion port not set" })
-  }
-
   const payload: UltraStarCompanionForwardRequest = {
     title: song.title,
     artist: song.artist,
   }
 
-  const response = await fetch(`http://localhost:${port}/selectSong`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    ConfigHelper.getUltraStarCompanionRequestUrl("/selectSong"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  })
+  )
 
   if (!response.ok) {
     Logger.error(`Failed to forward song: ${response.status} ${response.statusText}`)

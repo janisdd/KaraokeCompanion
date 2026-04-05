@@ -68,13 +68,6 @@ export async function requestCompanionReindexRootDir(
   options: { logPrefix?: string } = {},
 ): Promise<ReindexRootDirResponse> {
   const logPrefix = options.logPrefix ?? defaultRootLogPrefix
-  const port = ConfigHelper.getUltraStarCompanionPort()
-  if (!port) {
-    throw createError({
-      statusCode: 500,
-      message: "Ultra Star Companion port not set",
-    })
-  }
 
   const payload: ReindexRootDirPayload = {
     songsRootDirName,
@@ -82,13 +75,16 @@ export async function requestCompanionReindexRootDir(
 
   let fetchResponse: Response
   try {
-    fetchResponse = await fetch(`http://localhost:${port}/reindexRootDir`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    fetchResponse = await fetch(
+      ConfigHelper.getUltraStarCompanionRequestUrl("/reindexRootDir"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    })
+    )
   } catch (error) {
     Logger.error(
       `${logPrefix} Failed to reach companion: ${
@@ -136,13 +132,6 @@ export async function requestCompanionReindexSingleSongDir(
   options: { logPrefix?: string } = {},
 ): Promise<ReindexSingleSongDirResponse> {
   const logPrefix = options.logPrefix ?? defaultLogPrefix
-  const port = ConfigHelper.getUltraStarCompanionPort()
-  if (!port) {
-    throw createError({
-      statusCode: 500,
-      message: "Ultra Star Companion port not set",
-    })
-  }
 
   const payload: ReindexSingleSongDirPayload = {
     singleSongDirName,
@@ -151,7 +140,7 @@ export async function requestCompanionReindexSingleSongDir(
   let fetchResponse: Response
   try {
     fetchResponse = await fetch(
-      `http://localhost:${port}/reindexSingleSongDir`,
+      ConfigHelper.getUltraStarCompanionRequestUrl("/reindexSingleSongDir"),
       {
         method: "POST",
         headers: {

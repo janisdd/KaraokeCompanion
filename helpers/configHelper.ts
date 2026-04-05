@@ -16,7 +16,32 @@ const USDB_ANIMUX_URL = "https://usdb.animux.de";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
-const ULTRA_STAR_COMPANION_PORT = process.env.ULTRA_STAR_COMPANION_PORT || "";
+const defaultUltraStarCompanionUrl = "http://localhost:3001"
+
+function parseUltraStarCompanionBaseUrl(raw: string | undefined): string {
+  const candidate = raw?.trim()
+  const value =
+    candidate && candidate.length > 0 ? candidate : defaultUltraStarCompanionUrl
+  let u: URL
+  try {
+    u = new URL(value)
+  } catch {
+    throw new Error(
+      `ULTRASTAR_COMPANION_URL must be a valid absolute URL (got "${raw}")`,
+    )
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(
+      `ULTRASTAR_COMPANION_URL must use http or https (got "${value}")`,
+    )
+  }
+  // Strip one trailing slash so `${base}/path` joins cleanly; keeps userinfo, port, path prefix
+  return value.replace(/\/$/, "")
+}
+
+const ULTRASTAR_COMPANION_BASE_URL = parseUltraStarCompanionBaseUrl(
+  process.env.ULTRASTAR_COMPANION_URL,
+)
 const STORAGE_ROOT = (process.env.ALL_FILES_PREFIX_DIR || "storage_dir").trim()
 
 function isResolvedPathInsideDir(dirAbs: string, candidateAbs: string): boolean {
@@ -149,8 +174,15 @@ export class ConfigHelper {
     return DOWNLOAD_PREFERRED_VIDEO_FORMAT;
   }
 
-  static getUltraStarCompanionPort() {
-    return ULTRA_STAR_COMPANION_PORT;
+  /** Normalized base (no trailing slash), e.g. http://localhost:3001 or http://host/prefix */
+  static getUltraStarCompanionUrl() {
+    return ULTRASTAR_COMPANION_BASE_URL
+  }
+
+  /** Absolute URL for a companion HTTP path, e.g. "/selectSong" -> base + "/selectSong" */
+  static getUltraStarCompanionRequestUrl(endpointPath: string) {
+    const p = endpointPath.startsWith("/") ? endpointPath : `/${endpointPath}`
+    return `${ULTRASTAR_COMPANION_BASE_URL}${p}`
   }
 
   static getUsersDir() {

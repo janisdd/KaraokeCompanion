@@ -13,15 +13,12 @@ type UltraStarCurrentSongResponse = {
 }
 
 export default defineEventHandler(async () => {
-  const port = ConfigHelper.getUltraStarCompanionPort()
-  if (!port) {
-    Logger.error("Ultra Star Companion port not set")
-    throw createError({ statusCode: 500, message: "Ultra Star Companion port not set" })
-  }
-
-  const response = await fetch(`http://localhost:${port}/currentSong`, {
-    method: "GET",
-  })
+  const response = await fetch(
+    ConfigHelper.getUltraStarCompanionRequestUrl("/currentSong"),
+    {
+      method: "GET",
+    },
+  )
 
   if (!response.ok) {
     Logger.error(`Failed to get current song: ${response.status} ${response.statusText}`)

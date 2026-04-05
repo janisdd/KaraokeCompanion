@@ -141,7 +141,7 @@ async function main(): Promise<void> {
   Logger.log(`${logPrefix} LOG_LEVEL set to ${parseLogLevel(process.env.LOG_LEVEL) ?? LogLevels.DEBUG}`);
   Logger.log(`${logPrefix} PLAYLIST_CACHE_DIR_PATH: ${ConfigHelper.getPlaylistCacheDirPath()}`);
   Logger.log(`${logPrefix} IS_DEFAULT_PAGE_THEME_MODE_DARK: ${process.env.IS_DEFAULT_PAGE_THEME_MODE_DARK}`);
-  Logger.log(`${logPrefix} ULTRA_STAR_COMPANION_PORT: ${ConfigHelper.getUltraStarCompanionPort()}`);
+  Logger.log(`${logPrefix} ULTRASTAR_COMPANION_URL: ${ConfigHelper.getUltraStarCompanionUrl()}`);
 
   if (songsDirPaths.length === 0) {
     Logger.error(`${logPrefix} ULTRA_START_SONGS_DIR_PATH* is not set`);

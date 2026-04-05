@@ -374,6 +374,15 @@ const closeUltraStarScoreScreen = async () => {
 }
 
 const cancelUltraStarCurrentSong = async () => {
+  const cancelMessage =
+    ultraStarCurrentSongTitle.value && ultraStarCurrentSongArtist.value
+      ? `Cancel the current song (“${ultraStarCurrentSongTitle.value}” · ${ultraStarCurrentSongArtist.value})?`
+      : "Cancel the current song in UltraStar?"
+
+  if (!window.confirm(cancelMessage)) {
+    return
+  }
+
   ultraStarControlsError.value = null
   isCancelUltraStarCurrentSongRunning.value = true
   try {
