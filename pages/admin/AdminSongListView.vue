@@ -25,7 +25,7 @@ import type {
   OnlineSongsDownloadResponse,
   OnlineSongsIndexResponse,
 } from "~/types/onlineSongs"
-import type { SongInfo } from "~~/types/song"
+import type { SongListRow } from "~~/types/song"
 
 defineOptions({
   name: "AdminSongListView",
@@ -62,7 +62,7 @@ const props = withDefaults(
     activeAnalyzeRequestKey?: string | null
     loudnessWarningsBySong?: Record<string, LoudnessWarning>
     adminAuthenticated?: boolean
-    /** When true, do not auto-load `/api/songs` on mount (parent should call refresh after auth). */
+    /** When true, do not auto-load `/api/songsFast` on mount (parent should call refresh after auth). */
     deferSongFetch?: boolean
     /** Must match parent `useSongs({ stateKey })` so search uses the same catalog bucket. */
     songsCatalogKey?: string
@@ -96,7 +96,7 @@ const showInitialSongsLoading = computed(
   () => pending.value && !songsCatalogFetchCompletedOnce.value,
 )
 
-const getAdminSongRowId = (params: GetRowIdParams<SongInfo>) =>
+const getAdminSongRowId = (params: GetRowIdParams<SongListRow>) =>
   params.data?.key ?? ""
 
 const totalCount = computed(() => songs.value?.length ?? 0)
@@ -262,7 +262,7 @@ const reDownloadButtonClass =
 const AudioCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -310,7 +310,7 @@ const getSendSongErrorMessage = (error: unknown) => {
   return fetchError.data?.message || fetchError.statusMessage || fetchError.message
 }
 
-const sendSongToBackend = async (song: SongInfo) => {
+const sendSongToBackend = async (song: SongListRow) => {
   try {
     await $fetch("/api/ultrastar/sendSong", {
       method: "POST",
@@ -328,7 +328,7 @@ const sendSongToBackend = async (song: SongInfo) => {
 
 const redownloadingSongKeys = ref(new Set<string>())
 
-const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
+const redownloadSongFromOnlineCatalog = async (song: SongListRow) => {
   const plain = onlineSongPlainByKey.value.get(song.key)
   if (!plain) {
     const message = `Missing online catalog entry for song key "${song.key}".`
@@ -392,7 +392,7 @@ const redownloadSongFromOnlineCatalog = async (song: SongInfo) => {
 
 const reindexingSongKeys = ref(new Set<string>())
 
-const reindexSingleSong = async (song: SongInfo) => {
+const reindexSingleSong = async (song: SongListRow) => {
   if (reindexingSongKeys.value.has(song.key)) {
     return
   }
@@ -449,7 +449,7 @@ const reindexSingleSong = async (song: SongInfo) => {
 const SendCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -494,7 +494,7 @@ const getMissingFilesLabels = (value: SongFilesExistResult | null) => {
 }
 
 const buildMissingFilesDetails = (
-  song: SongInfo,
+  song: SongListRow,
   presence: SongFilesExistResult | null,
 ) => {
   const lines: string[] = []
@@ -528,7 +528,7 @@ const buildMissingFilesDetails = (
 const FilesCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -573,7 +573,7 @@ const FilesCell = defineComponent({
 const ReDownloadCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -644,7 +644,7 @@ const analyzerButtonClass =
 const AnalyzerActionsCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo, AnalyzerCellValue>>,
+      type: Object as PropType<ICellRendererParams<SongListRow, AnalyzerCellValue>>,
       required: true,
     },
   },
@@ -750,7 +750,7 @@ const AnalyzerActionsCell = defineComponent({
 const SongInfoCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -787,7 +787,7 @@ const SongInfoCell = defineComponent({
 const ReindexCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -839,7 +839,7 @@ const ReindexCell = defineComponent({
 const SongToolsCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -877,7 +877,7 @@ const makeTextCell = (className: string) =>
   defineComponent({
     props: {
       params: {
-        type: Object as PropType<ICellRendererParams<SongInfo>>,
+        type: Object as PropType<ICellRendererParams<SongListRow>>,
         required: true,
       },
     },
@@ -897,7 +897,7 @@ const centerCellStyle = {
   justifyContent: "center",
 }
 
-const columnDefs = computed<ColDef<SongInfo>[]>(() => [
+const columnDefs = computed<ColDef<SongListRow>[]>(() => [
   {
     headerName: "Title",
     field: "title",
@@ -1005,7 +1005,7 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     resizable: true,
     suppressMovable: true,
     cellStyle: centerCellStyle,
-    valueGetter: (params: ValueGetterParams<SongInfo>): AnalyzerCellValue => {
+    valueGetter: (params: ValueGetterParams<SongListRow>): AnalyzerCellValue => {
       const song = params.data
       const requestKey = song
         ? getAnalyzeRequestKey(song.key, analyzer.key)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useSongs } from "~~/composables/useSongs"
-import type { SongInfo } from "~~/types/song"
+import type { SongInfoCatalog } from "~~/types/song"
 
 defineOptions({
   name: "MarkedSongsListPage",
@@ -20,7 +20,7 @@ const {
   markedSongsErrorMessage,
 } = useMarkedSongs()
 
-const getSongKey = (song: SongInfo) => song.key
+const getSongKey = (song: SongInfoCatalog) => song.key
 
 const markedSongs = computed(() => {
   if (!songs.value || !markedSongKeys.value.length) {

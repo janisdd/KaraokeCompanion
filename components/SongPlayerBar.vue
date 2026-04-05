@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import type { SongInfo } from "~~/types/song";
+import type { SongInfoCatalog } from "~~/types/song"
 
 const props = defineProps<{
-  activeSong: SongInfo;
-  activeCoverUrl: string | null;
-  currentTimeLabel: string;
-  durationLabel: string;
-  isActiveAudioPlaying: boolean;
-  duration: number;
-  progressPercent: number;
-  playerTime: number;
-  onScrollToSong: () => void;
-  onTogglePlayback: (song: SongInfo) => void;
-  onStopPlayback: () => void;
-}>();
+  activeSong: SongInfoCatalog
+  activeCoverUrl: string | null
+  currentTimeLabel: string
+  durationLabel: string
+  isActiveAudioPlaying: boolean
+  duration: number
+  progressPercent: number
+  playerTime: number
+  onScrollToSong: () => void
+  onTogglePlayback: (song: SongInfoCatalog) => void
+  onStopPlayback: () => void
+}>()
 
 const emit = defineEmits<{
   "update:playerTime": [number];

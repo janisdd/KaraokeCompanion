@@ -22,7 +22,7 @@ import {
 } from "~~/composables/useSongListAudioPlayback";
 import { useSongs } from "~~/composables/useSongs";
 import type { ExistingStatus, OnlineSongsIndexResponse } from "~/types/onlineSongs";
-import type { SongInfo } from "~~/types/song";
+import type { SongInfoCatalog } from "~~/types/song"
 
 defineOptions({
   name: "ComparePlaylistOnlinePage",
@@ -37,7 +37,7 @@ type CompareMode = "strict" | "lax";
 type MatchResult = {
   spotify: { name: string; artist: string };
   online: { key: string; songId: string; songName: string; artist: string };
-  localSong: SongInfo | null;
+  localSong: SongInfoCatalog | null
   existingStatus: ExistingStatus;
 };
 
@@ -232,7 +232,7 @@ const selectedCompareMode = computed(
     compareModeOptions[0],
 );
 
-const sendSongToBackend = async (song: SongInfo) => {
+const sendSongToBackend = async (song: SongInfoCatalog) => {
   try {
     await $fetch("/api/ultrastar/sendSong", {
       method: "POST",

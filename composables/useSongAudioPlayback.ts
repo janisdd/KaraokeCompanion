@@ -1,9 +1,9 @@
-import type { SongInfo } from "~~/types/song"
+import type { SongInfoCatalog } from "~~/types/song"
 
 type AudioPlaybackOptions = {
   storageKey: string
-  getSongKey: (song: SongInfo) => string
-  getAudioFile: (song: SongInfo) => string | null
+  getSongKey: (song: SongInfoCatalog) => string
+  getAudioFile: (song: SongInfoCatalog) => string | null
 }
 
 const audioFingerprint = (songKey: string, audioFileName: string, rev: string) =>
@@ -18,7 +18,7 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
     `${options.storageKey}-active-audio-key`,
     () => null,
   )
-  const activeSong = useState<SongInfo | null>(
+  const activeSong = useState<SongInfoCatalog | null>(
     `${options.storageKey}-active-song`,
     () => null,
   )
@@ -92,7 +92,7 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
     disposeActiveAudio()
   }
 
-  const toggleAudioPlayback = async (song: SongInfo) => {
+  const toggleAudioPlayback = async (song: SongInfoCatalog) => {
     if (!import.meta.client) {
       return
     }

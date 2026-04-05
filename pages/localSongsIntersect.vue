@@ -10,7 +10,7 @@ import {
 import { defineComponent, h, resolveComponent, shallowRef, type PropType } from "vue";
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
-import type { SongInfo } from "~~/types/song";
+import type { SongListRow } from "~~/types/song"
 import type { MatchResult } from "~/server/api/localSongsIntersect.post";
 defineOptions({
   name: "ComparePlaylistLocalPage",
@@ -45,7 +45,7 @@ const searchQuery = useState("compare-local-search-query", () => "");
 const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 
-const localSongFromMatch = (match: MatchResult): SongInfo => ({
+const localSongFromMatch = (match: MatchResult): SongListRow => ({
   key: match.local.key,
   songDirName: match.local.songDirName,
   title: match.local.title,
@@ -60,7 +60,7 @@ const localSongFromMatch = (match: MatchResult): SongInfo => ({
   songTextAsWords: [],
 });
 
-const getLocalSongKey = (song: SongInfo) => song.key;
+const getLocalSongKey = (song: SongListRow) => song.key
 
 const {
   activeAudioKey,
@@ -109,7 +109,7 @@ const comparePlaylist = async () => {
   }
 };
 
-const sendSongToBackend = async (song: SongInfo) => {
+const sendSongToBackend = async (song: SongListRow) => {
   try {
     await $fetch("/api/ultrastar/sendSong", {
       method: "POST",

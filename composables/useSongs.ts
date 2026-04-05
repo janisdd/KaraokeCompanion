@@ -1,10 +1,10 @@
-import type { SongInfo } from "~~/types/song";
+import type { SongInfoCatalog } from "~~/types/song"
 
 type SongSearchEntry = {
-  metadata: string;
-};
+  metadata: string
+}
 
-const buildSearchIndex = (songs: SongInfo[]) => {
+const buildSearchIndex = (songs: SongInfoCatalog[]) => {
   const index: Record<string, SongSearchEntry> = {};
   for (const song of songs) {
     const metadata = [
@@ -36,7 +36,10 @@ export const useSongs = (options?: UseSongsOptions) => {
   const autoFetch = options?.autoFetch !== false;
   const sk = options?.stateKey;
 
-  const songs = useState<SongInfo[]>(sk ? `songs-${sk}` : "songs", () => []);
+  const songs = useState<SongInfoCatalog[]>(
+    sk ? `songs-${sk}` : "songs",
+    () => [],
+  )
   const pending = useState<boolean>(
     sk ? `songs-pending-${sk}` : "songs-pending",
     () => false,
@@ -59,7 +62,7 @@ export const useSongs = (options?: UseSongsOptions) => {
     error.value = null;
 
     try {
-      songs.value = await $fetch<SongInfo[]>("/api/songs");
+      songs.value = await $fetch<SongInfoCatalog[]>("/api/songsFast")
     } catch (err) {
       error.value = err as Error;
     } finally {

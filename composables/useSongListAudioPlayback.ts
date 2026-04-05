@@ -1,12 +1,12 @@
 import type { GridApi } from "ag-grid-community";
-import type { SongInfo } from "~~/types/song";
-import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback";
+import type { SongInfoCatalog } from "~~/types/song"
+import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback"
 
 type SongListAudioOptions = {
-  audioStorageKey: string;
-  getSongKey: (song: SongInfo) => string;
-  getSongRowId: (song: SongInfo) => string;
-};
+  audioStorageKey: string
+  getSongKey: (song: SongInfoCatalog) => string
+  getSongRowId: (song: SongInfoCatalog) => string
+}
 
 type ScrollToGridSongOptions<TRow> = {
   gridApi: GridApi<TRow> | null | undefined;
@@ -46,7 +46,7 @@ export const scrollToGridSong = <TRow>(options: ScrollToGridSongOptions<TRow>) =
 export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   const { audioStorageKey, getSongKey, getSongRowId } = options;
 
-  const getAudioFile = (song: SongInfo) => {
+  const getAudioFile = (song: SongInfoCatalog) => {
     const songKey = song.key?.trim()
     if (!songKey) {
       return null
@@ -58,7 +58,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
     return `/api/song-audio?songKey=${encodeURIComponent(songKey)}&v=${v}`
   }
 
-  const getCoverFile = (song: SongInfo) => {
+  const getCoverFile = (song: SongInfoCatalog) => {
     const songKey = song.key?.trim()
     if (!songKey) {
       return null

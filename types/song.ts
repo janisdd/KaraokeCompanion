@@ -14,3 +14,9 @@ export type SongInfo = {
 	coverFileName: string | null
 	songTextAsWords: string[]
 }
+
+/** Song metadata from `/api/songsFast` (lyrics loaded separately via `/api/song-text`). */
+export type SongInfoCatalog = Omit<SongInfo, "songTextAsWords">
+
+/** Grid/list row: catalog song, optionally with inline `songTextAsWords` (e.g. intersect pages). */
+export type SongListRow = SongInfoCatalog & { songTextAsWords?: string[] }

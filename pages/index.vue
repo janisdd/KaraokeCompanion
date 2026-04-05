@@ -27,7 +27,7 @@ const loggedInUserName = computed(() => {
           <img src="/logo.png" alt="UltraStar Info logo" style="width: 15rem;" />
         </div>
         <p class="text-sm text-slate-600 dark:text-slate-300">
-          Pick a view to explore your songs or compare Spotify playlists.
+          Pick a view to explore the songs.
         </p>
       </header>
 
@@ -43,17 +43,6 @@ const loggedInUserName = computed(() => {
       </div>
 
       <section class="grid gap-6 md:grid-cols-2">
-        <NuxtLink
-          to="/admin/manageSongs"
-          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-        >
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
-            Manage Songs
-          </h2>
-          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Browse, filter, and read song metadata and lyrics.
-          </p>
-        </NuxtLink>
         <NuxtLink
           to="/browseLocalSongsIndex"
           class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
@@ -91,18 +80,6 @@ const loggedInUserName = computed(() => {
         </NuxtLink>
 
         <NuxtLink
-          to="/users/usersList"
-          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
-        >
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
-            Users
-          </h2>
-          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Browse existing users, search them, and create new ones.
-          </p>
-        </NuxtLink>
-
-        <NuxtLink
           to="/localSongsIntersect"
           class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
         >
@@ -125,6 +102,37 @@ const loggedInUserName = computed(() => {
             Match a Spotify playlist against the indexed online songs.
           </p>
         </NuxtLink>
+
+        <NuxtLink
+          to="/users/usersList"
+          class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+        >
+          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
+            Users
+          </h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Browse existing users, search them, and create new ones.
+          </p>
+        </NuxtLink>
+      </section>
+
+      <section class="flex flex-col gap-4">
+        <h2 class="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          Admin section
+        </h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          <NuxtLink
+            to="/admin/manageSongs"
+            class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600"
+          >
+            <h3 class="text-lg font-semibold text-slate-900 group-hover:text-slate-950 dark:text-slate-100 dark:group-hover:text-white">
+              Manage Songs
+            </h3>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Browse, filter, and read song metadata and lyrics.
+            </p>
+          </NuxtLink>
+        </div>
       </section>
     </div>
   </main>

@@ -10,14 +10,14 @@ import {
 import type { PropType } from "vue";
 import { defineComponent, h, resolveComponent, shallowRef } from "vue";
 import { scrollToGridSong } from "~~/composables/useSongListAudioPlayback";
-import type { SongInfo } from "~~/types/song";
+import type { SongListRow } from "~~/types/song"
 import { useSongListView } from "~~/composables/useSongListView";
 
 
 const props = defineProps<{
   title: string;
   totalCount: number;
-  songs: SongInfo[] | null | undefined;
+  songs: SongListRow[] | null | undefined
   stateKeyPrefix: string;
   audioStorageKey: string;
   isLoading: boolean;
@@ -42,7 +42,6 @@ const {
   durationLabel,
   getAudioFile,
   getSongKey,
-  getSongTextPreview,
   isActiveAudioPlaying,
   metadataQuery,
   playerTime,
@@ -89,7 +88,7 @@ const getSendSongErrorMessage = (error: unknown) => {
   return fetchError.data?.message || fetchError.statusMessage || fetchError.message;
 };
 
-const sendSongToBackend = async (song: SongInfo) => {
+const sendSongToBackend = async (song: SongListRow) => {
   try {
     await $fetch("/api/ultrastar/sendSong", {
       method: "POST",
@@ -108,7 +107,7 @@ const sendSongToBackend = async (song: SongInfo) => {
 const MarkCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -137,7 +136,7 @@ const MarkCell = defineComponent({
 const AudioCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -176,7 +175,7 @@ const AudioCell = defineComponent({
 const SendCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
@@ -210,7 +209,7 @@ const makeTextCell = (className: string) =>
   defineComponent({
     props: {
       params: {
-        type: Object as PropType<ICellRendererParams<SongInfo>>,
+        type: Object as PropType<ICellRendererParams<SongListRow>>,
         required: true,
       },
     },
@@ -224,31 +223,33 @@ const makeTextCell = (className: string) =>
     },
   });
 
-const PreviewCell = defineComponent({
+const SongTextIconCell = defineComponent({
   props: {
     params: {
-      type: Object as PropType<ICellRendererParams<SongInfo>>,
+      type: Object as PropType<ICellRendererParams<SongListRow>>,
       required: true,
     },
   },
   setup(props) {
-    const FontAwesomeIcon = resolveComponent("font-awesome-icon");
+    const FontAwesomeIcon = resolveComponent("font-awesome-icon")
     return () => {
-      const song = props.params.data;
+      const song = props.params.data
       if (!song) {
-        return null;
+        return null
       }
-      const key = getSongKey(song);
-      return h("div", { class: "flex items-center gap-2" }, [
+      const key = getSongKey(song)
+      return h(
+        "div",
+        { class: "flex h-full w-full items-center justify-center" },
         h(
           "button",
           {
             type: "button",
             class:
-              "inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+              "inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100",
             "aria-label":
               selectedSongKey.value === key ? "Hide song text" : "Show song text",
-            onClick: () => toggleSongText(song),
+            onClick: () => void toggleSongText(song),
           },
           [
             h(FontAwesomeIcon as any, {
@@ -256,15 +257,10 @@ const PreviewCell = defineComponent({
             }),
           ],
         ),
-        h(
-          "span",
-          { class: "song-cell-2lines song-cell-preview text-slate-600 dark:text-slate-300" },
-          getSongTextPreview(song),
-        ),
-      ]);
-    };
+      )
+    }
   },
-});
+})
 
 const centerCellStyle = {
   display: "flex",
@@ -272,7 +268,7 @@ const centerCellStyle = {
   justifyContent: "center",
 };
 
-const columnDefs = computed<ColDef<SongInfo>[]>(() => [
+const columnDefs = computed<ColDef<SongListRow>[]>(() => [
   {
     headerName: "Mark",
     colId: "mark",
@@ -338,15 +334,15 @@ const columnDefs = computed<ColDef<SongInfo>[]>(() => [
     cellRenderer: makeTextCell("song-cell-genre"),
   },
   {
-    headerName: "Song text preview",
-    colId: "preview",
-    minWidth: 220,
-    maxWidth: 220,
-    // flex: 2,
+    headerName: "Song text",
+    colId: "song-text",
+    width: 70,
+    minWidth: 70,
+    maxWidth: 70,
     sortable: false,
-    valueGetter: (params) =>
-      params.data ? getSongTextPreview(params.data) : "—",
-    cellRenderer: PreviewCell,
+    cellStyle: centerCellStyle,
+    valueGetter: (params) => (params.data ? 1 : 0),
+    cellRenderer: SongTextIconCell,
   },
 ]);
 
@@ -365,8 +361,8 @@ const scrollToActiveSongInList = () => {
 };
 
 watch([activeAudioKey, isActiveAudioPlaying, selectedSongKey], () => {
-  refreshGrid();
-});
+  refreshGrid()
+})
 
 watch(metadataQuery, () => {
   refreshGrid();

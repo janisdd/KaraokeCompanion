@@ -12,7 +12,7 @@ import { defineComponent, h, shallowRef, type PropType } from "vue";
 import type { OnlineSongInfo } from "~/helpers/allOnlineSongsIndexer";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import type { ExistingStatus, OnlineSongsIndexResponse } from "~/types/onlineSongs";
-import type { SongInfo } from "~/types/song";
+import type { SongInfoCatalog } from "~/types/song"
 import { useSongs } from "~~/composables/useSongs";
 import {
   scrollToGridSong,
@@ -34,13 +34,13 @@ definePageMeta({
 });
 
 type OnlineSongRow = OnlineSongInfo & {
-  existingStatus: ExistingStatus;
-  existingSong: SongInfo | null;
-  language: SongInfo["language"];
-  year: SongInfo["year"];
-  genre: SongInfo["genre"];
-  audioAvailable: boolean;
-};
+  existingStatus: ExistingStatus
+  existingSong: SongInfoCatalog | null
+  language: SongInfoCatalog["language"]
+  year: SongInfoCatalog["year"]
+  genre: SongInfoCatalog["genre"]
+  audioAvailable: boolean
+}
 
 const searchQuery = ref("");
 const isDark = useState<boolean>("isDarkMode", () => false);

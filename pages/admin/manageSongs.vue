@@ -19,7 +19,7 @@ import type {
   RunMatchLoudnessTwoPassByTargetRequest,
   RunExecuteResponse,
 } from "~/types/executeHelpers"
-import type { SongInfo } from "~/types/song"
+import type { SongListRow } from "~/types/song"
 
 defineOptions({
   name: "ManageSongsPage",
@@ -281,7 +281,7 @@ const CURRENT_SONG_POLL_INTERVAL_MS = 5000
 
 type UltraStarCurrentSongResponse = {
   playing: boolean
-  song: SongInfo | null
+  song: SongListRow | null
 }
 
 const isUltraStarCurrentSongExpanded = ref(false)
