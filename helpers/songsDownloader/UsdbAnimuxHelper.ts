@@ -43,14 +43,9 @@ export class UsdbAnimuxHelper {
   // contains song ids currently downloading in this process or finished
   private static _downloadingOrDownloadedSongIds: Set<string> = new Set();
 
-  private static _indexingFinished = false;
   private static _usdbSessionCookie: UsdbSessionCookie | null = null;
   private static _usdbSessionCookieCreatedAt = 0;
   private static _usdbSessionLoginPromise: Promise<UsdbSessionCookie> | null = null;
-
-	public static isIndexingFinished(): boolean {
-		return this._indexingFinished;
-	}
 
   public static isSongDownloadingOrDownloaded(songId: string): boolean {
     return this._downloadingOrDownloadedSongIds.has(songId);

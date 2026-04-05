@@ -67,6 +67,12 @@ export class AllOnlineSongsIndexer {
     OnlineSongInfo
   > | null = null;
 
+  private static _onlineSongsIndexingFinished = false;
+
+  public static isIndexingFinished(): boolean {
+    return this._onlineSongsIndexingFinished;
+  }
+
   public static getAllOnlineSongInfos(): OnlineSongInfo[] | null {
     if (!this._allOnlineSongInfos) {
       Logger.warn(
@@ -104,13 +110,13 @@ export class AllOnlineSongsIndexer {
   //song can be already downloaded or inside the ultrastar song dir...
   public static connectSongInfosWithExistingAndDownloadedSongs() {
     const hasExistingSongIdex = SongsIndexer.isIndexingFinished();
-    const hasDownloadedSongIndex = UsdbAnimuxHelper.isIndexingFinished();
+    const hasOnlineSongsIndex = this.isIndexingFinished();
 
     let existingOrAlreadyDownloaded: boolean = false;
 
-    if (!hasDownloadedSongIndex) {
+    if (!hasOnlineSongsIndex) {
       Logger.warn(
-        `[AllOnlineSongsIndexer] UsdbAnimuxHelper was not finished indexing, cannot connect song infos with existing and downloaded songs`,
+        `[AllOnlineSongsIndexer] Online songs index is not ready yet, cannot connect song infos with existing and downloaded songs`,
       );
     }
     if (!hasExistingSongIdex) {
@@ -119,7 +125,7 @@ export class AllOnlineSongsIndexer {
       );
     }
 
-    if (!hasDownloadedSongIndex && !hasExistingSongIdex) {
+    if (!hasOnlineSongsIndex && !hasExistingSongIdex) {
       this._allOnlineSongInfos = null;
       return;
     }
@@ -144,6 +150,8 @@ export class AllOnlineSongsIndexer {
         indexed: songIndexed,
       });
     }
+
+    Logger.log(`[AllOnlineSongsIndexer] Connected ${this._allOnlineSongInfos.size} song infos with existing and downloaded songs`);
   }
 
   public static saveIndexToFile() {
@@ -161,6 +169,7 @@ export class AllOnlineSongsIndexer {
     const indexPath = ConfigHelper.getOnlineSongsIndexPath();
     fs.mkdirSync(path.dirname(indexPath), { recursive: true });
     fs.writeFileSync(indexPath, indexJson);
+    this._onlineSongsIndexingFinished = true;
   }
 
   public static loadIndexFromFile() {
@@ -184,7 +193,8 @@ export class AllOnlineSongsIndexer {
       this._allOnlineSongInfosPlain.set(songInfoWithKey.key, songInfoWithKey);
     }
 
-    Logger.debug(`[AllOnlineSongsIndexer] Loaded ${this._allOnlineSongInfosPlain.size} online song infos from file ${ConfigHelper.getOnlineSongsIndexPath()}`);
+    Logger.log(`[AllOnlineSongsIndexer] Loaded ${this._allOnlineSongInfosPlain.size} online song infos from file ${ConfigHelper.getOnlineSongsIndexPath()}`);
+    this._onlineSongsIndexingFinished = true;
   }
 
   public static checkIfIndexExists() {
@@ -201,6 +211,7 @@ export class AllOnlineSongsIndexer {
     }
 
     Logger.log(`[AllOnlineSongsIndexer] Indexing all online songs`);
+    this._onlineSongsIndexingFinished = false;
 
     // this returns a html page
     const allSongsByArtistPage = ConfigHelper.getAllSongsByArtistPage();

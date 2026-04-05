@@ -5,7 +5,9 @@ import { SongsIndexer } from "./songsIndexer"
 
 export type RunLocalSongsIndexingOptions = {
   logPrefix: string
-  // When true, build into a staging index and swap only when the full scan succeeds
+  // When true, build into a staging index and swap only when the full scan succeeds.
+  // Staging is also used when multiple ULTRA_START_SONGS_DIR_PATH* roots are configured
+  // so _indexingFinished is set only in commitStagingIndex after every directory is scanned.
   resetBeforeIndex?: boolean
 }
 
@@ -21,7 +23,8 @@ export async function runLocalSongsIndexing(
     throw new Error("No UltraStar song directories configured")
   }
 
-  const useStaging = resetBeforeIndex
+  const useStaging =
+    resetBeforeIndex || songsDirPaths.length > 1
   if (useStaging) {
     SongsIndexer.beginStagingIndex()
   }
