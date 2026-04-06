@@ -168,6 +168,51 @@ function replaceFileWithTempOutput(tempPath: string, finalPath: string) {
   fs.renameSync(tempPath, finalPath)
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return String(error)
+}
+
+function canOpenFileForWrite(filePath: string): { ok: true } | { ok: false, error: unknown } {
+  let fileDescriptor: number | null = null
+  try {
+    fileDescriptor = fs.openSync(filePath, "r+")
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      error,
+    }
+  } finally {
+    if (fileDescriptor !== null) {
+      fs.closeSync(fileDescriptor)
+    }
+  }
+}
+
+async function waitForWindowsFileHandleRelease(filePath: string, waitMs: number): Promise<void> {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs))
+    }
+
+    const openResult = canOpenFileForWrite(filePath)
+    if (openResult.ok) {
+      return
+    }
+
+    lastError = openResult.error
+  }
+
+  throw new Error(
+    `Timed out waiting for Windows to release the file handle for '${filePath}': ${getErrorMessage(lastError)}`,
+  )
+}
+
 export async function executeWithTempFileSwap(
   songsRootDir: string,
   songDirName: string,
@@ -199,9 +244,13 @@ export async function executeWithTempFileSwap(
       shouldRestartSongPreviewAfterReplace = true
     }
     const waitMs = ConfigHelper.getWaitToReplaceFileForExecuteHelpersInMs()
-    if (waitMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMs))
-    }
+    // we only need this on windows, but to make the behavior consistent we always do it
+    await waitForWindowsFileHandleRelease(currentFilePath, waitMs)
+    // if (process.platform === "win32") {
+    //   await waitForWindowsFileHandleRelease(currentFilePath, waitMs)
+    // } else if (waitMs > 0) {
+    //   await new Promise((resolve) => setTimeout(resolve, waitMs))
+    // }
     replaceFileWithTempOutput(tempExecutionFilePath, currentFilePath)
     return currentFilePath
   } catch (error) {
