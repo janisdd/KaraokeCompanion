@@ -38,6 +38,7 @@ async function postCompanionSongPreview(
   endpointPath: "/stopSongPreview" | "/startSongPreview",
   song: Pick<SongInfo, "title" | "artist">,
 ): Promise<CompanionSongPreviewResponse | null> {
+  Logger.debug(`[ExecuteHelperInterface] posting to ${endpointPath} for song '${song.title}' by '${song.artist}'`)
   const url = ConfigHelper.getUltraStarCompanionRequestUrl(endpointPath)
   try {
     const response = await fetch(url, {
