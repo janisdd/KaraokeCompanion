@@ -107,9 +107,20 @@ const adminPassword = ref("")
 const adminLoginError = ref("")
 const isAdminLoginSubmitting = ref(false)
 
+// Only show after session is resolved; while pending, avoid flashing the login dialog for logged-in admins
 const showAdminLoginModal = computed(
-  () => adminSessionPending.value || !isAdminAuthenticated.value,
+  () => !adminSessionPending.value && !isAdminAuthenticated.value,
 )
+
+const showAdminSessionCheckingOverlay = computed(
+  () => adminSessionPending.value && !isAdminAuthenticated.value,
+)
+
+const adminSessionCheckingOverlayEl = ref<HTMLElement | null>(null)
+const adminLoginModalEl = ref<HTMLElement | null>(null)
+
+useFocusTrap(adminSessionCheckingOverlayEl, showAdminSessionCheckingOverlay)
+useFocusTrap(adminLoginModalEl, showAdminLoginModal)
 
 const activeAnalyzeRequestKey = ref<string | null>(null)
 const analyzerActionError = ref<string | null>(null)
@@ -737,7 +748,37 @@ const runMatchLoudnessTwoPassByReference = async () => {
 <template>
   <div>
     <div
+      v-if="showAdminSessionCheckingOverlay"
+      ref="adminSessionCheckingOverlayEl"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Checking admin session"
+    >
+      <div
+        class="flex w-full max-w-sm flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white px-8 py-6 text-center shadow-xl dark:border-slate-700 dark:bg-slate-900"
+      >
+        <span
+          class="h-10 w-10 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-600 dark:border-t-slate-300"
+          aria-hidden="true"
+        />
+        <p class="text-sm text-slate-600 dark:text-slate-300">
+          Checking session…
+        </p>
+        <button
+          type="button"
+          class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          @click="void navigateTo('/')"
+        >
+          Back to home
+        </button>
+      </div>
+    </div>
+
+    <div
       v-if="showAdminLoginModal"
+      ref="adminLoginModalEl"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
@@ -756,24 +797,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
           Enter the site admin password to use this page.
         </p>
 
-        <div
-          v-if="adminSessionPending"
-          class="mt-4 text-sm text-slate-600 dark:text-slate-300"
-        >
-          Checking session…
-        </div>
-
-        <button
-          v-if="adminSessionPending"
-          type="button"
-          class="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          @click="void navigateTo('/')"
-        >
-          Back to home
-        </button>
-
         <form
-          v-else
           class="mt-4 space-y-3"
           @submit.prevent="submitAdminLogin"
         >
