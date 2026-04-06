@@ -194,8 +194,9 @@ function canOpenFileForWrite(filePath: string): { ok: true } | { ok: false, erro
 
 async function waitForWindowsFileHandleRelease(filePath: string, waitMs: number): Promise<void> {
   let lastError: unknown = null
+  const maxAttempts = ConfigHelper.getReplaceFileForExecuteHelpersAttempts()
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (waitMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, waitMs))
     }

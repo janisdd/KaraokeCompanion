@@ -13,6 +13,7 @@ const defaultDownloadPreferredVideoHeight = 720;
 const defaultNumAnalyzeWorkers = 2;
 const defaultNormalLoudness = -16;
 const defaultWaitToReplaceFileForExecuteHelpersInMs = 500;
+const defaultReplaceFileForExecuteHelpersAttempts = 5;
 const USDB_ANIMUX_URL = "https://usdb.animux.de";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
@@ -110,6 +111,8 @@ let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
 let NORMAL_LOUDNESS = process.env.NORMAL_LOUDNESS || defaultNormalLoudness; // normal loudness target in LUFS (Loudness Units Full Scale), e.g. -16
 let WAIT_TO_REPLACE_FILE_FOR_EXECUTE_HELPERS_IN_MS =
   process.env.WAIT_TO_REPLACE_FILE_FOR_EXECUTE_HELPERS_IN_MS ?? defaultWaitToReplaceFileForExecuteHelpersInMs;
+let REPLACE_FILE_FOR_EXECUTE_HELPERS_ATTEMPTS =
+  process.env.REPLACE_FILE_FOR_EXECUTE_HELPERS_ATTEMPTS ?? defaultReplaceFileForExecuteHelpersAttempts;
 
 if (!USERS_DIR) {
   throw new Error("Users directory not set")
@@ -253,6 +256,17 @@ export class ConfigHelper {
     return getEnvVarAsNumber(
       WAIT_TO_REPLACE_FILE_FOR_EXECUTE_HELPERS_IN_MS,
       defaultWaitToReplaceFileForExecuteHelpersInMs,
+    );
+  }
+
+  /** How many times to try opening the target file for write before replace (Windows file-handle release). */
+  static getReplaceFileForExecuteHelpersAttempts() {
+    return Math.max(
+      1,
+      getEnvVarAsNumber(
+        REPLACE_FILE_FOR_EXECUTE_HELPERS_ATTEMPTS,
+        defaultReplaceFileForExecuteHelpersAttempts,
+      ),
     );
   }
 }
