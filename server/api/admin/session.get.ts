@@ -6,8 +6,8 @@ export type AdminSessionResponse = {
 }
 
 export default defineEventHandler(async (event) => {
-  const session = await getUserSession(event)
-  const authenticated = Boolean(session.secure?.admin)
+  const session = await getAdminSession(event)
+  const authenticated = Boolean(session.admin)
 
   const response: AdminSessionResponse = {
     success: true,

@@ -1,4 +1,5 @@
 import { getMethod, getRequestURL } from "h3"
+import { getAdminSession } from "~/server/utils/adminSession"
 
 function isAdminPublicRoute(pathname: string, method: string) {
   if (pathname === "/api/admin/session" && method === "GET") {
@@ -25,9 +26,8 @@ export default defineEventHandler(async (event) => {
     return
   }
 
-  const session = await getUserSession(event)
-  const secure = session.secure
-  if (!secure?.admin) {
+  const session = await getAdminSession(event)
+  if (!session.admin) {
     throw createError({
       statusCode: 401,
       message: "Admin authentication required",

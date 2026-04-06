@@ -77,7 +77,15 @@
             aria-label="Choose a user to log in"
             title="Choose a user to log in"
           >
-            <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
+            <font-awesome-layers class="h-4 w-4">
+              <font-awesome-icon icon="fa-solid fa-user-slash" />
+              <font-awesome-icon
+                v-if="isAdminAuthenticated"
+                icon="fa-solid fa-chess-king"
+                transform="shrink-6 down-6 right-6"
+                class="text-amber-500 dark:text-amber-400"
+              />
+            </font-awesome-layers>
           </NuxtLink>
           <div
             v-else
@@ -93,7 +101,15 @@
               :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
               @click="toggleUserMenu"
             >
-              <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
+              <font-awesome-layers class="h-4 w-4">
+                <font-awesome-icon icon="fa-solid fa-user" />
+                <font-awesome-icon
+                  v-if="isAdminAuthenticated"
+                  icon="fa-solid fa-chess-king"
+                  transform="shrink-6 down-6 right-6"
+                  class="text-amber-500 dark:text-amber-400"
+                />
+              </font-awesome-layers>
             </button>
             <div
               v-if="isUserMenuOpen"
@@ -226,7 +242,15 @@
                   :title="loggedInUserName ? `Logged in as ${loggedInUserName}` : 'Account'"
                   @click="toggleUserMenu"
                 >
-                  <font-awesome-icon icon="fa-solid fa-user" class="h-4 w-4" />
+                  <font-awesome-layers class="h-4 w-4">
+                    <font-awesome-icon icon="fa-solid fa-user" />
+                    <font-awesome-icon
+                      v-if="isAdminAuthenticated"
+                      icon="fa-solid fa-chess-king"
+                      transform="shrink-6 down-6 right-6"
+                      class="text-amber-500 dark:text-amber-400"
+                    />
+                  </font-awesome-layers>
                 </button>
               </div>
               <div
@@ -296,7 +320,15 @@
                 title="Choose a user to log in"
                 @click="isMobileMenuOpen = false"
               >
-                <font-awesome-icon icon="fa-solid fa-user-slash" class="h-4 w-4" />
+                <font-awesome-layers class="h-4 w-4">
+                  <font-awesome-icon icon="fa-solid fa-user-slash" />
+                  <font-awesome-icon
+                    v-if="isAdminAuthenticated"
+                    icon="fa-solid fa-chess-king"
+                    transform="shrink-6 down-6 right-6"
+                    class="text-amber-500 dark:text-amber-400"
+                  />
+                </font-awesome-layers>
               </NuxtLink>
             </div>
           </div>
@@ -416,6 +448,7 @@ import QRCode from "qrcode";
 import type { QRCodeErrorCorrectionLevel } from "qrcode";
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import type { FrontendUiTheme, UserWithDir } from "~/helpers/usersIndexer"
+import type { AdminSessionResponse } from "~/server/api/admin/session.get"
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -423,6 +456,20 @@ const runtimeConfig = useRuntimeConfig()
 const defaultThemeDark = runtimeConfig.public.defaultThemeDark === true
 const appVersion = runtimeConfig.public.appVersion
 const { user, loggedIn, fetch: refetchUserSession } = useUserSession()
+const route = useRoute()
+// Same key as pages/admin/manageSongs.vue so the header shares one admin-session cache (default URL key would be a second cache).
+const adminSessionDefault = (): AdminSessionResponse => ({
+  success: true,
+  data: { authenticated: false },
+})
+const { data: adminSessionResponseData, refresh: refreshAdminSession } = useFetch<AdminSessionResponse>("/api/admin/session", {
+  key: "admin-manage-session",
+  default: adminSessionDefault,
+  watch: [loggedIn, () => route.fullPath],
+})
+const isAdminAuthenticated = computed(
+  () => (adminSessionResponseData.value as AdminSessionResponse | null)?.data.authenticated === true,
+)
 const loggedInUserName = computed(() => {
   const sessionUser = user.value
   if (!sessionUser || typeof sessionUser !== 'object' || !('name' in sessionUser)) {
@@ -432,7 +479,6 @@ const loggedInUserName = computed(() => {
   return typeof name === 'string' ? name : ''
 })
 const themeCookie = useCookie<string | null>('theme')
-const route = useRoute()
 const pageTitle = computed(() => {
   const title = route.meta?.title
   if (typeof title === 'string' && title.trim()) {
@@ -496,6 +542,7 @@ const logout = async () => {
   try {
     await $fetch('/api/users/logout', { method: 'POST' })
     await refetchUserSession()
+    await refreshAdminSession()
     closeUserMenu()
     isUserSettingsModalOpen.value = false
   } finally {
@@ -776,6 +823,7 @@ watch(loggedIn, (isLogged) => {
     closeUserMenu()
     isUserSettingsModalOpen.value = false
     initTheme()
+    return
   }
 })
 
@@ -786,6 +834,7 @@ watch(() => route.fullPath, () => {
 
 onMounted(async () => {
   await refetchUserSession()
+  await refreshAdminSession()
   if (loggedIn.value) {
     const applied = await applyThemeForLoggedInUser()
     if (!applied) {

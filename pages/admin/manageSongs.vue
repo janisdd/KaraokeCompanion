@@ -474,6 +474,7 @@ const logoutAsAdmin = async () => {
   await clearNuxtData("admin-song-files-exist")
   await refreshAdminSession()
   analyzerResults.value = []
+  await navigateTo("/")
 }
 
 const upsertAnalyzerResult = (entry: AnalyzeResultsSongEntry) => {

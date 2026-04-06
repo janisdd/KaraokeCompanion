@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { z } from "zod"
 import { ConfigHelper } from "~/helpers/configHelper"
+import { setAdminSession } from "~/server/utils/adminSession"
 import type { AdminSessionResponse } from "./session.get"
 
 const bodySchema = z.object({
@@ -29,18 +30,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: "Invalid password" })
   }
 
-  const previous = await getUserSession(event)
-  const prevSecure =
-    typeof previous.secure === "object" && previous.secure !== null
-      ? { ...previous.secure }
-      : {}
-
-  await setUserSession(event, {
-    secure: {
-      ...prevSecure,
-      admin: true,
-    },
-  })
+  await setAdminSession(event, { admin: true })
 
   const response: AdminSessionResponse = {
     success: true,
