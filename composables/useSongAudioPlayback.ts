@@ -9,31 +9,59 @@ type AudioPlaybackOptions = {
 const audioFingerprint = (songKey: string, audioFileName: string, rev: string) =>
   `${songKey}\0${audioFileName}\0${rev}`
 
+export const useSongAudioPlaybackState = (storageKey: string) => {
+  const activeAudioKey = useState<string | null>(
+    `${storageKey}-active-audio-key`,
+    () => null,
+  )
+  const activeSong = useState<SongInfoCatalog | null>(
+    `${storageKey}-active-song`,
+    () => null,
+  )
+  const isActiveAudioPlaying = useState<boolean>(
+    `${storageKey}-active-audio-playing`,
+    () => false,
+  )
+  const currentTime = useState<number>(
+    `${storageKey}-active-audio-time`,
+    () => 0,
+  )
+  const duration = useState<number>(
+    `${storageKey}-active-audio-duration`,
+    () => 0,
+  )
+
+  const resetState = () => {
+    activeAudioKey.value = null
+    activeSong.value = null
+    isActiveAudioPlaying.value = false
+    currentTime.value = 0
+    duration.value = 0
+  }
+
+  return {
+    activeAudioKey,
+    activeSong,
+    isActiveAudioPlaying,
+    currentTime,
+    duration,
+    resetState,
+  }
+}
+
 export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
   const activeAudio = ref<HTMLAudioElement | null>(null)
   const lastLoadedAudioFingerprint = ref<string | null>(null)
   let playbackGeneration = 0
 
-  const activeAudioKey = useState<string | null>(
-    `${options.storageKey}-active-audio-key`,
-    () => null,
-  )
-  const activeSong = useState<SongInfoCatalog | null>(
-    `${options.storageKey}-active-song`,
-    () => null,
-  )
-  const isActiveAudioPlaying = useState<boolean>(
-    `${options.storageKey}-active-audio-playing`,
-    () => false,
-  )
-  const currentTime = useState<number>(
-    `${options.storageKey}-active-audio-time`,
-    () => 0,
-  )
-  const duration = useState<number>(
-    `${options.storageKey}-active-audio-duration`,
-    () => 0,
-  )
+  const {
+    activeAudioKey,
+    activeSong,
+    isActiveAudioPlaying,
+    currentTime,
+    duration,
+    resetState,
+  } = useSongAudioPlaybackState(options.storageKey)
   const activeAudioHandlers = ref<{
     timeUpdate: () => void
     durationChange: () => void
@@ -78,11 +106,7 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
       activeAudio.value.currentTime = 0
       activeAudio.value = null
     }
-    activeAudioKey.value = null
-    activeSong.value = null
-    isActiveAudioPlaying.value = false
-    currentTime.value = 0
-    duration.value = 0
+    resetState()
     pendingSeekTime.value = null
     lastLoadedAudioFingerprint.value = null
   }
@@ -258,6 +282,7 @@ export const useSongAudioPlayback = (options: AudioPlaybackOptions) => {
     isActiveAudioPlaying,
     currentTime,
     duration,
+    resetState,
     seekTo,
     stopActiveAudio,
     toggleAudioPlayback,

@@ -70,6 +70,13 @@ export const useSongs = (options?: UseSongsOptions) => {
     }
   };
 
+  const reset = () => {
+    songs.value = []
+    pending.value = false
+    error.value = null
+    searchIndex.value = {}
+  }
+
   watch(
     songs,
     (value) => {
@@ -87,6 +94,7 @@ export const useSongs = (options?: UseSongsOptions) => {
     pending,
     error,
     refresh,
+    reset,
     searchIndex,
   };
 };

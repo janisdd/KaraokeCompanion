@@ -55,70 +55,18 @@ const { data: normalLoudnessResponse, refresh: refreshNormalLoudness } =
 
 const adminSongsCatalogKey = "admin-manage"
 
-type AdminSongSearchEntry = {
-  metadata: string
-}
-
-type AdminSongSortKey = "title" | "artist" | "year" | "genre" | "language"
-type AdminSongSortDirection = "asc" | "desc"
-
 const {
   songs,
-  pending: adminSongsPending,
-  error: adminSongsError,
-  searchIndex: adminSongsSearchIndex,
   refresh: refreshSongs,
+  reset: resetAdminSongsState,
 } = useSongs({
   autoFetch: false,
   stateKey: adminSongsCatalogKey,
 })
-
-// most of the state is managed by "useSongs" outside this view,
-// but we need to manage some state here
-// so we use the same state key --> we get the same data for two different useState calls
-
-const adminSongsSongTextWordsCache = useState<Record<string, string[]>>(
-  "admin-songs-song-text-words-cache",
-  () => ({}),
-)
-const adminSongsSortKey = useState<AdminSongSortKey>(
-  "admin-songs-sort-key",
-  () => "title",
-)
-const adminSongsSortDirection = useState<AdminSongSortDirection>(
-  "admin-songs-sort-direction",
-  () => "asc",
-)
-const adminSongsMetadataQuery = useState("admin-songs-metadata-query", () => "")
-const adminSongsSelectedKey = useState<string | null>(
-  "admin-songs-selected-key",
-  () => null,
-)
-const adminSongsSelectedText = useState<string | null>(
-  "admin-songs-selected-text",
-  () => null,
-)
-const adminSongsSelectedName = useState<string | null>(
-  "admin-songs-selected-name",
-  () => null,
-)
-const adminSongsActiveAudioKey = useState<string | null>(
-  "admin-songs-active-audio-key",
-  () => null,
-)
-const adminSongsActiveSong = useState<SongListRow | null>(
-  "admin-songs-active-song",
-  () => null,
-)
-const adminSongsIsActiveAudioPlaying = useState(
-  "admin-songs-active-audio-playing",
-  () => false,
-)
-const adminSongsActiveAudioTime = useState("admin-songs-active-audio-time", () => 0)
-const adminSongsActiveAudioDuration = useState(
-  "admin-songs-active-audio-duration",
-  () => 0,
-)
+const { resetState: resetAdminSongListViewState } = useSongListViewState({
+  stateKeyPrefix: "admin-songs",
+  audioStorageKey: "admin-songs",
+})
 
 watch(
   isAdminAuthenticated,
@@ -647,23 +595,8 @@ const resetAdminManageSongsPageState = () => {
   isCancelUltraStarCurrentSongRunning.value = false
   isTogglePauseUltraStarCurrentSongRunning.value = false
 
-  songs.value = []
-  adminSongsPending.value = false
-  adminSongsError.value = null
-  adminSongsSearchIndex.value = {} as Record<string, AdminSongSearchEntry>
-
-  adminSongsSongTextWordsCache.value = {}
-  adminSongsSortKey.value = "title"
-  adminSongsSortDirection.value = "asc"
-  adminSongsMetadataQuery.value = ""
-  adminSongsSelectedKey.value = null
-  adminSongsSelectedText.value = null
-  adminSongsSelectedName.value = null
-  adminSongsActiveAudioKey.value = null
-  adminSongsActiveSong.value = null
-  adminSongsIsActiveAudioPlaying.value = false
-  adminSongsActiveAudioTime.value = 0
-  adminSongsActiveAudioDuration.value = 0
+  resetAdminSongsState()
+  resetAdminSongListViewState()
 
   analyzerResultsResponse.value = null
   normalLoudnessResponse.value = null

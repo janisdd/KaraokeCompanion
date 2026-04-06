@@ -1,6 +1,7 @@
 import type { GridApi } from "ag-grid-community";
 import type { SongInfoCatalog } from "~~/types/song"
 import { useSongAudioPlayback } from "~~/composables/useSongAudioPlayback"
+import { useSongAudioPlaybackState } from "~~/composables/useSongAudioPlayback"
 
 type SongListAudioOptions = {
   audioStorageKey: string
@@ -43,6 +44,26 @@ export const scrollToGridSong = <TRow>(options: ScrollToGridSongOptions<TRow>) =
   }
 };
 
+export const useSongListAudioPlaybackState = (audioStorageKey: string) => {
+  const {
+    activeAudioKey,
+    activeSong,
+    isActiveAudioPlaying,
+    currentTime,
+    duration,
+    resetState,
+  } = useSongAudioPlaybackState(audioStorageKey)
+
+  return {
+    activeAudioKey,
+    activeSong,
+    isActiveAudioPlaying,
+    currentTime,
+    duration,
+    resetState,
+  }
+}
+
 export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
   const { audioStorageKey, getSongKey, getSongRowId } = options;
 
@@ -72,6 +93,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
     isActiveAudioPlaying,
     currentTime,
     duration,
+    resetState,
     seekTo,
     stopActiveAudio,
     toggleAudioPlayback,
@@ -132,6 +154,7 @@ export const useSongListAudioPlayback = (options: SongListAudioOptions) => {
     isActiveAudioPlaying,
     playerTime,
     progressPercent,
+    resetState,
     scrollToActiveSong,
     stopActiveAudio,
     toggleAudioPlayback,

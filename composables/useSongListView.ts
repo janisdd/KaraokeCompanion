@@ -1,5 +1,8 @@
 import type { SongListRow } from "~~/types/song"
-import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback"
+import {
+  useSongListAudioPlayback,
+  useSongListAudioPlaybackState,
+} from "~~/composables/useSongListAudioPlayback"
 import { useSongs } from "~~/composables/useSongs"
 
 type SortKey = "title" | "artist" | "year" | "genre" | "language"
@@ -13,18 +16,15 @@ type SongListViewOptions = {
   songsCatalogKey?: string
 }
 
-export const useSongListView = (options: SongListViewOptions) => {
-  const { songs, stateKeyPrefix, audioStorageKey, songsCatalogKey } = options
-  const { searchIndex } = useSongs({
-    autoFetch: false,
-    stateKey: songsCatalogKey,
-  })
+export const useSongListViewState = (
+  options: Pick<SongListViewOptions, "stateKeyPrefix" | "audioStorageKey">,
+) => {
+  const { stateKeyPrefix, audioStorageKey } = options
 
   const songTextWordsCache = useState<Record<string, string[]>>(
     `${stateKeyPrefix}-song-text-words-cache`,
     () => ({}),
   )
-
   const sortKey = useState<SortKey>(`${stateKeyPrefix}-sort-key`, () => "title")
   const sortDirection = useState<SortDirection>(
     `${stateKeyPrefix}-sort-direction`,
@@ -43,6 +43,72 @@ export const useSongListView = (options: SongListViewOptions) => {
     `${stateKeyPrefix}-selected-name`,
     () => null,
   )
+  const {
+    activeAudioKey,
+    activeSong,
+    currentTime,
+    duration,
+    isActiveAudioPlaying,
+    resetState: resetAudioPlaybackState,
+  } = useSongListAudioPlaybackState(audioStorageKey)
+
+  const clearSongText = () => {
+    selectedSongKey.value = null
+    selectedSongText.value = null
+    selectedSongName.value = null
+  }
+
+  const resetState = () => {
+    songTextWordsCache.value = {}
+    sortKey.value = "title"
+    sortDirection.value = "asc"
+    metadataQuery.value = ""
+    clearSongText()
+    resetAudioPlaybackState()
+  }
+
+  return {
+    activeAudioKey,
+    activeSong,
+    currentTime,
+    duration,
+    isActiveAudioPlaying,
+    clearSongText,
+    metadataQuery,
+    resetState,
+    selectedSongKey,
+    selectedSongName,
+    selectedSongText,
+    songTextWordsCache,
+    sortDirection,
+    sortKey,
+  }
+}
+
+export const useSongListView = (options: SongListViewOptions) => {
+  const { songs, stateKeyPrefix, audioStorageKey, songsCatalogKey } = options
+  const { searchIndex } = useSongs({
+    autoFetch: false,
+    stateKey: songsCatalogKey,
+  })
+  const {
+    activeAudioKey,
+    activeSong,
+    duration,
+    isActiveAudioPlaying,
+    clearSongText,
+    metadataQuery,
+    resetState,
+    selectedSongKey,
+    selectedSongName,
+    selectedSongText,
+    songTextWordsCache,
+    sortDirection,
+    sortKey,
+  } = useSongListViewState({
+    stateKeyPrefix,
+    audioStorageKey,
+  })
 
   const toggleSort = (key: SortKey) => {
     if (sortKey.value === key) {
@@ -125,9 +191,7 @@ export const useSongListView = (options: SongListViewOptions) => {
   const toggleSongText = async (song: SongListRow) => {
     const key = getSongKey(song)
     if (selectedSongKey.value === key) {
-      selectedSongKey.value = null
-      selectedSongText.value = null
-      selectedSongName.value = null
+      clearSongText()
       return
     }
 
@@ -158,19 +222,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     }
   }
 
-  const clearSongText = () => {
-    selectedSongKey.value = null
-    selectedSongText.value = null
-    selectedSongName.value = null
-  }
-
   const {
-    activeAudioKey,
-    activeSong,
-    isActiveAudioPlaying,
-    duration,
-    stopActiveAudio,
-    toggleAudioPlayback,
     activeCoverUrl,
     currentTimeLabel,
     durationLabel,
@@ -178,6 +230,8 @@ export const useSongListView = (options: SongListViewOptions) => {
     playerTime,
     progressPercent,
     scrollToActiveSong,
+    stopActiveAudio,
+    toggleAudioPlayback,
   } = useSongListAudioPlayback({
     audioStorageKey,
     getSongKey,
@@ -217,6 +271,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     metadataQuery,
     playerTime,
     progressPercent,
+    resetState,
     scrollToActiveSong,
     selectedSongKey,
     selectedSongName,
