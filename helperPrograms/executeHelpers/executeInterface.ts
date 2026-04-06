@@ -204,11 +204,11 @@ async function waitForWindowsFileHandleRelease(filePath: string, waitMs: number)
 
     const openResult = canOpenFileForWrite(filePath)
     if (openResult.ok) {
-      Logger.log(`[ExecuteHelperInterface] file handle is released for '${filePath}'`)
+      Logger.debug(`[ExecuteHelperInterface] file handle is released for '${filePath}'`)
       return
     }
 
-    Logger.log(`[ExecuteHelperInterface] file handle not released for '${filePath}' (attempt ${attempt + 1}), error: ${getErrorMessage(openResult.error)}`)
+    Logger.debug(`[ExecuteHelperInterface] file handle not released for '${filePath}' (attempt ${attempt + 1}), error: ${getErrorMessage(openResult.error)}`)
 
     lastError = openResult.error
   }
