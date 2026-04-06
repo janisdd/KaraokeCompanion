@@ -76,11 +76,28 @@ const analyzerResults = ref<AnalyzeResultsSongEntry[]>(
   analyzerResultsResponse.value?.data ?? [],
 )
 
+const analyzerResultsLoadedOnce = ref(false)
+
 watch(
   () => analyzerResultsResponse.value?.data,
   (data) => {
     if (data) {
       analyzerResults.value = data
+    }
+    if (data) {
+      analyzerResultsLoadedOnce.value = true
+    }
+  },
+  { immediate: true },
+)
+
+const normalLoudnessLoadedOnce = ref(false)
+
+watch(
+  () => normalLoudnessResponse.value?.data,
+  (data) => {
+    if (data !== undefined) {
+      normalLoudnessLoadedOnce.value = true
     }
   },
   { immediate: true },
@@ -518,6 +535,26 @@ const compareLoudnessAgainstTarget = () => {
   loudnessTolerance.value = tolerance
 }
 
+const hasAutoComparedLoudness = ref(false)
+
+watch(
+  [isAdminAuthenticated, adminSessionPending, analyzerResultsLoadedOnce, normalLoudnessLoadedOnce],
+  ([authenticated, sessionPending, resultsLoaded, loudnessLoaded]) => {
+    if (hasAutoComparedLoudness.value) {
+      return
+    }
+    if (!authenticated || sessionPending || !resultsLoaded || !loudnessLoaded) {
+      return
+    }
+    if (targetLoudness.value === null) {
+      return
+    }
+    hasAutoComparedLoudness.value = true
+    compareLoudnessAgainstTarget()
+  },
+  { immediate: true },
+)
+
 const runAnalyzer = async (payload: {
   songKey: string
   analyzerKey: AnalyzeResultKey
@@ -934,6 +971,9 @@ const runMatchLoudnessTwoPassByReference = async () => {
             <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {{ selectedSongTools.title }}
             </div>
+            <p class="mt-1 max-w-prose text-xs text-slate-500 dark:text-slate-400">
+              All actions are always performed on the original audio file only.
+            </p>
           </div>
           <button
             type="button"
@@ -946,81 +986,6 @@ const runMatchLoudnessTwoPassByReference = async () => {
         </div>
 
         <div class="space-y-4">
-          <section class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
-            <div class="mb-3">
-              <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Change relative loudness
-              </h2>
-              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Apply a dB change directly to this song's audio file. Example:
-                `+3` is louder, `-3` is quieter.
-              </p>
-              <p
-                v-if="selectedSongLoudnessGuidance"
-                class="mt-2 text-xs text-slate-600 dark:text-slate-300"
-              >
-                Measured loudness:
-                <span class="font-medium">
-                  {{ selectedSongLoudnessGuidance.measuredLoudness.toFixed(2) }} LUFS
-                </span>
-                . To reach the reference loudness of
-                <span class="font-medium">
-                  {{ selectedSongLoudnessGuidance.targetLoudness.toFixed(2) }} LUFS
-                </span>
-                , start with
-                <span class="font-semibold">
-                  {{ formatSignedNumber(selectedSongLoudnessGuidance.recommendedDbChange) }} dB
-                </span>
-                in the field below.
-              </p>
-              <p
-                v-else
-                class="mt-2 text-xs text-slate-500 dark:text-slate-400"
-              >
-                Run the loudness analyzer for this song to get a suggested dB value.
-              </p>
-            </div>
-
-            <div class="flex flex-col gap-3 md:flex-row md:items-end">
-              <label
-                class="flex w-full max-w-xs items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <span class="whitespace-nowrap text-slate-500 dark:text-slate-400">
-                  dB change
-                </span>
-                <input
-                  v-model.number="changeRelativeLoudnessDbChange"
-                  type="number"
-                  step="0.1"
-                  class="w-full border-none bg-transparent text-right text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-                />
-              </label>
-
-              <button
-                type="button"
-                class="inline-flex min-w-32 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                :disabled="isChangeRelativeLoudnessRunning"
-                @click="runChangeRelativeLoudness"
-              >
-                <span
-                  v-if="isChangeRelativeLoudnessRunning"
-                  class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
-                  aria-hidden="true"
-                />
-                <span>
-                  {{ isChangeRelativeLoudnessRunning ? "Sending" : "Send" }}
-                </span>
-              </button>
-            </div>
-
-            <p
-              v-if="toolsActionError"
-              class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
-            >
-              {{ toolsActionError }}
-            </p>
-          </section>
-
           <section class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
             <div class="mb-3">
               <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -1086,6 +1051,81 @@ const runMatchLoudnessTwoPassByReference = async () => {
                 />
                 <span>
                   {{ isMatchLoudnessTwoPassRunning ? "Sending" : "Send" }}
+                </span>
+              </button>
+            </div>
+
+            <p
+              v-if="toolsActionError"
+              class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-200"
+            >
+              {{ toolsActionError }}
+            </p>
+          </section>
+
+          <section class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+            <div class="mb-3">
+              <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Change relative loudness
+              </h2>
+              <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Apply a dB change directly to this song's audio file. Example:
+                `+3` is louder, `-3` is quieter.
+              </p>
+              <p
+                v-if="selectedSongLoudnessGuidance"
+                class="mt-2 text-xs text-slate-600 dark:text-slate-300"
+              >
+                Measured loudness:
+                <span class="font-medium">
+                  {{ selectedSongLoudnessGuidance.measuredLoudness.toFixed(2) }} LUFS
+                </span>
+                . To reach the reference loudness of
+                <span class="font-medium">
+                  {{ selectedSongLoudnessGuidance.targetLoudness.toFixed(2) }} LUFS
+                </span>
+                , start with
+                <span class="font-semibold">
+                  {{ formatSignedNumber(selectedSongLoudnessGuidance.recommendedDbChange) }} dB
+                </span>
+                in the field below.
+              </p>
+              <p
+                v-else
+                class="mt-2 text-xs text-slate-500 dark:text-slate-400"
+              >
+                Run the loudness analyzer for this song to get a suggested dB value.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 md:flex-row md:items-end">
+              <label
+                class="flex w-full max-w-xs items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="whitespace-nowrap text-slate-500 dark:text-slate-400">
+                  dB change
+                </span>
+                <input
+                  v-model.number="changeRelativeLoudnessDbChange"
+                  type="number"
+                  step="0.1"
+                  class="w-full border-none bg-transparent text-right text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </label>
+
+              <button
+                type="button"
+                class="inline-flex min-w-32 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="isChangeRelativeLoudnessRunning"
+                @click="runChangeRelativeLoudness"
+              >
+                <span
+                  v-if="isChangeRelativeLoudnessRunning"
+                  class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                  aria-hidden="true"
+                />
+                <span>
+                  {{ isChangeRelativeLoudnessRunning ? "Sending" : "Send" }}
                 </span>
               </button>
             </div>
@@ -1445,6 +1485,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
             <p class="text-xs text-slate-500 dark:text-slate-400">
               Compare each song’s measured loudness to the target loudness and flag songs that differ by more than this tolerance.
               Higher tolerance shows fewer warnings.
+              This is always compared to the original audio file, not the modified version.
             </p>
             <div class="flex flex-wrap items-center justify-start gap-2">
               <label

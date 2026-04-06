@@ -664,17 +664,17 @@ const AnalyzerActionsCell = defineComponent({
             type: "button",
             class: analyzerButtonClass,
             "aria-label": value.isAnalyzeRunning
-              ? `Running ${value.analyzerLabel} analyzer`
-              : `Run ${value.analyzerLabel} analyzer`,
+              ? `Running ${value.analyzerLabel} analyzer (original audio file)`
+              : `Run ${value.analyzerLabel} analyzer (original audio file)`,
             title: value.isAnalyzeRunning
-              ? `Running ${value.analyzerLabel} analyzer`
-              : `Run ${value.analyzerLabel} analyzer`,
+              ? `Running ${value.analyzerLabel} analyzer (original audio file)`
+              : `Run ${value.analyzerLabel} analyzer (original audio file)`,
             disabled: value.isAnalyzeDisabled,
             onClick: () => {
               if (
                 value.hasResult &&
                 !window.confirm(
-                  `Re-run ${value.analyzerLabel} analyzer for ${value.songLabel}?`,
+                  `Re-run ${value.analyzerLabel} analyzer (original audio file) for ${value.songLabel}?`,
                 )
               ) {
                 return
