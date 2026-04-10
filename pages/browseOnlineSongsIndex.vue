@@ -24,6 +24,7 @@ import {
   resolveExistingStatus,
   useOnlineSongDownloads,
 } from "~~/composables/useOnlineSongDownloads";
+import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 
 defineOptions({
   name: "BrowseOnlineSongsIndexPage",
@@ -89,6 +90,12 @@ const {
   refreshOnlineSongs: refreshOnlineSongsIndex,
   refreshExistingSongs,
 });
+
+const {
+  isMarkedSong,
+  toggleMarkedSong,
+  isMarkedSongsAuthenticated,
+} = useMarkedSongs();
 
 const {
   activeAudioKey,
@@ -161,7 +168,13 @@ const filteredSongs = computed(() => {
   });
 });
 
-const DownloadCell = defineComponent({
+const centerCellStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const MarkCell = defineComponent({
   props: {
     params: {
       type: Object as PropType<ICellRendererParams<OnlineSongRow>>,
@@ -175,47 +188,56 @@ const DownloadCell = defineComponent({
         return null;
       }
 
-      if (song.existingStatus !== "no") {
+      if (song.existingSong && !isMarkedSongsAuthenticated.value) {
         return null;
       }
 
-      const isQueued = isQueuedSong(song.songId);
-      const isDownloading = isDownloadingSong(song.songId);
-      return h(
-        "button",
-        {
-          type: "button",
-          class:
-            isDownloading
-              ? "inline-flex h-8 w-8 items-center justify-center rounded-md border border-sky-400 bg-sky-100 text-sm text-sky-800 shadow-sm transition hover:border-sky-500 hover:bg-sky-200 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:border-sky-600 dark:hover:bg-sky-950/80"
-              : isQueued
-                ? "inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-sm text-red-600 shadow-sm transition hover:border-red-300 hover:bg-red-50 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/30"
-              : "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800",
-          disabled:
-            !isQueued && queuedDownloadCount.value >= maxQueuedDownloads.value,
-          "aria-label": isQueued
-            ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `Queue download for ${song.artist} - ${song.songName}`,
-          title: isQueued
-            ? `Cancel download for ${song.artist} - ${song.songName}`
-            : `Queue download for ${song.artist} - ${song.songName}`,
-          onClick: () => (isQueued ? cancelDownload(song) : queueDownload(song)),
-        },
-        [
-          h(FontAwesomeIcon, {
-            icon: isQueued ? "fa-solid fa-xmark" : "fa-solid fa-cloud-arrow-down",
-          }),
-        ],
-      );
+      if (!song.existingSong) {
+        if (song.existingStatus !== "no") {
+          return null;
+        }
+
+        const isQueued = isQueuedSong(song.songId);
+        const isDownloading = isDownloadingSong(song.songId);
+        return h(
+          "button",
+          {
+            type: "button",
+            class:
+              isDownloading
+                ? "inline-flex h-8 w-8 items-center justify-center rounded-md border border-sky-400 bg-sky-100 text-sm text-sky-800 shadow-sm transition hover:border-sky-500 hover:bg-sky-200 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:border-sky-600 dark:hover:bg-sky-950/80"
+                : isQueued
+                  ? "inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-sm text-red-600 shadow-sm transition hover:border-red-300 hover:bg-red-50 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/30"
+                  : "inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800",
+            disabled:
+              !isQueued && queuedDownloadCount.value >= maxQueuedDownloads.value,
+            "aria-label": isQueued
+              ? `Cancel download for ${song.artist} - ${song.songName}`
+              : `Queue download for ${song.artist} - ${song.songName}`,
+            title: isQueued
+              ? `Cancel download for ${song.artist} - ${song.songName}`
+              : `Queue download for ${song.artist} - ${song.songName}`,
+            onClick: () => (isQueued ? cancelDownload(song) : queueDownload(song)),
+          },
+          [
+            h(FontAwesomeIcon, {
+              icon: isQueued ? "fa-solid fa-xmark" : "fa-solid fa-cloud-arrow-down",
+            }),
+          ],
+        );
+      }
+
+      const existingSong = song.existingSong;
+      return h("input", {
+        type: "checkbox",
+        class: "h-4 w-4 accent-slate-700 dark:accent-slate-300",
+        checked: isMarkedSong(existingSong.key),
+        "aria-label": `Mark ${existingSong.artist} - ${existingSong.title}`,
+        onChange: () => toggleMarkedSong(existingSong.key),
+      });
     };
   },
 });
-
-const centerCellStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
 
 const AudioCell = defineComponent({
   props: {
@@ -282,14 +304,21 @@ const ExistingStatusCell = defineComponent({
 
 const columnDefs: ColDef<OnlineSongRow>[] = [
   {
-    headerName: "Download",
-    colId: "download",
-    width: 60,
+    headerName: "Mark",
+    colId: "mark",
+    width: 70,
     sortable: false,
     resizable: false,
     cellStyle: centerCellStyle,
-    valueGetter: (params) => (params.data ? 1 : 0),
-    cellRenderer: DownloadCell,
+    valueGetter: (params) => {
+      const song = params.data;
+      if (!song) {
+        return 0;
+      }
+
+      return song.existingSong || song.existingStatus === "no" ? 1 : 0;
+    },
+    cellRenderer: MarkCell,
     suppressMovable: true,
   },
   {
