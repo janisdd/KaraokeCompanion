@@ -153,8 +153,13 @@ you have to copy the `secrets/.env_example` to `secrets/.env` and set all values
 
 for the spotify stuff you need a account and a spotify app, see https://developer.spotify.com/documentation/web-api/tutorials/getting-started
 
+for the tidal stuff you need a account and a tidal app, see https://developer.tidal.com/documentation/api-sdk/api-sdk-quick-start
+(no additional scopes are needed)
+
 - `SPOTIFY_CLIENT_ID` is the Spotify client id
 - `SPOTIFY_CLIENT_SECRET` is the Spotify client secret
+- `TIDAL_CLIENT_ID` is the Tidal client id
+- `TIDAL_CLIENT_SECRET` is the Tidal client secret
 - `USDB_ANIMUX_ID` is the usdb animux id
 - `USDB_ANIMUX_PW` is the usdb animux password
 

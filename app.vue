@@ -42,14 +42,14 @@
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
-            Spotify vs Local
+            Playlist vs Local
           </NuxtLink>
           <NuxtLink
             to="/onlineSongsIntersect"
             class="rounded-full px-3 py-1 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
           >
-            Spotify vs Online
+            Playlist vs Online
           </NuxtLink>
 
           <button
@@ -198,7 +198,7 @@
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
             @click="isMobileMenuOpen = false"
           >
-            Spotify vs Local
+            Playlist vs Local
           </NuxtLink>
           <NuxtLink
             to="/onlineSongsIntersect"
@@ -206,7 +206,7 @@
             active-class="bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-100"
             @click="isMobileMenuOpen = false"
           >
-            Spotify vs Online
+            Playlist vs Online
           </NuxtLink>
           <div class="flex flex-col gap-2 pt-2">
             <div

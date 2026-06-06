@@ -1,24 +1,26 @@
-import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import {
   getSpotifyIdFromUrl,
   getSpotifyPlaylistFull,
+  getTidalIdFromUrl,
+  getTidalPlaylistFull,
   type StrippedTrack,
 } from "~/helpers/playlistComparer";
 import { SongsIndexer } from "~/helpers/songsIndexer";
 import type { SongInfo } from "~~/types/song";
-import { ConfigHelper } from "~/helpers/configHelper";
 import { Logger } from "~/helpers/logger";
 import { loadJsonWithCache, type CacheResult } from "~/helpers/playlistCache";
-
-
-const CLIENT_ID = ConfigHelper.getClientId();
-const CLIENT_SECRET = ConfigHelper.getClientSecret();
-const sdk = CLIENT_ID && CLIENT_SECRET ? SpotifyApi.withClientCredentials(CLIENT_ID, CLIENT_SECRET) : null;
+import {
+  getSpotifyClient,
+  getTidalClient,
+  type TidalClient,
+} from "~/helpers/onlineServicesHelper"
 
 export type MatchResult = {
   spotify: StrippedTrack;
   local: Pick<SongInfo, "key" | "songDirName" | "title" | "artist">;
 };
+
+export type PlaylistService = "spotify" | "tidal"
 
 type CachedPlaylist = CacheResult<StrippedTrack[]>;
 
@@ -26,22 +28,59 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ playListUrl?: string; forceRefresh?: boolean }>(event);
   const { playListUrl, forceRefresh } = body || {};
 
-  if (!sdk) {
-    throw createError({ statusCode: 500, message: "Spotify API not initialized" });
-  }
-
   if (!playListUrl) {
     throw createError({ statusCode: 400, message: "Missing playListUrl" });
   }
 
-  const id = getSpotifyIdFromUrl(playListUrl);
+  // check if the playlist is a Spotify or Tidal playlist
+  const isSpotifyPlaylist = playListUrl.includes("spotify.com")
+  const isTidalPlaylist = playListUrl.includes("tidal.com")
+  if (!isSpotifyPlaylist && !isTidalPlaylist) {
+    throw createError({ statusCode: 400, message: "Invalid playlist URL" });
+  }
+
+  const playlistService: PlaylistService = isTidalPlaylist ? "tidal" : "spotify"
+  const id =
+    playlistService === "spotify"
+      ? getSpotifyIdFromUrl(playListUrl)
+      : getTidalIdFromUrl(playListUrl)
 
   if (!id) {
     throw createError({ statusCode: 400, message: "Invalid playListUrl" });
   }
 
+  const spotifyClient =
+    playlistService === "spotify" ? await getSpotifyClient() : null
+  const tidalClient = playlistService === "tidal" ? await getTidalClient() : null
+
+  let playlistPromise: Promise<CachedPlaylist>
+
+  if (playlistService === "spotify") {
+    if (!spotifyClient) {
+      throw createError({ statusCode: 500, message: "Spotify API not initialized" });
+    }
+
+    playlistPromise = loadSpotifyPlaylist(
+      id,
+      playListUrl,
+      Boolean(forceRefresh),
+      spotifyClient,
+    )
+  } else {
+    if (!tidalClient) {
+      throw createError({ statusCode: 500, message: "Tidal API not initialized" });
+    }
+
+    playlistPromise = loadTidalPlaylist(
+      id,
+      playListUrl,
+      Boolean(forceRefresh),
+      tidalClient,
+    )
+  }
+
   const [playlistResult, localSongs] = await Promise.all([
-    loadPlaylist(id, playListUrl, Boolean(forceRefresh)),
+    playlistPromise,
     loadLocalSongs(),
   ]);
 
@@ -56,6 +95,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     matches,
+    playlistService,
     playlistCache: {
       updatedAt: playlistResult.updatedAt,
       source: playlistResult.source,
@@ -124,7 +164,7 @@ const matchPlaylistToLocal = (
 const normalizeValue = (value: string): string =>
   value
     .toLowerCase()
-    .replace(/[.,(){}+&-_\|*@!']/g, "")
+    .replace(/[.,(){}+&%\-_\|*@!']/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -135,27 +175,49 @@ const isSubsectMatch = (left: string, right: string): boolean => {
   return left.includes(right) || right.includes(left);
 };
 
-const loadPlaylist = async (
+const loadSpotifyPlaylist = async (
   id: string,
   url: string,
   forceRefresh: boolean,
+  spotifyClient: NonNullable<Awaited<ReturnType<typeof getSpotifyClient>>>,
 ): Promise<CachedPlaylist> => {
-  const cacheFile = `${id}.json`;
+  const cacheFile = `spotify.${id}.json`;
   const result = await loadJsonWithCache(
     cacheFile,
     async () => {
-      if (!sdk) {
-        throw createError({ statusCode: 500, message: "Spotify API not initialized" });
-      }
-      return getSpotifyPlaylistFull(url, sdk);
+      return getSpotifyPlaylistFull(url, spotifyClient);
     },
     forceRefresh,
   );
 
   Logger.log(
     result.source === "cache"
-      ? `Loaded cached playlist from ${cacheFile}`
-      : `Wrote fresh playlist to ${cacheFile}`
+      ? `Loaded cached Spotify playlist from ${cacheFile}`
+      : `Wrote fresh Spotify playlist to ${cacheFile}`
+  );
+
+  return result;
+};
+
+const loadTidalPlaylist = async (
+  id: string,
+  url: string,
+  forceRefresh: boolean,
+  tidalClient: TidalClient,
+): Promise<CachedPlaylist> => {
+  const cacheFile = `tidal.${id}.json`;
+  const result = await loadJsonWithCache(
+    cacheFile,
+    async () => {
+      return getTidalPlaylistFull(url, tidalClient);
+    },
+    forceRefresh,
+  );
+
+  Logger.log(
+    result.source === "cache"
+      ? `Loaded cached Tidal playlist from ${cacheFile}`
+      : `Wrote fresh Tidal playlist to ${cacheFile}`
   );
 
   return result;

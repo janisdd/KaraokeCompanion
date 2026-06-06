@@ -11,18 +11,19 @@ import { defineComponent, h, resolveComponent, shallowRef, type PropType } from 
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
 import type { SongListRow } from "~~/types/song"
-import type { MatchResult } from "~/server/api/localSongsIntersect.post";
+import type { MatchResult, PlaylistService } from "~/server/api/localSongsIntersect.post";
 defineOptions({
   name: "ComparePlaylistLocalPage",
 });
 
 definePageMeta({
-  title: "Spotify vs Local Songs",
+  title: "Playlist vs Local Songs",
 });
 
 
 type CompareResponse = {
   matches?: MatchResult[];
+  playlistService: PlaylistService;
   playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
@@ -131,6 +132,21 @@ const isFormValid = computed(() => playListUrl.value.trim().length > 0);
 const matches = computed<MatchResult[]>(() => {
   return compareResult.value?.matches ?? [];
 });
+
+const playlistServiceLabel = computed(() => {
+  if (compareResult.value?.playlistService === "tidal") {
+    return "Tidal"
+  }
+
+  if (compareResult.value?.playlistService === "spotify") {
+    return "Spotify"
+  }
+
+  return "Playlist"
+})
+
+const playlistTrackHeader = computed(() => `${playlistServiceLabel.value} track`)
+const playlistArtistHeader = computed(() => `${playlistServiceLabel.value} artist`)
 
 const filteredMatches = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -257,7 +273,7 @@ const centerCellStyle = {
   justifyContent: "center",
 };
 
-const columnDefs: ColDef<MatchResult>[] = [
+const columnDefs = computed<ColDef<MatchResult>[]>(() => [
   {
     headerName: "Mark",
     cellRenderer: MarkCell,
@@ -301,16 +317,16 @@ const columnDefs: ColDef<MatchResult>[] = [
     cellRenderer: SendCell,
   },
   {
-    headerName: "Spotify track",
+    headerName: playlistTrackHeader.value,
     valueGetter: (params) => params.data?.spotify.name ?? "",
     width: 160,
   },
   {
-    headerName: "Spotify artist",
+    headerName: playlistArtistHeader.value,
     valueGetter: (params) => params.data?.spotify.artist ?? "",
     width: 140,
   },
-];
+]);
 
 const defaultColDef: ColDef<MatchResult> = {
   sortable: true,
@@ -358,7 +374,7 @@ const markAllMatches = () => {
     <div class="mx-auto max-w-5xl space-y-4">
       <header class="space-y-2">
         <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
-          Spotify Playlist vs Local Songs
+          Playlist vs Local Songs
         </h1>
         <details
           class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -369,7 +385,7 @@ const markAllMatches = () => {
             About this page
           </summary>
           <p class="mt-3">
-            Provide a Spotify playlist URL to find local UltraStar matches.
+            Provide a Spotify or Tidal playlist URL to find local UltraStar matches.
             <b>The playlist must be public and a custom playlist!</b>
           </p>
         </details>
@@ -382,7 +398,7 @@ const markAllMatches = () => {
             <input
               v-model.trim="playListUrl"
               type="url"
-              placeholder="https://open.spotify.com/playlist/..."
+              placeholder="https://open.spotify.com/playlist/... or https://tidal.com/playlist/..."
               class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-slate-600"
             />
           </label>
@@ -431,7 +447,7 @@ const markAllMatches = () => {
         <div v-if="compareResult" class="mt-6 border-t border-slate-200 pt-6 dark:border-slate-700">
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Matches</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {{ matches.length }} track(s) matched between Spotify and local songs.
+            {{ matches.length }} track(s) matched between {{ playlistServiceLabel }} and local songs.
           </p>
 
           <div v-if="matches.length" class="mt-4 space-y-3">

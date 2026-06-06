@@ -29,10 +29,11 @@ defineOptions({
 });
 
 definePageMeta({
-  title: "Spotify vs Online Songs",
+  title: "Playlist vs Online Songs",
 });
 
 type CompareMode = "strict" | "lax";
+type PlaylistService = "spotify" | "tidal";
 
 type MatchResult = {
   spotify: { name: string; artist: string };
@@ -46,6 +47,7 @@ type CompareResponse = {
     spotify: { name: string; artist: string };
     online: { key: string; songId: string; songName: string; artist: string };
   }>;
+  playlistService: PlaylistService;
   playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
@@ -206,6 +208,21 @@ const matches = computed<MatchResult[]>(() => {
     };
   });
 });
+
+const playlistServiceLabel = computed(() => {
+  if (compareResult.value?.playlistService === "tidal") {
+    return "Tidal"
+  }
+
+  if (compareResult.value?.playlistService === "spotify") {
+    return "Spotify"
+  }
+
+  return "Playlist"
+})
+
+const playlistTrackHeader = computed(() => `${playlistServiceLabel.value} track`)
+const playlistArtistHeader = computed(() => `${playlistServiceLabel.value} artist`)
 
 const filteredMatches = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
@@ -413,7 +430,7 @@ const centerCellStyle = {
   justifyContent: "center",
 };
 
-const columnDefs: ColDef<MatchResult>[] = [
+const columnDefs = computed<ColDef<MatchResult>[]>(() => [
   {
     headerName: "Mark",
     colId: "mark",
@@ -474,16 +491,16 @@ const columnDefs: ColDef<MatchResult>[] = [
     cellRenderer: SendCell,
   },
   {
-    headerName: "Spotify track",
+    headerName: playlistTrackHeader.value,
     valueGetter: (params) => params.data?.spotify.name ?? "",
     width: 220,
   },
   {
-    headerName: "Spotify artist",
+    headerName: playlistArtistHeader.value,
     valueGetter: (params) => params.data?.spotify.artist ?? "",
     width: 200,
   },
-];
+]);
 
 const defaultColDef: ColDef<MatchResult> = {
   sortable: true,
@@ -529,7 +546,7 @@ const scrollToActiveSongInList = () => {
     <div class="mx-auto max-w-5xl space-y-4">
       <header class="space-y-2">
         <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
-          Spotify Playlist vs Online Songs
+          Playlist vs Online Songs
         </h1>
         <details
           class="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -540,7 +557,7 @@ const scrollToActiveSongInList = () => {
             About this page
           </summary>
           <p class="mt-3">
-            Provide a Spotify playlist URL to find matches in the indexed online songs.
+            Provide a Spotify or Tidal playlist URL to find matches in the indexed online songs.
             Only title and artist are compared.
             <b>The playlist must be public and a custom playlist!</b>
           </p>
@@ -556,7 +573,7 @@ const scrollToActiveSongInList = () => {
                 <input
                   v-model.trim="playListUrl"
                   type="url"
-                  placeholder="https://open.spotify.com/playlist/..."
+                  placeholder="https://open.spotify.com/playlist/... or https://tidal.com/playlist/..."
                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-slate-600"
                 />
               </label>
@@ -691,7 +708,7 @@ const scrollToActiveSongInList = () => {
         <div v-if="compareResult" class="mt-6 border-t border-slate-200 pt-6 dark:border-slate-700">
           <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Matches</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {{ matches.length }} track(s) matched between Spotify and online songs using
+            {{ matches.length }} track(s) matched between {{ playlistServiceLabel }} and online songs using
             {{ compareMode }} mode.
           </p>
 

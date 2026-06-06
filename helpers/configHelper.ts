@@ -18,6 +18,8 @@ const USDB_ANIMUX_URL = "https://usdb.animux.de";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
+const TIDAL_CLIENT_ID = process.env.TIDAL_CLIENT_ID || "";
+const TIDAL_CLIENT_SECRET = process.env.TIDAL_CLIENT_SECRET || "";
 const defaultUltraStarCompanionUrl = "http://localhost:3001"
 
 function parseUltraStarCompanionBaseUrl(raw: string | undefined): string {
@@ -168,12 +170,20 @@ export class ConfigHelper {
     return PlaylistCacheDirPath;
   }
 
-  static getClientId() {
+  static getSpotifyClientId() {
     return SPOTIFY_CLIENT_ID;
   }
 
-  static getClientSecret() {
+  static getSpotifyClientSecret() {
     return SPOTIFY_CLIENT_SECRET;
+  }
+
+  static getTidalClientId() {
+    return TIDAL_CLIENT_ID;
+  }
+
+  static getTidalClientSecret() {
+    return TIDAL_CLIENT_SECRET;
   }
 
   static getDownloadPreferredVideoFormat() {

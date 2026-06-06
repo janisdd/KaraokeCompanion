@@ -6,7 +6,10 @@ import { ConfigHelper } from '~/helpers/configHelper';
 import { AllOnlineSongsIndexer } from '~/helpers/allOnlineSongsIndexer';
 import { UsersIndexer } from "~/helpers/usersIndexer"
 import { SongRedownloadHelper } from '~/helpers/songRedownloadHelper';
+import {localStorage} from '../../helpers/localstorage' // needed to shim localstorage
 
+// prevent tree shaking or no side effect import
+localStorage.init()
 
 export default defineNitroPlugin(async () => {
   loadEnv()
