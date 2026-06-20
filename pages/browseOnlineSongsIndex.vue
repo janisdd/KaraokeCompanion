@@ -52,7 +52,11 @@ const {
   pending,
   error,
   refresh: refreshOnlineSongsIndex,
-} = await useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex");
+} = useFetch<OnlineSongsIndexResponse>("/api/onlineSongsIndex");
+
+const isInitialOnlineSongsLoading = computed(
+  () => pending.value && !response.value && !error.value,
+)
 
 const showOnlineSongsGrid = computed(
   () => Boolean(response.value) && !error.value,
@@ -546,7 +550,22 @@ const defaultColDef: ColDef<OnlineSongRow> = {
         </div>
 
         <div
-          v-if="showOnlineSongsGrid"
+          v-if="isInitialOnlineSongsLoading"
+          class="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="flex flex-col items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+            <span
+              class="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+              aria-hidden="true"
+            ></span>
+            <span>Loading online songs...</span>
+          </div>
+        </div>
+
+        <div
+          v-else-if="showOnlineSongsGrid"
           class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
         >
           <AgGridVue
