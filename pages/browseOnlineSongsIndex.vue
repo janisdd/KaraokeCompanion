@@ -425,29 +425,67 @@ const defaultColDef: ColDef<OnlineSongRow> = {
       </header>
 
       <section class="flex min-h-0 flex-1 flex-col gap-4">
-        <label class="block space-y-2">
-          <span
-            class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-          >
-            Search
-          </span>
-          <input
-            v-model="searchQuery"
-            type="search"
-            placeholder="Search artists or songs..."
-            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-slate-600"
-          />
-        </label>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex w-full flex-col md:max-w-2xl">
+            <div class="flex flex-col gap-2 md:flex-row">
+              <label
+                class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="text-slate-500 dark:text-slate-400">Search</span>
+                <input
+                  v-model="searchQuery"
+                  type="search"
+                  placeholder="Search artists or songs..."
+                  class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </label>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 md:flex-col md:items-end md:gap-1">
+            <p
+              v-if="pending && !response"
+              class="text-xs text-slate-500 dark:text-slate-400"
+            >
+              Loading online songs...
+            </p>
+            <p
+              v-else-if="pending"
+              class="text-xs text-slate-500 dark:text-slate-400"
+            >
+              Refreshing online songs...
+            </p>
+            <p
+              v-else-if="existingSongsPending"
+              class="text-xs text-slate-500 dark:text-slate-400"
+            >
+              Loading existing songs...
+            </p>
+            <p
+              v-else-if="error"
+              class="text-xs text-red-600 dark:text-red-400"
+            >
+              Failed to load online songs.
+            </p>
+            <p
+              v-else-if="existingSongsError"
+              class="text-xs text-red-600 dark:text-red-400"
+            >
+              Failed to load existing songs.
+            </p>
+            <p v-else class="text-xs text-slate-500 dark:text-slate-400">
+              Showing {{ filteredSongs.length }} of {{ onlineSongs.length }}
+            </p>
+          </div>
+        </div>
 
         <div
+          v-if="
+            (queuedDownloadCount > 0 || completedDownloadCount > 0)
+              || downloadError
+              || downloadStatusMessage
+          "
           class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400"
         >
-          <span v-if="pending && !response">Loading online songs...</span>
-          <span v-else-if="pending">Refreshing online songs...</span>
-          <span v-else-if="existingSongsPending">Loading existing songs...</span>
-          <span v-else-if="error">Failed to load online songs.</span>
-          <span v-else-if="existingSongsError">Failed to load existing songs.</span>
-          <span v-else>{{ filteredSongs.length }} song(s) found.</span>
           <span v-if="queuedDownloadCount > 0 || completedDownloadCount > 0">
             Queue: {{ completedDownloadCount }}/{{ totalTrackedDownloads }}
             completed, {{ queuedDownloadCount }} queued

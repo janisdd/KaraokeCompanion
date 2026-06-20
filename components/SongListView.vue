@@ -394,7 +394,7 @@ watch(
       </header>
 
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex w-full flex-col gap-3 md:max-w-2xl">
+        <div class="flex w-full flex-col md:max-w-2xl">
           <div class="flex flex-wrap items-center gap-3">
             <slot name="search-mode-actions" />
           </div>

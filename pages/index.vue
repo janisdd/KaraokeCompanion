@@ -26,9 +26,6 @@ const loggedInUserName = computed(() => {
         <div class="flex flex-col items-center gap-3">
           <img src="/logo.png" alt="UltraStar Info logo" style="width: 15rem;" />
         </div>
-        <p class="text-sm text-slate-600 dark:text-slate-300">
-          Pick a view to explore the songs.
-        </p>
       </header>
 
       <div v-if="loggedIn" class="text-center">

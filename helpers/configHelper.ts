@@ -86,6 +86,7 @@ const PlaylistCacheDirPath = resolveUnderStorage(
 )
 const USDB_ANIMUX_ID = process.env.USDB_ANIMUX_ID || "";
 const USDB_ANIMUX_PW = process.env.USDB_ANIMUX_PW || "";
+const ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345"
 const USERS_DIR = resolveUnderStorage(process.env.USERS_DIR, "users", "USERS_DIR")
 const REDOWNLOAD_SONGS_TRASH_DIR = resolveUnderStorage(
   process.env.REDOWNLOAD_SONGS_TRASH_DIR,
@@ -109,7 +110,6 @@ let DOWNLOAD_CONVERT_AUDIO_FORMAT = process.env.DOWNLOAD_CONVERT_AUDIO_FORMAT ||
 let ALL_SONGS_BY_ARTIST_PAGE = process.env.ALL_SONGS_BY_ARTIST_PAGE || `${USDB_ANIMUX_URL}/index.php?link=byartist`;
 let DOWNLOAD_USE_HEADLESS_MODE = process.env.DOWNLOAD_USE_HEADLESS_MODE || false;
 let NUM_ANALYZE_WORKERS = process.env.NUM_ANALYZE_WORKERS || defaultNumAnalyzeWorkers; // 2 for in case of low cpu power
-let ADMIN_PAGE_PW = process.env.ADMIN_PAGE_PW || "12345";
 let NORMAL_LOUDNESS = process.env.NORMAL_LOUDNESS || defaultNormalLoudness; // normal loudness target in LUFS (Loudness Units Full Scale), e.g. -16
 let WAIT_TO_REPLACE_FILE_FOR_EXECUTE_HELPERS_IN_MS =
   process.env.WAIT_TO_REPLACE_FILE_FOR_EXECUTE_HELPERS_IN_MS ?? defaultWaitToReplaceFileForExecuteHelpersInMs;
