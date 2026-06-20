@@ -1136,17 +1136,19 @@ watch(onlineSongsIndexResponse, () => {
   </div>
 
   <main
-    class="box-border h-[calc(100vh-3rem)] overflow-hidden bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
+    class="box-border min-h-[calc(100vh-3rem)] bg-slate-50 px-3 pt-6 sm:px-6 sm:pt-8 dark:bg-slate-950"
     :class="activeSong ? 'pb-28' : 'pb-8'"
   >
-    <div class="mx-auto flex h-full max-w-5xl flex-col gap-2 md:gap-6">
+    <div class="mx-auto flex max-w-5xl flex-col gap-2 md:gap-2">
       <header class="space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="space-y-2">
-            <h1 class="hidden text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 md:block">
+          <div class="hidden items-center gap-2 md:flex">
+            <h1 class="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               {{ title }}
             </h1>
-            <slot name="header-below-title" />
+            <PageAboutInfo v-if="$slots['header-about']">
+              <slot name="header-about" />
+            </PageAboutInfo>
           </div>
         </div>
       </header>
@@ -1154,7 +1156,7 @@ watch(onlineSongsIndexResponse, () => {
       <slot name="above-search" />
 
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex w-full flex-col gap-3 md:max-w-2xl">
+        <div class="flex w-full flex-col gap-2 md:max-w-2xl">
           <div
             v-if="songActionNotice"
             :class="[
@@ -1206,7 +1208,7 @@ watch(onlineSongsIndexResponse, () => {
         </div>
       </div>
 
-      <div class="flex min-h-0 flex-1 flex-col gap-1">
+      <div class="flex flex-col gap-1">
         <div class="flex shrink-0 justify-end">
           <p class="text-xs text-slate-500 dark:text-slate-400">
             Showing {{ sortedSongs.length }} of {{ totalCount }}<span
@@ -1216,7 +1218,7 @@ watch(onlineSongsIndexResponse, () => {
           </p>
         </div>
 
-        <div class="flex min-h-0 flex-1 flex-col">
+        <div class="flex flex-col">
         <div
           v-if="showInitialSongsLoading"
           class="rounded-lg border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
@@ -1229,10 +1231,10 @@ watch(onlineSongsIndexResponse, () => {
         >
           Failed to load songs.
         </div>
-        <div v-else class="flex min-h-0 flex-1 flex-col">
+        <div v-else class="flex flex-col">
           <div
             v-if="songSource.length"
-            class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+            class="admin-songs-grid w-full min-h-[600px] h-[max(600px,calc(100vh-18rem))] rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
           >
             <AgGridVue
               class="ag-theme-quartz h-full w-full text-sm text-slate-700 dark:text-slate-200"
@@ -1295,6 +1297,10 @@ watch(onlineSongsIndexResponse, () => {
 
 .song-cell-artist {
   max-width: 20rem;
+}
+
+.admin-songs-grid :deep(.ag-root-wrapper) {
+  border-radius: 0.75rem;
 }
 
 ::global(.dark .ag-theme-quartz) {

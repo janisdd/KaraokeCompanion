@@ -1320,18 +1320,15 @@ const runMatchLoudnessTwoPassByReference = async () => {
       @show-song-tools="showSongTools"
       @run-analyzer="runAnalyzer"
     >
-      <template #header-below-title>
-        <details
-          class="hidden rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm md:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-        >
-          <summary class="cursor-pointer font-medium text-slate-700 dark:text-slate-200">
-            About loudness stats and tools
-          </summary>
-          <p class="mt-2">
-            Loudness stats are always calculated from the original audio files.
-            the tools only work with the original audio files.
-          </p>
-        </details>
+      <template #header-about>
+        <p>
+          Loudness stats are always calculated from the original audio files.
+          The tools only work with the original audio files.
+        </p>
+        <p>
+          Re-downloading a song moves the current song directory to the trash directory
+          before replacing it. You can restore it manually from there if needed.
+        </p>
       </template>
       <template #header-actions>
         <div class="flex flex-wrap items-center gap-2">
