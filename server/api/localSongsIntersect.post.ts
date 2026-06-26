@@ -20,16 +20,25 @@ export type MatchResult = {
   local: Pick<SongInfo, "key" | "songDirName" | "title" | "artist">;
 };
 
+export type CompareMode = "strict" | "lax"
 export type PlaylistService = "spotify" | "tidal"
 
 type CachedPlaylist = CacheResult<StrippedTrack[]>;
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ playListUrl?: string; forceRefresh?: boolean }>(event);
-  const { playListUrl, forceRefresh } = body || {};
+  const body = await readBody<{
+    playListUrl?: string
+    forceRefresh?: boolean
+    compareMode?: CompareMode
+  }>(event)
+  const { playListUrl, forceRefresh, compareMode = "lax" } = body || {}
 
   if (!playListUrl) {
     throw createError({ statusCode: 400, message: "Missing playListUrl" });
+  }
+
+  if (compareMode !== "strict" && compareMode !== "lax") {
+    throw createError({ statusCode: 400, message: "Invalid compareMode" })
   }
 
   // check if the playlist is a Spotify or Tidal playlist
@@ -91,7 +100,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const matches = matchPlaylistToLocal(playlistResult.data, localSongs);
+  const matches = matchPlaylistToLocal(playlistResult.data, localSongs, compareMode);
 
   return {
     matches,
@@ -114,6 +123,7 @@ const loadLocalSongs = async (): Promise<SongInfo[]> => {
 const matchPlaylistToLocal = (
   playlistTracks: StrippedTrack[],
   localSongs: SongInfo[],
+  compareMode: CompareMode,
 ): MatchResult[] => {
   const validPlaylist = playlistTracks.filter(
     (t): t is StrippedTrack => !!t?.name && !!t?.artist,
@@ -138,14 +148,14 @@ const matchPlaylistToLocal = (
       continue;
     }
 
-    const match = normalizedLocal.find((local) => {
+    const matchingLocalSongs = normalizedLocal.filter((local) => {
       return (
-        isSubsectMatch(normalizedTitle, local.title) &&
-        isSubsectMatch(normalizedArtist, local.artist)
-      );
-    });
+        isMatch(normalizedTitle, local.title, compareMode) &&
+        isMatch(normalizedArtist, local.artist, compareMode)
+      )
+    })
 
-    if (match) {
+    for (const match of matchingLocalSongs) {
       results.push({
         spotify: track,
         local: {
@@ -154,12 +164,12 @@ const matchPlaylistToLocal = (
           title: match.song.title,
           artist: match.song.artist,
         },
-      });
+      })
     }
   }
 
-  return results;
-};
+  return results
+}
 
 const normalizeValue = (value: string): string =>
   value
@@ -168,12 +178,21 @@ const normalizeValue = (value: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-const isSubsectMatch = (left: string, right: string): boolean => {
+const isMatch = (
+  left: string,
+  right: string,
+  compareMode: CompareMode,
+): boolean => {
   if (!left || !right) {
-    return false;
+    return false
   }
-  return left.includes(right) || right.includes(left);
-};
+
+  if (compareMode === "strict") {
+    return left === right
+  }
+
+  return left.includes(right) || right.includes(left)
+}
 
 const loadSpotifyPlaylist = async (
   id: string,

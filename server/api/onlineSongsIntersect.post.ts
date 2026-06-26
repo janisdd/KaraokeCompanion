@@ -146,26 +146,28 @@ const matchPlaylistToOnline = (
       continue
     }
 
-    const match = normalizedOnlineSongs.find((onlineSong) => {
+    const matchingOnlineSongs = normalizedOnlineSongs.filter((onlineSong) => {
       return (
         isMatch(normalizedTitle, onlineSong.title, compareMode) &&
         isMatch(normalizedArtist, onlineSong.artist, compareMode)
       )
     })
 
-    if (!match) {
+    if (!matchingOnlineSongs.length) {
       continue
     }
 
-    results.push({
-      spotify: track,
-      online: {
-        key: match.song.key,
-        songId: match.song.songId,
-        songName: match.song.songName,
-        artist: match.song.artist,
-      },
-    })
+    for (const match of matchingOnlineSongs) {
+      results.push({
+        spotify: track,
+        online: {
+          key: match.song.key,
+          songId: match.song.songId,
+          songName: match.song.songName,
+          artist: match.song.artist,
+        },
+      })
+    }
   }
 
   return results

@@ -11,7 +11,11 @@ import { defineComponent, h, resolveComponent, shallowRef, type PropType } from 
 import { useMarkedSongs } from "~~/composables/useMarkedSongs";
 import { useSongListAudioPlayback } from "~~/composables/useSongListAudioPlayback";
 import type { SongListRow } from "~~/types/song"
-import type { MatchResult, PlaylistService } from "~/server/api/localSongsIntersect.post";
+import type {
+  CompareMode,
+  MatchResult,
+  PlaylistService,
+} from "~/server/api/localSongsIntersect.post";
 defineOptions({
   name: "ComparePlaylistLocalPage",
 });
@@ -27,6 +31,23 @@ type CompareResponse = {
   playlistCache?: { updatedAt: string; source: "cache" | "fresh" };
 };
 
+const compareModeOptions: Array<{
+  value: CompareMode
+  label: string
+  description: string
+}> = [
+  {
+    value: "strict",
+    label: "Strict",
+    description: "Exact title and artist matches after trimming and normalization.",
+  },
+  {
+    value: "lax",
+    label: "Lax",
+    description: "Title and artist can match if one normalized value contains the other.",
+  },
+]
+
 const {
   isMarkedSong,
   toggleMarkedSong,
@@ -35,6 +56,10 @@ const {
   isMarkedSongsAuthenticated,
 } = useMarkedSongs();
 const playListUrl = useState("compare-local-playlist-url", () => "");
+const compareMode = useState<CompareMode>(
+  "compare-local-playlist-mode",
+  () => "lax",
+)
 const compareResult = useState<CompareResponse | null>(
   "compare-local-playlist-result",
   () => null,
@@ -99,6 +124,7 @@ const comparePlaylist = async () => {
       body: {
         playListUrl: playListUrl.value.trim(),
         forceRefresh: forceRefresh.value,
+        compareMode: compareMode.value,
       },
     });
     compareResult.value = response;
@@ -166,6 +192,12 @@ const filteredMatches = computed(() => {
     return haystack.includes(query);
   });
 });
+
+const selectedCompareMode = computed(
+  () =>
+    compareModeOptions.find((option) => option.value === compareMode.value) ??
+    compareModeOptions[0],
+)
 
 const MarkCell = defineComponent({
   props: {
@@ -380,29 +412,71 @@ const markAllMatches = () => {
 
       <section class="text-sm text-slate-600 dark:text-slate-300">
         <form class="space-y-4" @submit.prevent="comparePlaylist">
-          <div class="flex items-center gap-2 md:max-w-md">
-            <label
-              class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <span class="text-slate-500 dark:text-slate-400">Url</span>
-              <input
-                v-model.trim="playListUrl"
-                type="url"
-                placeholder="https://open.spotify.com/playlist/... or https://tidal.com/playlist/..."
-                class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </label>
-            <PageAboutInfo>
-              <p>
-                Provide a Spotify or Tidal playlist URL to find local song matches.
-                <b>The playlist must be public and a custom playlist!</b>
-              </p>
-              <p>
-                Playlists are cached and the cache is not invalidated automatically.
-                Use <b>Re-download playlist</b> to fetch the latest version if the playlist
-                has changed since your last compare — otherwise you may see stale results.
-              </p>
-            </PageAboutInfo>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 md:max-w-md">
+              <label
+                class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="text-slate-500 dark:text-slate-400">Url</span>
+                <input
+                  v-model.trim="playListUrl"
+                  type="url"
+                  placeholder="https://open.spotify.com/playlist/... or https://tidal.com/playlist/..."
+                  class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </label>
+              <PageSettingsModal>
+                <div class="space-y-2">
+                  <span class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Comparison mode
+                  </span>
+                  <div
+                    class="inline-flex flex-wrap rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                    role="radiogroup"
+                    aria-label="Comparison mode"
+                  >
+                    <label
+                      v-for="option in compareModeOptions"
+                      :key="option.value"
+                      class="cursor-pointer"
+                    >
+                      <input
+                        v-model="compareMode"
+                        type="radio"
+                        name="compare-mode"
+                        class="sr-only"
+                        :value="option.value"
+                      />
+                      <span
+                        class="inline-flex rounded-lg px-4 py-2 text-sm font-medium transition"
+                        :class="
+                          compareMode === option.value
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                        "
+                      >
+                        {{ option.label }}
+                      </span>
+                    </label>
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    {{ selectedCompareMode.description }}
+                  </p>
+                </div>
+              </PageSettingsModal>
+              <PageAboutInfo>
+                <p>
+                  Provide a Spotify or Tidal playlist URL to find local song matches.
+                  Only title and artist are compared.
+                  <b>The playlist must be public and a custom playlist!</b>
+                </p>
+                <p>
+                  Playlists are cached and the cache is not invalidated automatically.
+                  Use <b>Re-download playlist</b> to fetch the latest version if the playlist
+                  has changed since your last compare — otherwise you may see stale results.
+                </p>
+              </PageAboutInfo>
+            </div>
           </div>
 
           <div class="flex flex-wrap items-center gap-4">
@@ -485,7 +559,7 @@ const markAllMatches = () => {
                 :defaultColDef="defaultColDef"
                 :rowData="filteredMatches"
                 :rowHeight="rowHeight"
-                :getRowId="(params) => params.data.local.key"
+                :getRowId="(params) => `${params.data.local.key}-${params.data.spotify.name}-${params.data.spotify.artist}`"
                 domLayout="autoHeight"
                 @grid-ready="onGridReady"
               />
