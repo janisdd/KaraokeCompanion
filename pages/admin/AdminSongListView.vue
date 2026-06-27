@@ -102,6 +102,7 @@ const getAdminSongRowId = (params: GetRowIdParams<SongListRow>) =>
 const totalCount = computed(() => songs.value?.length ?? 0)
 
 const songSource = computed(() => songs.value ?? [])
+const { minimumSearchChars } = useSearchMinimumChars()
 const isDark = useState<boolean>("isDarkMode", () => false)
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"))
 
@@ -126,6 +127,15 @@ const {
   stateKeyPrefix: "admin-songs",
   audioStorageKey: "admin-songs",
   songsCatalogKey: props.songsCatalogKey,
+})
+
+const trimmedMetadataQuery = computed(() => metadataQuery.value.trim())
+const isSearchQueryTooShort = computed(() => {
+  return (
+    minimumSearchChars.value > 0 &&
+    trimmedMetadataQuery.value.length > 0 &&
+    trimmedMetadataQuery.value.length < minimumSearchChars.value
+  )
 })
 
 const rowHeight = 48
@@ -1190,17 +1200,25 @@ watch(onlineSongsIndexResponse, () => {
             <slot name="search-mode-actions" />
           </div>
           <div class="flex flex-col gap-2 md:flex-row">
-            <label
-              class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <span class="text-slate-500 dark:text-slate-400">Search</span>
-              <input
-                v-model="metadataQuery"
-                type="search"
-                placeholder="Title, artist, year, genre, language"
-                class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
-            </label>
+            <div class="w-full md:max-w-md">
+              <label
+                class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <span class="text-slate-500 dark:text-slate-400">Search</span>
+                <input
+                  v-model="metadataQuery"
+                  type="search"
+                  placeholder="Title, artist, year, genre, language"
+                  class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </label>
+              <p
+                v-if="isSearchQueryTooShort"
+                class="mt-1 text-xs text-slate-500 dark:text-slate-400"
+              >
+                Enter at least {{ minimumSearchChars }} characters to start filtering.
+              </p>
+            </div>
           </div>
         </div>
         <div class="flex items-center gap-2 md:flex-col md:items-end md:gap-1">

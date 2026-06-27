@@ -86,11 +86,20 @@ const compareResult = useState<CompareResponse | null>(
 );
 const forceRefresh = useState("compare-online-force-refresh", () => false);
 const searchQuery = useState("compare-online-search-query", () => "");
+const { minimumSearchChars } = useSearchMinimumChars()
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
 const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
 const gridApi = shallowRef<GridApi<MatchResult> | null>(null);
+const trimmedSearchQuery = computed(() => searchQuery.value.trim())
+const isSearchQueryTooShort = computed(() => {
+  return (
+    minimumSearchChars.value > 0 &&
+    trimmedSearchQuery.value.length > 0 &&
+    trimmedSearchQuery.value.length < minimumSearchChars.value
+  )
+})
 
 const {
   data: onlineSongsIndexResponse,
@@ -225,9 +234,12 @@ const playlistTrackHeader = computed(() => `${playlistServiceLabel.value} track`
 const playlistArtistHeader = computed(() => `${playlistServiceLabel.value} artist`)
 
 const filteredMatches = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
+  const query = trimmedSearchQuery.value.toLowerCase();
   if (!query) {
     return matches.value;
+  }
+  if (query.length < minimumSearchChars.value) {
+    return matches.value
   }
 
   return matches.value.filter((match) => {
@@ -714,15 +726,23 @@ const scrollToActiveSongInList = () => {
 
           <div v-if="matches.length" class="mt-2 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <label class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                <span class="text-slate-500 dark:text-slate-400">Search</span>
-                <input
-                  v-model="searchQuery"
-                  type="search"
-                  placeholder="Title or artist"
-                  class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-                />
-              </label>
+              <div class="w-full md:max-w-md">
+                <label class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                  <span class="text-slate-500 dark:text-slate-400">Search</span>
+                  <input
+                    v-model="searchQuery"
+                    type="search"
+                    placeholder="Title or artist"
+                    class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                </label>
+                <p
+                  v-if="isSearchQueryTooShort"
+                  class="mt-1 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  Enter at least {{ minimumSearchChars }} characters to start filtering.
+                </p>
+              </div>
               <button
                 type="button"
                 class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"

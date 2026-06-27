@@ -91,6 +91,7 @@ export const useSongListView = (options: SongListViewOptions) => {
     autoFetch: false,
     stateKey: songsCatalogKey,
   })
+  const { minimumSearchChars } = useSearchMinimumChars()
   const {
     activeAudioKey,
     activeSong,
@@ -127,6 +128,9 @@ export const useSongListView = (options: SongListViewOptions) => {
 
     const query = metadataQuery.value.trim().toLowerCase()
     if (!query) {
+      return source
+    }
+    if (query.length < minimumSearchChars.value) {
       return source
     }
 

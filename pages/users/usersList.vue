@@ -34,6 +34,7 @@ const loggedInUserName = computed(() => {
 })
 
 const searchQuery = ref("")
+const { minimumSearchChars } = useSearchMinimumChars()
 const isCreateModalOpen = ref(false)
 const isCreatingUser = ref(false)
 const createUserErrorMessage = ref<string | null>(null)
@@ -69,8 +70,19 @@ const normalizedSearchQuery = computed(() => {
   return searchQuery.value.trim().toLowerCase()
 })
 
+const isSearchQueryTooShort = computed(() => {
+  return (
+    minimumSearchChars.value > 0 &&
+    normalizedSearchQuery.value.length > 0 &&
+    normalizedSearchQuery.value.length < minimumSearchChars.value
+  )
+})
+
 const filteredUsers = computed(() => {
   if (!normalizedSearchQuery.value) {
+    return users.value
+  }
+  if (normalizedSearchQuery.value.length < minimumSearchChars.value) {
     return users.value
   }
 
@@ -185,17 +197,25 @@ const logout = async () => {
       </header>
 
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <label
-          class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm md:max-w-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-        >
-          <span class="text-slate-500 dark:text-slate-400">Search</span>
-          <input
-            v-model="searchQuery"
-            type="search"
-            placeholder="Name, theme, or user dir"
-            class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-          />
-        </label>
+        <div class="w-full md:max-w-md">
+          <label
+            class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <span class="text-slate-500 dark:text-slate-400">Search</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="Name, theme, or user dir"
+              class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </label>
+          <p
+            v-if="isSearchQueryTooShort"
+            class="mt-1 text-xs text-slate-500 dark:text-slate-400"
+          >
+            Enter at least {{ minimumSearchChars }} characters to start filtering.
+          </p>
+        </div>
 
         <button
           type="button"

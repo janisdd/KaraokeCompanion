@@ -44,8 +44,17 @@ type OnlineSongRow = OnlineSongInfo & {
 }
 
 const searchQuery = ref("");
+const { minimumSearchChars } = useSearchMinimumChars()
 const isDark = useState<boolean>("isDarkMode", () => false);
 const agThemeMode = computed(() => (isDark.value ? "dark" : "light"));
+const trimmedSearchQuery = computed(() => searchQuery.value.trim())
+const isSearchQueryTooShort = computed(() => {
+  return (
+    minimumSearchChars.value > 0 &&
+    trimmedSearchQuery.value.length > 0 &&
+    trimmedSearchQuery.value.length < minimumSearchChars.value
+  )
+})
 
 const {
   data: response,
@@ -162,8 +171,11 @@ const scrollToActiveSongInList = () => {
 };
 
 const filteredSongs = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
+  const query = trimmedSearchQuery.value.toLowerCase();
   if (!query) {
+    return onlineSongs.value;
+  }
+  if (query.length < minimumSearchChars.value) {
     return onlineSongs.value;
   }
 
@@ -417,18 +429,26 @@ const defaultColDef: ColDef<OnlineSongRow> = {
       <section class="flex min-h-0 flex-1 flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex w-full flex-col md:max-w-2xl">
-            <div class="flex items-center gap-2 md:max-w-md">
-              <label
-                class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <span class="text-slate-500 dark:text-slate-400">Search</span>
-                <input
-                  v-model="searchQuery"
-                  type="search"
-                  placeholder="Search artists or songs..."
-                  class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
-                />
-              </label>
+            <div class="flex items-start gap-2 md:max-w-md">
+              <div class="w-full">
+                <label
+                  class="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <span class="text-slate-500 dark:text-slate-400">Search</span>
+                  <input
+                    v-model="searchQuery"
+                    type="search"
+                    placeholder="Search artists or songs..."
+                    class="w-full border-none bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                  />
+                </label>
+                <p
+                  v-if="isSearchQueryTooShort"
+                  class="mt-1 text-xs text-slate-500 dark:text-slate-400"
+                >
+                  Enter at least {{ minimumSearchChars }} characters to start filtering.
+                </p>
+              </div>
               <PageAboutInfo>
                 <p>
                   Search the indexed online songs by artist or song name. The download queue
