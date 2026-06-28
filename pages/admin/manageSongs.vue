@@ -393,6 +393,7 @@ const isUltraStarControlsExpanded = ref(false)
 const ultraStarControlsError = ref<string | null>(null)
 const isStartSelectedUltraStarSongRunning = ref(false)
 const isCloseUltraStarScoreScreenRunning = ref(false)
+const isCloseUltraStarTop5ScreenRunning = ref(false)
 const isCancelUltraStarCurrentSongRunning = ref(false)
 const isTogglePauseUltraStarCurrentSongRunning = ref(false)
 
@@ -421,6 +422,20 @@ const closeUltraStarScoreScreen = async () => {
     ultraStarControlsError.value = getFetchErrorMessage(error, "Could not close score screen")
   } finally {
     isCloseUltraStarScoreScreenRunning.value = false
+  }
+}
+
+const closeUltraStarTop5Screen = async () => {
+  ultraStarControlsError.value = null
+  isCloseUltraStarTop5ScreenRunning.value = true
+  try {
+    await $fetch("/api/admin/ultrastar/closeTop5Screen", {
+      method: "POST",
+    })
+  } catch (error: unknown) {
+    ultraStarControlsError.value = getFetchErrorMessage(error, "Could not close top 5 screen")
+  } finally {
+    isCloseUltraStarTop5ScreenRunning.value = false
   }
 }
 
@@ -592,6 +607,7 @@ const resetAdminManageSongsPageState = () => {
   ultraStarControlsError.value = null
   isStartSelectedUltraStarSongRunning.value = false
   isCloseUltraStarScoreScreenRunning.value = false
+  isCloseUltraStarTop5ScreenRunning.value = false
   isCancelUltraStarCurrentSongRunning.value = false
   isTogglePauseUltraStarCurrentSongRunning.value = false
 
@@ -1449,6 +1465,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
                     || !isAdminAuthenticated
                     || isStartSelectedUltraStarSongRunning
                     || isCloseUltraStarScoreScreenRunning
+                    || isCloseUltraStarTop5ScreenRunning
                     || isCancelUltraStarCurrentSongRunning
                     || isTogglePauseUltraStarCurrentSongRunning
                   "
@@ -1475,6 +1492,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
                     || !isAdminAuthenticated
                     || isStartSelectedUltraStarSongRunning
                     || isCloseUltraStarScoreScreenRunning
+                    || isCloseUltraStarTop5ScreenRunning
                     || isCancelUltraStarCurrentSongRunning
                     || isTogglePauseUltraStarCurrentSongRunning
                   "
@@ -1499,6 +1517,32 @@ const runMatchLoudnessTwoPassByReference = async () => {
                     || !isAdminAuthenticated
                     || isStartSelectedUltraStarSongRunning
                     || isCloseUltraStarScoreScreenRunning
+                    || isCloseUltraStarTop5ScreenRunning
+                    || isCancelUltraStarCurrentSongRunning
+                    || isTogglePauseUltraStarCurrentSongRunning
+                  "
+                  @click="closeUltraStarTop5Screen"
+                >
+                  <span
+                    v-if="isCloseUltraStarTop5ScreenRunning"
+                    class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300"
+                    aria-hidden="true"
+                  />
+                  <font-awesome-layers v-else>
+                    <font-awesome-icon icon="fa-solid fa-list-ol" class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" aria-hidden="true" />
+                    <font-awesome-icon icon="fa-solid fa-slash" class="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" aria-hidden="true" />
+                  </font-awesome-layers>
+                  <span>{{ isCloseUltraStarTop5ScreenRunning ? "Closing…" : "Close top 5 screen" }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="
+                    adminSessionPending
+                    || !isAdminAuthenticated
+                    || isStartSelectedUltraStarSongRunning
+                    || isCloseUltraStarScoreScreenRunning
+                    || isCloseUltraStarTop5ScreenRunning
                     || isCancelUltraStarCurrentSongRunning
                     || isTogglePauseUltraStarCurrentSongRunning
                   "
@@ -1525,6 +1569,7 @@ const runMatchLoudnessTwoPassByReference = async () => {
                     || !isAdminAuthenticated
                     || isStartSelectedUltraStarSongRunning
                     || isCloseUltraStarScoreScreenRunning
+                    || isCloseUltraStarTop5ScreenRunning
                     || isCancelUltraStarCurrentSongRunning
                     || isTogglePauseUltraStarCurrentSongRunning
                   "
